@@ -1,5 +1,5 @@
 -------------------------------------------
-LbFn version 0.70.4src by nika (2008/12/02)
+LbFn version 0.70.5src by nika (2008/12/21)
 -------------------------------------------
 
 ƒ\[ƒX‚ğ‰ü•Ï‚·‚é‚±‚Æ‚É§ŒÀ‚Í‚ ‚è‚Ü‚¹‚ñ
@@ -32,4 +32,8 @@ LbF‚ÆLbFn‚ª‚»‚ê‚¼‚êLaunchELF‚ÆLbF‚ğ‰ü•Ï‚µ‚½‚à‚Ì‚Æ‚¢‚¤‚±‚Æ‚ğ‚í‚©‚é‚æ‚¤‚É‚µ‚Ä‚­‚¾‚
 
 Eps2menu
   http://svn.pspdev.org/listing.php?repname=ps2ware&path=%2Ftrunk%2Fps2menu%2F&rev=0&sc=0
+
+EOSASK (tekˆ³k)
+  http://osask.jp/
+  http://wiki.osask.jp/?tek/rjc
 

@@ -302,8 +302,8 @@ int MessageBox(const char *Text, const char *Caption, int type)
 		drawDialogTmp(dialog_x, dialog_y,
 			dialog_x+dialog_width, dialog_y+dialog_height,
 			setting->color[COLOR_BACKGROUND], setting->color[COLOR_FRAME]);
-		itoLine(setting->color[COLOR_FRAME], dialog_x+FONT_WIDTH, dialog_y+FONT_WIDTH*3.5, 0,
-			setting->color[COLOR_FRAME], dialog_x+dialog_width-FONT_WIDTH, dialog_y+FONT_WIDTH*3.5, 0);
+		itoLine(setting->color[COLOR_FRAME], dialog_x+FONT_WIDTH, dialog_y+FONT_HEIGHT*1.75, 0,
+			setting->color[COLOR_FRAME], dialog_x+dialog_width-FONT_WIDTH, dialog_y+FONT_HEIGHT*1.75, 0);
 		//キャプション
 		x = dialog_x+FONT_WIDTH*1;
 		y = dialog_y+FONT_HEIGHT*0.5;
@@ -613,12 +613,18 @@ int readHDD(const char *path, FILEINFO *info, int max)
 
 //-------------------------------------------------
 // USBマスストレージ読み込み
-int readMASS(const char *path, FILEINFO *info, int max)
+int readMASS(const char *pathsjis, FILEINFO *info, int max)
 {
 	fio_dirent_t record;
 	int n=0, dd=-1;
+	char path[770];
 
 	loadUsbModules();
+	
+	if(setting->usbmass_char)
+		sjistoutf((unsigned char*) pathsjis, (unsigned char*) path, 768);
+	else
+		strcpy(path, pathsjis);
 	
 	if ((dd = fioDopen(path)) < 0) goto exit;
 
@@ -636,7 +642,11 @@ int readMASS(const char *path, FILEINFO *info, int max)
 		else
 			continue;
 
-		strcpy(info[n].name, record.name);
+		if(setting->usbmass_char)
+			utftosjis((unsigned char*) record.name, (unsigned char*) info[n].name, 768);
+		else
+			strcpy(info[n].name, record.name);
+		//strcpy(info[n].name, path);
 		strncpy(info[n].name, info[n].name, 32);
 		memset(&info[n].createtime, 0, sizeof(PS2TIME)); //取得しない
 		info[n].modifytime.unknown = 0;
@@ -646,6 +656,7 @@ int readMASS(const char *path, FILEINFO *info, int max)
 		info[n].modifytime.day = record.stat.mtime[4];
 		info[n].modifytime.month = record.stat.mtime[5];
 		info[n].modifytime.year = record.stat.mtime[6] + record.stat.mtime[7]*256;
+		//if (info[n].modifytime.year < 1000) info[n].modifytime.year+=1800;
 		n++;
 		if(n==max) break;
 	}
@@ -708,6 +719,9 @@ int getGameTitlePsu(const char *path, const FILEINFO *file, char *out)
 	else{
 		sprintf(dir, "%s%s", path, file->name);
 		if(file->attr & MC_ATTR_SUBDIR) strcat(dir, "/");
+	}
+	if(setting->usbmass_char && !strncmp(path, "mass", 4)){
+		sjistoutf(dir, dir, 768);
 	}
 
 	//psuファイルオープンとサイズ取得
@@ -1979,6 +1993,9 @@ int psuImport(const char *path, const FILEINFO *file, int outmc)
 			//psuファイルのフルパス
 			sprintf(inpath, "%s%s", path, file->name);
 		}
+		if(setting->usbmass_char && !strncmp(path, "mass", 4))
+			sjistoutf(inpath, inpath, MAX_PATH-2);
+		
 
 		//psuファイルオープンとサイズ取得
 		if(hddin){
@@ -2092,6 +2109,8 @@ int psuImport(const char *path, const FILEINFO *file, int outmc)
 			//psuファイルのフルパス
 			sprintf(inpath, "%s%s", path, file->name);
 		}
+		if(setting->usbmass_char && !strncmp(path, "mass", 4))
+			sjistoutf(inpath, inpath, MAX_PATH-2);
 
 		//セーブデータのフォルダ作成
 		r = newdir(outpath, psu_header_dir.name);
@@ -2342,7 +2361,7 @@ int psuExport(const char *path, const FILEINFO *file, int sjisout)
 				code=tmp[27];
 				//sjisの1byte目だったら消す
 				if( (code>=0x81)&&(code<=0x9F) ) tmp[27] = 0;
-				if( (code>=0xE0)&&(code<=0xFF) ) tmp[27] = 0;
+				if( (code>=0xE0)&&(code<=0xFC) ) tmp[27] = 0;
 			}
 		}
 		//出力するpsuファイルのフルパス
@@ -2380,8 +2399,11 @@ int psuExport(const char *path, const FILEINFO *file, int sjisout)
 			ret=-5;
 			goto error;
 		}
-		else if(!strncmp(outpath, "mass", 4))
+		else if(!strncmp(outpath, "mass", 4)){
 			loadUsbModules();
+			if(setting->usbmass_char)
+				sjistoutf(outpath, outpath, MAX_PATH-2);
+		}
 
 		//psuファイルオープン 新規作成
 		if(hddout){
@@ -2977,6 +2999,12 @@ void getFilePath(char *out, int cnfmode)
 		strcpy(ext, "");
 	else if(cnfmode==FNT_FILE)
 		strcpy(ext, "fnt");
+	else if(cnfmode==IRX_FILE)
+		strcpy(ext, "irx");
+	else if(cnfmode==JPG_FILE)
+		strcpy(ext, "jpg");
+	else if(cnfmode==TXT_FILE)
+		strcpy(ext, "txt");
 
 	strcpy(path, LastDir);
 	mountedParty[0][0]=0;
@@ -3188,6 +3216,32 @@ void getFilePath(char *out, int cnfmode)
 							strcpy(out, path);
 							break;
 						}
+					}
+					else if(new_pad & PAD_CROSS){	//戻る
+						break;
+					}
+				}
+				//IRX_FILE IRX選択時
+				if(cnfmode==IRX_FILE){
+					if(new_pad & PAD_CIRCLE) {	//ファイルを決定
+						if(!(files[sel].attr & MC_ATTR_SUBDIR)){
+							char fullpath[MAX_PATH];
+							sprintf(fullpath, "%s%s", path, files[sel].name);
+							if(!strncmp(path, "MISC/", 5)){
+								strcpy(out, fullpath);
+								strcpy(LastDir, path);
+								break;
+							}
+							//IRXファイル選択
+							strcpy(out, fullpath);
+							strcpy(LastDir, path);
+							break;
+						}
+					}
+					else if(new_pad & PAD_SQUARE) {	// ファイルマスク切り替え
+						if(!strcmp(ext,"*")) strcpy(ext, "irx");
+						else				 strcpy(ext, "*");
+						cd=TRUE;
 					}
 					else if(new_pad & PAD_CROSS){	//戻る
 						break;
@@ -3626,7 +3680,7 @@ void getFilePath(char *out, int cnfmode)
 				tmp[MAX_ROWS_X-3]=0;
 				code=tmp[MAX_ROWS_X-4];
 				if( (code>=0x81)&&(code<=0x9F) ) tmp[MAX_ROWS_X-4] = 0;
-				if( (code>=0xE0)&&(code<=0xFF) ) tmp[MAX_ROWS_X-4] = 0;
+				if( (code>=0xE0)&&(code<=0xFC) ) tmp[MAX_ROWS_X-4] = 0;
 				strcat(tmp, "...");
 			}
 
@@ -3798,6 +3852,12 @@ void getFilePath(char *out, int cnfmode)
 					sprintf(msg1, lang->filer_fntfile_hint1);
 				else
 					sprintf(msg1, lang->filer_fntfile_hint2);
+			}
+			else if(cnfmode==IRX_FILE){
+				if(!strcmp(ext, "*"))
+					sprintf(msg1, lang->filer_irxfile_hint1);
+				else
+					sprintf(msg1, lang->filer_irxfile_hint2);
 			}
 			else if(cnfmode==DIR){
 				sprintf(msg1, lang->filer_dir_hint);

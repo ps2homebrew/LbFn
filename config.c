@@ -16,7 +16,7 @@ enum
 	DEF_COLOR9 = ITO_RGBA(0,128,255,0),		//PS1saveフォルダ
 	DEF_COLOR10 = ITO_RGBA(64,64,80,0),		//無効の文字色
 	DEF_COLOR11 = ITO_RGBA(192,96,0,0),		//psuファイル
-	DEF_SCREEN_X_D1 = 638,
+	DEF_SCREEN_X_D1 = 639,
 	DEF_SCREEN_Y_D1 = 50,
 	DEF_SCREEN_X_D2 = 310,
 	DEF_SCREEN_Y_D2 = 50,
@@ -25,6 +25,7 @@ enum
 	DEF_SCREEN_X_D4 = 331,
 	DEF_SCREEN_Y_D4 = 42,
 	DEF_SCREEN_SCAN = FALSE,	//FALSE=NORMAL TRUE=FULL
+	DEF_FULLHD_WIDTH = 960,
 	DEF_FLICKERCONTROL = TRUE,
 	DEF_TVMODE = 0,	//0=auto 1=ntsc 2=pal 3=480p 4=720p 5=1080i
 	DEF_INTERLACE = TRUE,	//FALSE=ITO_NON_INTERLACE TRUE=ITO_INTERLACE
@@ -35,6 +36,14 @@ enum
 	DEF_CHAR_MARGIN = 2,
 	DEF_LINE_MARGIN = 5,
 	DEF_FONTBOLD = TRUE,
+	DEF_FONTHALF_480i = 0,	// 0: 標準, -1: 2倍拡大, +1: 1/2縮小
+	DEF_FONTHALF_480p = 0,
+	DEF_FONTHALF_720p = 0,
+	DEF_FONTHALF_1080i = 1,
+	DEF_FONTVHALF_480i = 0,
+	DEF_FONTVHALF_480p = 0,
+	DEF_FONTVHALF_720p = 0,
+	DEF_FONTVHALF_1080i = 0,
 	DEF_ASCII_MARGINTOP = 0,
 	DEF_ASCII_MARGINLEFT = 0,
 	DEF_KANJI_MARGINTOP = 0,
@@ -47,12 +56,15 @@ enum
 	DEF_FILEPS2SAVECHECK = TRUE,
 	DEF_FILEELFCHECK = TRUE,
 	DEF_LANGUAGE = LANG_ENGLISH,
+	DEF_USBMASS_CHAR = TRUE,	// 0:Shift_JIS, !0:UTF-8
+	DEF_USBMASS_FLAG = FALSE,	// 0:Inside Only
 };
 
 //CONFIG
 enum
 {
 	BUTTONSETTING=0,
+	COLORSETTING,
 	SCREENSETTING,
 	NETWORK,
 	FONTSETTING,
@@ -80,7 +92,7 @@ enum
 	BUTTONINIT,
 };
 
-//SCREEN SETTING
+//COLOR SETTING
 enum
 {
 	COLOR1=1,
@@ -94,10 +106,18 @@ enum
 	COLOR9,
 	COLOR10,
 	COLOR11,
-	TVMODE,
+	PRESETCOLOR,
+};
+
+//SCREEN SETTING
+enum
+{
+	TVMODE=1,
 	SCREENSIZE,
 	INTERLACE,
 	FFMODE,
+	FONTHALF,
+	FONTVHALF,
 	SCREEN_X,
 	SCREEN_Y,
 	FLICKERCONTROL,
@@ -122,6 +142,7 @@ enum
 	CHARMARGIN,
 	LINEMARGIN,
 	FONTBOLD,
+	//FONTHALF,
 	ASCIIMARGINTOP,
 	ASCIIMARGINLEFT,
 	KANJIMARGINTOP,
@@ -144,6 +165,9 @@ enum
 	EXPORTDIR,
 	DEFAULTTITLE,
 	DEFAULTDETAIL,
+	USBMASS_CHAR,
+	USBMASS_FLAG,
+	USBMASS_PATH,
 	MISCINIT,
 };
 
@@ -164,33 +188,56 @@ void SetScreenPosVM()
 			interlace = setting->interlace;
 			ffmode = setting->ffmode_480i;
 			screenscan = setting->screen_scan_480i;
+			font_half = setting->FontHalf_480i;
+			font_vhalf = setting->FontVHalf_480i;
 			break;
 		}
 		case 3:	//480p
+		case 7:
 		{
 			SCREEN_LEFT = setting->screen_x_480p;
 			SCREEN_TOP = setting->screen_y_480p;
 			interlace = ITO_NON_INTERLACE;
 			ffmode = ITO_FIELD;
 			screenscan = setting->screen_scan_480p;
+			font_half = setting->FontHalf_480p;
+			font_vhalf = setting->FontVHalf_480p;
 			break;
 		}
 		case 4:	//720p
+		case 8:
 		{
 			SCREEN_LEFT = setting->screen_x_720p;
 			SCREEN_TOP = setting->screen_y_720p;
 			interlace = ITO_NON_INTERLACE;
 			ffmode = ITO_FIELD;
 			screenscan = setting->screen_scan_720p;
+			font_half = setting->FontHalf_720p;
+			font_vhalf = setting->FontVHalf_720p;
 			break;
 		}
 		case 5:	//1080i
+		case 9:
 		{
 			SCREEN_LEFT = setting->screen_x_1080i;
 			SCREEN_TOP = setting->screen_y_1080i;
 			interlace = ITO_INTERLACE;
 			ffmode = setting->ffmode_1080i;
 			screenscan = setting->screen_scan_1080i;
+			font_half = setting->FontHalf_1080i;
+			font_vhalf = setting->FontVHalf_1080i;
+			break;
+		}
+		case 6:	//1080p(1080/30p)
+		case 10:
+		{
+			SCREEN_LEFT = setting->screen_x_1080i;
+			SCREEN_TOP = setting->screen_y_1080i >> 1;
+			interlace = ITO_NON_INTERLACE;
+			ffmode = ITO_FIELD;
+			screenscan = setting->screen_scan_1080i;
+			font_half = setting->FontHalf_1080i;
+			font_vhalf = setting->FontVHalf_1080i;
 			break;
 		}
 	}
@@ -208,6 +255,8 @@ void SetScreenPosXY()
 			setting->screen_x_480i = SCREEN_LEFT;
 			setting->screen_y_480i = SCREEN_TOP;
 			setting->screen_scan_480i = screenscan;
+			setting->FontHalf_480i = font_half;
+			setting->FontVHalf_480i = font_vhalf;
 			break;
 		}
 		case 3:	//480p
@@ -215,6 +264,8 @@ void SetScreenPosXY()
 			setting->screen_x_480p = SCREEN_LEFT;
 			setting->screen_y_480p = SCREEN_TOP;
 			setting->screen_scan_480p = screenscan;
+			setting->FontHalf_480p = font_half;
+			setting->FontVHalf_480p = font_vhalf;
 			break;
 		}
 		case 4:	//720p
@@ -222,13 +273,18 @@ void SetScreenPosXY()
 			setting->screen_x_720p = SCREEN_LEFT;
 			setting->screen_y_720p = SCREEN_TOP;
 			setting->screen_scan_720p = screenscan;
+			setting->FontHalf_720p = font_half;
+			setting->FontVHalf_720p = font_vhalf;
 			break;
 		}
 		case 5:	//1080i
+		case 6:
 		{
 			setting->screen_x_1080i = SCREEN_LEFT;
 			setting->screen_y_1080i = SCREEN_TOP;
 			setting->screen_scan_1080i = screenscan;
+			setting->FontHalf_1080i = font_half;
+			setting->FontVHalf_1080i = font_vhalf;
 			break;
 		}
 	}
@@ -279,8 +335,8 @@ void InitButtonSetting(void)
 }
 
 //-------------------------------------------------
-// SCREEN SETTINGを初期化
-void InitScreenSetting(void)
+// COLOR SETTINGを初期化
+void InitColorSetting(void)
 {
 	setting->color[COLOR_BACKGROUND] = DEF_COLOR1;
 	setting->color[COLOR_FRAME] = DEF_COLOR2;
@@ -293,6 +349,12 @@ void InitScreenSetting(void)
 	setting->color[COLOR_PS1SAVE] = DEF_COLOR9;
 	setting->color[COLOR_GRAYTEXT] = DEF_COLOR10;
 	setting->color[COLOR_PSU] = DEF_COLOR11;
+}
+
+//-------------------------------------------------
+// SCREEN SETTINGを初期化
+void InitScreenSetting(void)
+{
 	setting->screen_x_480i = DEF_SCREEN_X_D1;
 	setting->screen_y_480i = DEF_SCREEN_Y_D1;
 	setting->screen_x_480p = DEF_SCREEN_X_D2;
@@ -305,11 +367,16 @@ void InitScreenSetting(void)
 	setting->screen_scan_480p = DEF_SCREEN_SCAN;
 	setting->screen_scan_720p = DEF_SCREEN_SCAN;
 	setting->screen_scan_1080i = DEF_SCREEN_SCAN;
+	setting->FontHalf_480i = DEF_FONTHALF_480i;
+	setting->FontHalf_480p = DEF_FONTHALF_480p;
+	setting->FontHalf_720p = DEF_FONTHALF_720p;
+	setting->FontHalf_1080i = DEF_FONTHALF_1080i;
 	setting->flickerControl = DEF_FLICKERCONTROL;
 	setting->tvmode = DEF_TVMODE;
 	setting->interlace = DEF_INTERLACE;
 	setting->ffmode_480i = DEF_FFMODE;
 	setting->ffmode_1080i = DEF_FFMODE;
+	setting->fullhd_width = DEF_FULLHD_WIDTH;
 }
 
 //-------------------------------------------------
@@ -321,6 +388,7 @@ void InitFontSetting(void)
 	setting->CharMargin = DEF_CHAR_MARGIN;
 	setting->LineMargin = DEF_LINE_MARGIN;
 	setting->FontBold = DEF_FONTBOLD;
+	//setting->font_half = DEF_FONTHALF;
 	setting->AsciiMarginTop = DEF_ASCII_MARGINTOP;
 	setting->AsciiMarginLeft = DEF_ASCII_MARGINLEFT;
 	setting->KanjiMarginTop = DEF_KANJI_MARGINTOP;
@@ -343,6 +411,9 @@ void InitMiscSetting(void)
 	setting->language = DEF_LANGUAGE;
 	setting->defaulttitle = DEF_DEFAULTTITLE;
 	setting->defaultdetail = DEF_DEFAULTDETAIL;
+	setting->usbmass_char = DEF_USBMASS_CHAR;
+	setting->usbmass_flag = DEF_USBMASS_FLAG;
+	setting->usbmass_path[0] = 0;
 }
 
 //-------------------------------------------------
@@ -350,6 +421,7 @@ void InitMiscSetting(void)
 void InitSetting(void)
 {
 	InitButtonSetting();
+	InitColorSetting();
 	InitScreenSetting();
 	InitFontSetting();
 	InitMiscSetting();
@@ -465,6 +537,22 @@ void saveConfig(char *mainMsg)
 	if(cnf_setstr("line_margin", tmp)<0) goto error;
 	sprintf(tmp, "%d", setting->FontBold);
 	if(cnf_setstr("font_bold", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->FontHalf_480i);
+	if(cnf_setstr("font_half_480i", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->FontHalf_480p);
+	if(cnf_setstr("font_half_480p", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->FontHalf_720p);
+	if(cnf_setstr("font_half_720p", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->FontHalf_1080i);
+	if(cnf_setstr("font_half_1080i", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->FontVHalf_480i);
+	if(cnf_setstr("font_vhalf_480i", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->FontVHalf_480p);
+	if(cnf_setstr("font_vhalf_480p", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->FontVHalf_720p);
+	if(cnf_setstr("font_vhalf_720p", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->FontVHalf_1080i);
+	if(cnf_setstr("font_vhalf_1080i", tmp)<0) goto error;
 	sprintf(tmp, "%d", setting->AsciiMarginTop);
 	if(cnf_setstr("ascii_margin_top", tmp)<0) goto error;
 	sprintf(tmp, "%d", setting->AsciiMarginLeft);
@@ -526,6 +614,8 @@ void saveConfig(char *mainMsg)
 	if(cnf_setstr("tvmode", tmp)<0) goto error;
 	sprintf(tmp, "%d", setting->interlace);
 	if(cnf_setstr("interlace", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->fullhd_width);
+	if(cnf_setstr("fullhd_width", tmp)<0) goto error;
 	sprintf(tmp, "%d", setting->ffmode_480i);
 	if(cnf_setstr("ffmode", tmp)<0) goto error;
 	sprintf(tmp, "%d", setting->ffmode_1080i);
@@ -534,6 +624,12 @@ void saveConfig(char *mainMsg)
 	if(cnf_setstr("default_title", tmp)<0) goto error;
 	sprintf(tmp, "%d", setting->defaultdetail);
 	if(cnf_setstr("default_detail", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->usbmass_char);
+	if(cnf_setstr("usbmass_charset", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->usbmass_flag);
+	if(cnf_setstr("usbmass_use_ext", tmp)<0) goto error;
+	strcpy(tmp, setting->usbmass_path);
+	if(cnf_setstr("usbmass_path", tmp)<0) goto error;
 	goto no_error;
 
 error:
@@ -722,6 +818,46 @@ void loadConfig(char *mainMsg)
 				if(setting->FontBold<0 || setting->FontBold>1)
 					setting->FontBold = DEF_FONTBOLD;
 			}
+			if(cnf_getstr("font_half_480i", tmp, "")>=0){
+				setting->FontHalf_480i = atoi(tmp);
+				if(setting->FontHalf_480i<-7 || setting->FontHalf_480i>7)
+					setting->FontHalf_480i = DEF_FONTHALF_480i;
+			}
+			if(cnf_getstr("font_half_480p", tmp, "")>=0){
+				setting->FontHalf_480p = atoi(tmp);
+				if(setting->FontHalf_480p<-7 || setting->FontHalf_480p>7)
+					setting->FontHalf_480p = DEF_FONTHALF_480p;
+			}
+			if(cnf_getstr("font_half_720p", tmp, "")>=0){
+				setting->FontHalf_720p = atoi(tmp);
+				if(setting->FontHalf_720p<-7 || setting->FontHalf_720p>7)
+					setting->FontHalf_720p = DEF_FONTHALF_720p;
+			}
+			if(cnf_getstr("font_half_1080i", tmp, "")>=0){
+				setting->FontHalf_1080i = atoi(tmp);
+				if(setting->FontHalf_1080i<-7 || setting->FontHalf_1080i>7)
+					setting->FontHalf_1080i = DEF_FONTHALF_1080i;
+			}
+			if(cnf_getstr("font_vhalf_480i", tmp, "")>=0){
+				setting->FontVHalf_480i = atoi(tmp);
+				if(setting->FontVHalf_480i<-7 || setting->FontVHalf_480i>7)
+					setting->FontVHalf_480i = DEF_FONTVHALF_480i;
+			}
+			if(cnf_getstr("font_vhalf_480p", tmp, "")>=0){
+				setting->FontVHalf_480p = atoi(tmp);
+				if(setting->FontVHalf_480p<-7 || setting->FontVHalf_480p>7)
+					setting->FontVHalf_480p = DEF_FONTVHALF_480p;
+			}
+			if(cnf_getstr("font_vhalf_720p", tmp, "")>=0){
+				setting->FontVHalf_720p = atoi(tmp);
+				if(setting->FontVHalf_720p<-7 || setting->FontVHalf_720p>7)
+					setting->FontVHalf_720p = DEF_FONTVHALF_720p;
+			}
+			if(cnf_getstr("font_vhalf_1080i", tmp, "")>=0){
+				setting->FontVHalf_1080i = atoi(tmp);
+				if(setting->FontVHalf_1080i<-7 || setting->FontVHalf_1080i>7)
+					setting->FontVHalf_1080i = DEF_FONTVHALF_1080i;
+			}
 			if(cnf_getstr("ascii_margin_top", tmp, "")>=0)
 				setting->AsciiMarginTop = atoi(tmp);
 			if(cnf_getstr("ascii_margin_left", tmp, "")>=0)
@@ -829,6 +965,11 @@ void loadConfig(char *mainMsg)
 				if(setting->ffmode_1080i<0 || setting->ffmode_1080i>1)
 					setting->ffmode_1080i = DEF_FFMODE;
 			}
+			if(cnf_getstr("fullhd_width", tmp, "")>=0){
+				setting->fullhd_width = atoi(tmp);
+				if(setting->fullhd_width<320 || setting->fullhd_width>1920)
+					setting->fullhd_width = DEF_FULLHD_WIDTH;
+			}
 			if(cnf_getstr("default_title", tmp, "")>=0){
 				setting->defaulttitle = atoi(tmp);
 				if(setting->defaulttitle<0 || setting->defaulttitle>1)
@@ -839,6 +980,19 @@ void loadConfig(char *mainMsg)
 				if(setting->defaultdetail<0 || setting->defaultdetail>2)
 					setting->defaultdetail = DEF_DEFAULTDETAIL;
 			}
+			if(cnf_getstr("usbmass_charset", tmp, "")>=0){
+				setting->usbmass_char = atoi(tmp);
+				if(setting->usbmass_char<0 || setting->usbmass_char>1)
+					setting->usbmass_char = DEF_USBMASS_CHAR;
+			}
+			if(cnf_getstr("usbmass_use_ext", tmp, "")>=0){
+				setting->usbmass_flag = atoi(tmp);
+				if(setting->usbmass_flag<0 || setting->usbmass_flag>1)
+					setting->usbmass_flag = DEF_USBMASS_FLAG;
+			}
+			if(cnf_getstr("usbmass_path", tmp, "")>=0)
+				strcpy(setting->usbmass_path, tmp);
+			
 		}
 	}
 
@@ -1026,8 +1180,8 @@ void config_button(SETTING *setting)
 }
 
 //-------------------------------------------------
-//画面設定
-void config_screen(SETTING *setting)
+//配色設定
+void config_color(SETTING *setting)
 {
 	char msg0[MAX_PATH], msg1[MAX_PATH];
 	uint64 color;
@@ -1059,8 +1213,6 @@ void config_screen(SETTING *setting)
 						sel--;
 					}
 				}
-				else if(sel>TVMODE)
-					sel=TVMODE;
 				else
 					sel=0;
 			}
@@ -1072,14 +1224,12 @@ void config_screen(SETTING *setting)
 						sel++;
 					}
 				}
-				else if(sel==0)
-					sel=TVMODE;
 				else
-					sel+=MAX_ROWS/2;
+					sel=PRESETCOLOR;
 			}
 			else if(new_pad & PAD_TRIANGLE)
 				break;
-			else if(new_pad & PAD_CIRCLE){
+			else if((new_pad & PAD_CIRCLE)&&(sel != PRESETCOLOR)){
 				if(sel==0) break;
 				if(sel>=COLOR1 && sel<=COLOR11){
 					switch(sel){
@@ -1102,75 +1252,6 @@ void config_screen(SETTING *setting)
 					if(sel_x==1 && g<255) g++;
 					if(sel_x==2 && b<255) b++;
 					setting->color[colorid] = ITO_RGBA(r, g, b, 0);
-				}
-				else if(sel==TVMODE){	//TVMODE
-					//tvmode変更
-					setting->tvmode++;
-					if(setting->tvmode==6)
-						setting->tvmode = 0;
-					//
-					SetScreenPosVM();
-					itoGsReset();
-					setupito(setting->tvmode);
-					SetHeight();
-				}
-				else if(sel==INTERLACE){	//インターレース
-					if(setting->tvmode<3){
-						if(setting->interlace)
-							SCREEN_TOP = SCREEN_TOP>>1;
-						else
-							SCREEN_TOP = SCREEN_TOP<<1;
-						setting->interlace = !setting->interlace;
-						interlace = !interlace;
-						SetScreenPosXY();
-						//
-						itoGsReset();
-						setupito(setting->tvmode);
-						SetHeight();
-					}
-				}
-				else if(sel==FFMODE){	//ffmode
-					if((setting->tvmode<3)||(setting->tvmode==5)){
-						if(setting->tvmode<3)
-							setting->ffmode_480i = !setting->ffmode_480i;
-						else
-							setting->ffmode_1080i = !setting->ffmode_1080i;
-						ffmode = !ffmode;
-						itoGsReset();
-						setupito(setting->tvmode);
-						SetHeight();
-					}
-				}
-				else if(sel==SCREEN_X){	//SCREEN X
-					SCREEN_LEFT++;
-					screen_env.screen.x = SCREEN_LEFT;
-					SetScreenPosXY();
-					itoSetScreenPos(SCREEN_LEFT, SCREEN_TOP);
-				}
-				else if(sel==SCREEN_Y){	//SCREEN Y
-					SCREEN_TOP++;
-					screen_env.screen.y = SCREEN_TOP;
-					SetScreenPosXY();
-					itoSetScreenPos(SCREEN_LEFT, SCREEN_TOP);
-				}
-				else if(sel==SCREENSIZE){	//画面サイズ
-					screenscan = !screenscan;
-					SetScreenPosXY();
-					itoGsReset();
-					setupito(setting->tvmode);
-					SetHeight();
-				}
-				else if(sel==FLICKERCONTROL)	//フリッカーコントロール
-					setting->flickerControl = !setting->flickerControl;
-				else if(sel==SCREENINIT){	//SCREEN SETTING INIT
-					//init
-					InitScreenSetting();
-					SetScreenPosVM();
-					itoGsReset();
-					setupito(setting->tvmode);
-					SetHeight();
-					//sprintf(msg0, "%s", "Initialize Screen Setting");
-					//pushed = FALSE;
 				}
 			}
 			else if(new_pad & PAD_CROSS){	//×
@@ -1196,24 +1277,8 @@ void config_screen(SETTING *setting)
 					if(sel_x==2 && b>0) b--;
 					setting->color[colorid] = ITO_RGBA(r, g, b, 0);
 				}
-				else if(sel==SCREEN_X){	//SCREEN X
-					if(SCREEN_LEFT > 0){
-						SCREEN_LEFT--;
-						screen_env.screen.x = SCREEN_LEFT;
-						SetScreenPosXY();
-						itoSetScreenPos(SCREEN_LEFT, SCREEN_TOP);
-					}
-				}
-				else if(sel==SCREEN_Y){	//SCREEN Y
-					if(SCREEN_TOP > 0){
-						SCREEN_TOP--;
-						screen_env.screen.y = SCREEN_TOP;
-						SetScreenPosXY();
-						itoSetScreenPos(SCREEN_LEFT, SCREEN_TOP);
-					}
-				}
 			}
-			else if(new_pad & PAD_L3){
+			else if((new_pad & PAD_L3)||((new_pad & PAD_CIRCLE)&&(sel=PRESETCOLOR))){
 				static int preset=0;
 				//デフォルト
 				if(preset==0){
@@ -1263,7 +1328,7 @@ void config_screen(SETTING *setting)
 		}
 
 		//
-		for(i=0;i<=SCREENINIT;i++){
+		for(i=0;i<=PRESETCOLOR;i++){
 			if(i==0){
 				sprintf(config[i], "..");
 			}
@@ -1285,71 +1350,23 @@ void config_screen(SETTING *setting)
 				g = setting->color[colorid] >> 8 & 0xFF;
 				b = setting->color[colorid] >> 16 & 0xFF;
 
-				if(i==COLOR1) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_background, r, g, b);
-				if(i==COLOR2) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_frame, r, g, b);
-				if(i==COLOR3) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_normaltext, r, g, b);
-				if(i==COLOR4) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_highlighttext, r, g, b);
-				if(i==COLOR5) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_disabletext, r, g, b);
-				if(i==COLOR6) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_folder, r, g, b);
-				if(i==COLOR7) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_file, r, g, b);
-				if(i==COLOR8) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_ps2save, r, g, b);
-				if(i==COLOR9) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_ps1save, r, g, b);
-				if(i==COLOR10) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_elffile, r, g, b);
-				if(i==COLOR11) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_psufile, r, g, b);
+				if(i==COLOR1) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_background, r, g, b);
+				if(i==COLOR2) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_frame, r, g, b);
+				if(i==COLOR3) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_normaltext, r, g, b);
+				if(i==COLOR4) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_highlighttext, r, g, b);
+				if(i==COLOR5) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_disabletext, r, g, b);
+				if(i==COLOR6) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_folder, r, g, b);
+				if(i==COLOR7) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_file, r, g, b);
+				if(i==COLOR8) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_ps2save, r, g, b);
+				if(i==COLOR9) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_ps1save, r, g, b);
+				if(i==COLOR10) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_elffile, r, g, b);
+				if(i==COLOR11) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_psufile, r, g, b);
 			}
-			else if(i==TVMODE){	//TVMODE
-				if(setting->tvmode==0)
-					sprintf(config[i],"%s: %s", lang->conf_tvmode, "AUTO");
-				else if(setting->tvmode==1)
-					sprintf(config[i],"%s: %s", lang->conf_tvmode, "NTSC");
-				else if(setting->tvmode==2)
-					sprintf(config[i],"%s: %s", lang->conf_tvmode, "PAL");
-				else if(setting->tvmode==3)
-					sprintf(config[i],"%s: %s", lang->conf_tvmode, "480p");
-				else if(setting->tvmode==4)
-					sprintf(config[i],"%s: %s", lang->conf_tvmode, "720p");
-				else if(setting->tvmode==5)
-					sprintf(config[i],"%s: %s", lang->conf_tvmode, "1080i");
-			}
-			else if(i==INTERLACE){	//INTERLACE
-				sprintf(config[i], "%s: ", lang->conf_interlace);
-				if(interlace)
-					strcat(config[i], lang->conf_on);
-				else
-					strcat(config[i], lang->conf_off);
-			}
-			else if(i==FFMODE){	//FFMODE
-				sprintf(config[i],"%s: ", lang->conf_ffmode);
-				if(ffmode)
-					strcat(config[i], lang->conf_ffmode_frame);
-				else
-					strcat(config[i], lang->conf_ffmode_field);
-			}
-			else if(i==SCREEN_X){	//SCREEN X
-				sprintf(config[i],"%s: %3d", lang->conf_screen_x, SCREEN_LEFT);
-			}
-			else if(i==SCREEN_Y){	//SCREEN Y
-				sprintf(config[i],"%s: %3d", lang->conf_screen_y, SCREEN_TOP);
-			}
-			else if(i==SCREENSIZE){	//SCREEN SIZE
-				sprintf(config[i],"%s: ", lang->conf_screen_scan);
-				if(screenscan)
-					strcat(config[i], lang->conf_screen_scan_full);
-				else
-					strcat(config[i], lang->conf_screen_scan_crop);
-			}
-			else if(i==FLICKERCONTROL){	//FLICKER CONTROL
-				sprintf(config[i],"%s: ", lang->conf_flickercontrol);
-				if(setting->flickerControl)
-					strcat(config[i], lang->conf_on);
-				else
-					strcat(config[i], lang->conf_off);
-			}
-			else if(i==SCREENINIT){	//INIT
-				strcpy(config[i], lang->conf_screensettinginit);
+			else if(i==PRESETCOLOR){	//INIT
+				strcpy(config[i], lang->conf_presetcolor);
 			}
 		}
-		nList=20;
+		nList=13;
 
 		// リスト表示用変数の正規化
 		if(top > nList-MAX_ROWS)	top=nList-MAX_ROWS;
@@ -1375,7 +1392,7 @@ void config_screen(SETTING *setting)
 			//カーソル表示
 			if(top+i == sel){
 				if(sel>=COLOR1 && sel<=COLOR11)
-					printXY(">", FONT_WIDTH*21 + FONT_WIDTH*sel_x*8, y, color, TRUE);
+					printXY(">", FONT_WIDTH*21 + FONT_WIDTH*sel_x*7, y, color, TRUE);
 				else
 					printXY(">", x, y, color, TRUE);
 			}
@@ -1423,10 +1440,348 @@ void config_screen(SETTING *setting)
 			sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
 		else if(sel>=COLOR1 && sel<=COLOR11)
 			sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_add, lang->conf_away, lang->conf_up);
-		else if(sel==TVMODE)
+		else if(sel==PRESETCOLOR)
 			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
+		setScrTmp(msg0, msg1);
+		drawScr();
+	}
+	return;
+}
+
+//-------------------------------------------------
+//画面設定
+void config_screen(SETTING *setting)
+{
+	char msg0[MAX_PATH], msg1[MAX_PATH];
+	uint64 color;
+	int nList=0, sel=0, top=0;// ,sel_x=0;
+	int pushed=TRUE;
+	int x, y, y0, y1;
+	int i;
+	char config[32][MAX_PATH];
+
+	int font_h;
+
+	font_h = FONT_HEIGHT - GetFontMargin(LINE_MARGIN);
+
+	while(1){
+		waitPadReady(0, 0);
+		if(readpad()){
+			if(new_pad) pushed=TRUE;
+			if(new_pad & PAD_UP)
+				sel--;
+			else if(new_pad & PAD_DOWN)
+				sel++;
+			else if(new_pad & PAD_LEFT)
+				sel-=MAX_ROWS/2;
+			else if(new_pad & PAD_RIGHT)
+				sel+=MAX_ROWS/2;
+			else if(new_pad & PAD_TRIANGLE)
+				break;
+			else if(new_pad & PAD_CIRCLE){
+				if(sel==0) break;
+				else if(sel==TVMODE){	//TVMODE
+					//tvmode変更
+					setting->tvmode++;
+					if(setting->tvmode>5)
+						setting->tvmode = 0;
+					//
+					SetScreenPosVM();
+					itoGsReset();
+					setupito(setting->tvmode);
+					SetHeight();
+				}
+				else if(sel==INTERLACE){	//インターレース
+					if(setting->tvmode<3){
+						if(setting->interlace)
+							SCREEN_TOP = SCREEN_TOP>>1;
+						else
+							SCREEN_TOP = SCREEN_TOP<<1;
+						setting->interlace = !setting->interlace;
+						interlace = !interlace;
+						SetScreenPosXY();
+						//
+						itoGsReset();
+						setupito(setting->tvmode);
+						SetHeight();
+					}
+				}
+				else if(sel==FONTHALF){	// fonthalf
+					if (GetFontHalf() > -7) {
+						SetFontHalf(GetFontHalf()-1);
+						SetScreenPosXY();
+						SetHeight();
+					}
+				}
+				else if(sel==FONTVHALF){	// fontvhalf
+					if (GetFontVHalf() > -7) {
+						SetFontVHalf(GetFontVHalf()-1);
+						SetScreenPosXY();
+						SetHeight();
+					}
+				}
+				else if(sel==FFMODE){	//ffmode
+					if((setting->tvmode<3)||(setting->tvmode==5)){
+						if(setting->tvmode<3)
+							setting->ffmode_480i = !setting->ffmode_480i;
+						else
+							setting->ffmode_1080i = !setting->ffmode_1080i;
+						ffmode = !ffmode;
+						itoGsReset();
+						setupito(setting->tvmode);
+						SetHeight();
+					}
+				}
+				else if(sel==SCREEN_X){	//SCREEN X
+					SCREEN_LEFT++;
+					screen_env.screen.x = SCREEN_LEFT;
+					SetScreenPosXY();
+					itoSetScreenPos(SCREEN_LEFT, SCREEN_TOP);
+				}
+				else if(sel==SCREEN_Y){	//SCREEN Y
+					SCREEN_TOP++;
+					screen_env.screen.y = SCREEN_TOP;
+					SetScreenPosXY();
+					itoSetScreenPos(SCREEN_LEFT, SCREEN_TOP);
+				}
+				else if(sel==SCREENSIZE){	//画面サイズ
+					screenscan = !screenscan;
+					SetScreenPosXY();
+					itoGsReset();
+					setupito(setting->tvmode);
+					SetHeight();
+				}
+				else if(sel==FLICKERCONTROL)	//フリッカーコントロール
+					setting->flickerControl = !setting->flickerControl;
+				else if(sel==SCREENINIT){	//SCREEN SETTING INIT
+					//init
+					InitScreenSetting();
+					SetScreenPosVM();
+					itoGsReset();
+					setupito(setting->tvmode);
+					SetHeight();
+					//sprintf(msg0, "%s", "Initialize Screen Setting");
+					//pushed = FALSE;
+				}
+			}
+			else if(new_pad & PAD_CROSS){	//×
+				if(sel==TVMODE){ // TVMODE
+					switch(setting->fullhd_width)
+					{
+						case 1920: {setting->fullhd_width = 960; break;}
+						case  960: {setting->fullhd_width = 640; break;}
+						case  640: {setting->fullhd_width = 480; break;}
+						case  480: {setting->fullhd_width = 384; break;}
+						case  384: {setting->fullhd_width = 320; break;}
+						default: {setting->fullhd_width = 1920; break;}
+					}
+					if ((setting->fullhd_width == 1920) && ((setting->tvmode == 5) || (setting->tvmode == 6) || (setting->tvmode == 9) || (setting->tvmode == 10))) {
+						setting->ffmode_1080i = ITO_FRAME;
+						ffmode = ITO_FRAME;
+					}
+					SetScreenPosVM();
+					itoGsReset();
+					setupito(setting->tvmode);
+					SetHeight();
+				}
+				else if(sel==FONTHALF){	// fonthalf
+					if (GetFontHalf() < 7) {
+						SetFontHalf(GetFontHalf()+1);
+						SetScreenPosXY();
+						SetHeight();
+					}
+				}
+				else if(sel==FONTVHALF){	// fontvhalf
+					if (GetFontVHalf() < 7) {
+						SetFontVHalf(GetFontVHalf()+1);
+						SetScreenPosXY();
+						SetHeight();
+					}
+				}
+				else if(sel==SCREEN_X){	//SCREEN X
+					if(SCREEN_LEFT > 0){
+						SCREEN_LEFT--;
+						screen_env.screen.x = SCREEN_LEFT;
+						SetScreenPosXY();
+						itoSetScreenPos(SCREEN_LEFT, SCREEN_TOP);
+					}
+				}
+				else if(sel==SCREEN_Y){	//SCREEN Y
+					if(SCREEN_TOP > 0){
+						SCREEN_TOP--;
+						screen_env.screen.y = SCREEN_TOP;
+						SetScreenPosXY();
+						itoSetScreenPos(SCREEN_LEFT, SCREEN_TOP);
+					}
+				}
+			}
+			else if(new_pad & PAD_SQUARE){
+				if(sel==TVMODE){	//TVMODE
+					//tvmode変更
+					setting->tvmode++;
+					if(setting->tvmode==7)
+						setting->tvmode = 0;
+					//
+					SetScreenPosVM();
+					itoGsReset();
+					setupito(setting->tvmode);
+					SetHeight();
+				}
+				else if(sel==FONTHALF){	// fonthalf
+					SetFontHalf(0);
+					SetScreenPosXY();
+					SetHeight();
+				}
+				else if(sel==FONTVHALF){	// fontvhalf
+					SetFontVHalf(0);
+					SetScreenPosXY();
+					SetHeight();
+				}
+			}
+		}
+
+		//
+		for(i=0;i<=SCREENINIT;i++){
+			if(i==0){
+				sprintf(config[i], "..");
+			}
+			else if(i==TVMODE){	//TVMODE
+				if(setting->tvmode==0)
+					sprintf(config[i],"%s: %s", lang->conf_tvmode, "AUTO");
+				else if(setting->tvmode==1)
+					sprintf(config[i],"%s: %s", lang->conf_tvmode, "NTSC");
+				else if(setting->tvmode==2)
+					sprintf(config[i],"%s: %s", lang->conf_tvmode, "PAL");
+				else if(setting->tvmode==3)
+					sprintf(config[i],"%s: %s", lang->conf_tvmode, "480p");
+				else if(setting->tvmode==4)
+					sprintf(config[i],"%s: %s", lang->conf_tvmode, "720p");
+				else if(setting->tvmode==5)
+					sprintf(config[i],"%s: %dx%s", lang->conf_tvmode, setting->fullhd_width, "1080i");
+				else if(setting->tvmode==6)
+					sprintf(config[i],"%s: %dx%s", lang->conf_tvmode, setting->fullhd_width, "1080p 29.97Hz");
+				else if(setting->tvmode==11)
+					sprintf(config[i],"%s: %s", lang->conf_tvmode, "CFG1");
+				else if(setting->tvmode==12)
+					sprintf(config[i],"%s: %s", lang->conf_tvmode, "CFG2");
+				
+			}
+			else if(i==FONTHALF){	// FONTHALF
+				if (font_half < 0) {
+					sprintf(config[i], "%s: x%d", lang->conf_FontHalf, -font_half+1);
+				} else if (font_half > 0) {
+					sprintf(config[i], "%s: 1/%d", lang->conf_FontHalf, font_half+1);
+				} else {
+					sprintf(config[i], "%s: %s", lang->conf_FontHalf, lang->conf_off);
+				}
+			}
+			else if(i==FONTVHALF){	// FONTVHALF
+				if (font_vhalf < 0) {
+					sprintf(config[i], "%s: x%d", lang->conf_FontVHalf, -font_vhalf+1);
+				} else if (font_vhalf > 0) {
+					sprintf(config[i], "%s: 1/%d", lang->conf_FontVHalf, font_vhalf+1);
+				} else {
+					sprintf(config[i], "%s: %s", lang->conf_FontVHalf, lang->conf_off);
+				}
+			}
+			else if(i==INTERLACE){	//INTERLACE
+				sprintf(config[i], "%s: ", lang->conf_interlace);
+				if(interlace)
+					strcat(config[i], lang->conf_on);
+				else
+					strcat(config[i], lang->conf_off);
+			}
+			else if(i==FFMODE){	//FFMODE
+				sprintf(config[i],"%s: ", lang->conf_ffmode);
+				if(ffmode)
+					strcat(config[i], lang->conf_ffmode_frame);
+				else
+					strcat(config[i], lang->conf_ffmode_field);
+			}
+			else if(i==SCREEN_X){	//SCREEN X
+				sprintf(config[i],"%s: %3d", lang->conf_screen_x, SCREEN_LEFT);
+			}
+			else if(i==SCREEN_Y){	//SCREEN Y
+				sprintf(config[i],"%s: %3d", lang->conf_screen_y, SCREEN_TOP);
+			}
+			else if(i==SCREENSIZE){	//SCREEN SIZE
+				sprintf(config[i],"%s: ", lang->conf_screen_scan);
+				if(screenscan)
+					strcat(config[i], lang->conf_screen_scan_full);
+				else
+					strcat(config[i], lang->conf_screen_scan_crop);
+			}
+			else if(i==FLICKERCONTROL){	//FLICKER CONTROL
+				sprintf(config[i],"%s: ", lang->conf_flickercontrol);
+				if(setting->flickerControl)
+					strcat(config[i], lang->conf_on);
+				else
+					strcat(config[i], lang->conf_off);
+			}
+			else if(i==SCREENINIT){	//INIT
+				strcpy(config[i], lang->conf_screensettinginit);
+			}
+		}
+		nList=11;
+
+		// リスト表示用変数の正規化
+		if(top > nList-MAX_ROWS)	top=nList-MAX_ROWS;
+		if(top < 0)			top=0;
+		if(sel >= nList)		sel=nList-1;
+		if(sel < 0)			sel=0;
+		if(sel >= top+MAX_ROWS)	top=sel-MAX_ROWS+1;
+		if(sel < top)			top=sel;
+
+		// 画面描画開始
+		clrScr(setting->color[COLOR_BACKGROUND]);
+
+		// リスト
+		x = FONT_WIDTH*3;
+		y = SCREEN_MARGIN+FONT_HEIGHT*3;
+		for(i=0; i<MAX_ROWS; i++){
+			if(top+i >= nList) break;
+			//色
+			if(top+i == sel)
+				color = setting->color[COLOR_HIGHLIGHTTEXT];
+			else
+				color = setting->color[COLOR_TEXT];
+			//カーソル表示
+			if(top+i == sel)
+				printXY(">", x, y, color, TRUE);
+			//リスト表示
+			printXY(config[top+i], x+FONT_WIDTH*2, y, color, TRUE);
+			y += FONT_HEIGHT;
+		}
+
+		// スクロールバー
+		if(nList > MAX_ROWS){
+			drawFrame((MAX_ROWS_X+8)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3,
+				(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[COLOR_FRAME]);
+			y0=FONT_HEIGHT*MAX_ROWS*((double)top/nList);
+			y1=FONT_HEIGHT*MAX_ROWS*((double)(top+MAX_ROWS)/nList);
+			itoSprite(setting->color[COLOR_FRAME],
+				(MAX_ROWS_X+8)*FONT_WIDTH,
+				SCREEN_MARGIN+FONT_HEIGHT*3+y0,
+				(MAX_ROWS_X+9)*FONT_WIDTH,
+				SCREEN_MARGIN+FONT_HEIGHT*3+y1,
+				0);
+		}
+		// メッセージ
+		if(pushed) sprintf(msg0, "CONFIG/%s", lang->conf_setting_screen);
+		// 操作説明
+		if(sel==0)
+			sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
+		else if(sel==TVMODE)
+			if ((setting->tvmode == 5) || (setting->tvmode == 6) || (setting->tvmode == 9) || (setting->tvmode == 10))
+				sprintf(msg1, "○:%s ×:%s%s △:%s", lang->conf_change, lang->conf_horizontalresolution, lang->conf_change, lang->conf_up);
+			else
+				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
 		else if(sel==INTERLACE)
 			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
+		else if(sel==FONTHALF)
+			sprintf(msg1, "○:%s ×:%s □:%s △:%s", lang->conf_add, lang->conf_away, lang->conf_off, lang->conf_up);
+		else if(sel==FONTVHALF)
+			sprintf(msg1, "○:%s ×:%s □:%s △:%s", lang->conf_add, lang->conf_away, lang->conf_off, lang->conf_up);
 		else if(sel==FFMODE)
 			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
 		else if(sel==SCREENSIZE)
@@ -1721,6 +2076,7 @@ void config_font(SETTING *setting)
 					SetFontMargin(CHAR_MARGIN, setting->CharMargin);
 					SetFontMargin(LINE_MARGIN, setting->LineMargin);
 					SetFontBold(setting->FontBold);
+					SetFontHalf(font_half);
 					SetFontMargin(ASCII_FONT_MARGIN_TOP, setting->AsciiMarginTop);
 					SetFontMargin(ASCII_FONT_MARGIN_LEFT, setting->AsciiMarginLeft);
 					SetFontMargin(KANJI_FONT_MARGIN_TOP, setting->KanjiMarginTop);
@@ -1940,6 +2296,15 @@ void config_misc(SETTING *setting)
 					setting->defaultdetail++;
 					if(setting->defaultdetail>2) setting->defaultdetail = 0;
 				}
+				else if(sel==USBMASS_CHAR)
+					setting->usbmass_char = !setting->usbmass_char;
+				else if(sel==USBMASS_FLAG)
+					setting->usbmass_flag = !setting->usbmass_flag;
+				else if(sel==USBMASS_PATH){
+					getFilePath(setting->usbmass_path, IRX_FILE);
+					if(!strncmp(setting->usbmass_path, "mass", 4))
+						setting->usbmass_path[0]='\0';
+				}
 				else if(sel==MISCINIT){
 					//init
 					InitMiscSetting();
@@ -1953,6 +2318,8 @@ void config_misc(SETTING *setting)
 					setting->timeout--;
 				if(sel==EXPORTDIR)
 					setting->Exportdir[0]='\0';
+				if(sel==USBMASS_PATH)
+					setting->usbmass_path[0]='\0';
 			}
 		}
 
@@ -2039,11 +2406,27 @@ void config_misc(SETTING *setting)
 				else if(setting->defaultdetail==2)
 					strcat(config[i], lang->conf_defaultdetail_modifytime);
 			}
+			else if(i==USBMASS_CHAR){	//USBMASS_CHAR
+				sprintf(config[i], "%s: ", lang->conf_usbmass_charset);
+				if(setting->usbmass_char)
+					strcat(config[i], "UTF-8");
+				else
+					strcat(config[i], "Shift_JIS");
+			}
+			else if(i==USBMASS_FLAG){	//USBMASS_USE
+				sprintf(config[i], "%s: ", lang->conf_usbmass_use);
+				if(setting->usbmass_flag)
+					strcat(config[i], lang->conf_on);
+				else
+					strcat(config[i], lang->conf_off);
+			}
+			else if(i==USBMASS_PATH)	//USBMASS_PATH
+				sprintf(config[i], "%s: %s", lang->conf_usbmass_path, setting->usbmass_path);
 			else if(i==MISCINIT){	//INIT
 				strcpy(config[i], lang->conf_miscsettinginit);
 			}
 		}
-		nList=14;
+		nList=17;
 
 		// リスト表示用変数の正規化
 		if(top > nList-MAX_ROWS)	top=nList-MAX_ROWS;
@@ -2116,6 +2499,12 @@ void config_misc(SETTING *setting)
 			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
 		else if(sel==DEFAULTDETAIL)
 			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
+		else if(sel==USBMASS_CHAR)
+			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
+		else if(sel==USBMASS_FLAG)
+			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
+		else if(sel==USBMASS_PATH)
+			sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_edit, lang->conf_clear, lang->conf_up);
 		else if(sel==MISCINIT)
 			sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
 		setScrTmp(msg0, msg1);
@@ -2165,6 +2554,7 @@ void config(char *mainMsg)
 				sel=OK;
 			else if(new_pad & PAD_CIRCLE){
 				if(sel==BUTTONSETTING) config_button(setting);
+				if(sel==COLORSETTING) config_color(setting);
 				if(sel==SCREENSETTING) config_screen(setting);
 				if(sel==NETWORK) config_network(setting);
 				if(sel==FONTSETTING) config_font(setting);
@@ -2198,6 +2588,9 @@ void config(char *mainMsg)
 					SetFontMargin(KANJI_FONT_MARGIN_TOP, setting->KanjiMarginTop);
 					SetFontMargin(KANJI_FONT_MARGIN_LEFT, setting->KanjiMarginLeft);
 					SetScreenPosVM();
+					SetFontHalf(font_half);
+					SetFontVHalf(font_vhalf);
+					SetHeight();
 					itoGsReset();
 					setupito(setting->tvmode);
 					mainMsg[0] = 0;
@@ -2211,13 +2604,14 @@ void config(char *mainMsg)
 		}
 		//
 		strcpy(config[0], lang->conf_setting_button);
-		strcpy(config[1], lang->conf_setting_screen);
-		strcpy(config[2], lang->conf_setting_network);
-		strcpy(config[3], lang->conf_setting_font);
-		strcpy(config[4], lang->conf_setting_misc);
-		strcpy(config[5], lang->conf_ok);
-		strcpy(config[6], lang->conf_cancel);
-		nList=7;
+		strcpy(config[1], lang->conf_setting_color);
+		strcpy(config[2], lang->conf_setting_screen);
+		strcpy(config[3], lang->conf_setting_network);
+		strcpy(config[4], lang->conf_setting_font);
+		strcpy(config[5], lang->conf_setting_misc);
+		strcpy(config[6], lang->conf_ok);
+		strcpy(config[7], lang->conf_cancel);
+		nList=8;
 
 		// リスト表示用変数の正規化
 		if(top > nList-MAX_ROWS)	top=nList-MAX_ROWS;

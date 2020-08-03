@@ -30,7 +30,7 @@
 #include "cnf.h"
 
 // バージョン
-#define LBF_VER "LbFn v0.70.4"
+#define LBF_VER "LbFn v0.70.5"
 
 // 垂直スキャンレート
 #define SCANRATE (ITO_VMODE_AUTO==ITO_VMODE_NTSC ? 60:50)
@@ -92,6 +92,7 @@ typedef struct
 	int screen_scan_480p;
 	int screen_scan_1080i;
 	int screen_scan_720p;
+	int fullhd_width;
 	int fileicon;
 	int discPs2saveCheck;
 	int discELFCheck;
@@ -106,18 +107,39 @@ typedef struct
 	int CharMargin;
 	int LineMargin;
 	int FontBold;
+	int FontHalf_480i;
+	int FontHalf_480p;
+	int FontHalf_720p;
+	int FontHalf_1080i;
+	int FontVHalf_480i;
+	int FontVHalf_480p;
+	int FontVHalf_720p;
+	int FontVHalf_1080i;
 	int AsciiMarginTop;
 	int AsciiMarginLeft;
 	int KanjiMarginTop;
 	int KanjiMarginLeft;
+	int usbmass_char;
+	int usbmass_flag;
+	char usbmass_path[MAX_PATH];
 } SETTING;
 
 /* main.c */
 extern char LaunchElfDir[MAX_PATH], LastDir[MAX_NAME];
 extern int boot;
+extern int ucstable_loaded;
 void loadCdModules(void);
 void loadUsbModules(void);
 void loadHddModules(void);
+void sjistoeuc(const char *src, char *dst, int dstmax);
+void euctosjis(const char *src, char *dst, int dstmax);
+int utftoucs(unsigned char *utfchr);
+int utflen(unsigned char *utfchr);
+int ucstableinit(void);
+void utftosjis(const unsigned char *src, unsigned char *dst, int maxdst);
+void sjistoutf(const unsigned char *src, unsigned char *dst, int maxdst);
+void ucstosjis(const unsigned char *src, unsigned char *dst, int maxsrc, int maxdst);
+void sjistoucs(const unsigned char *src, unsigned char *dst, int maxdst);
 
 /* elf.c */
 int checkELFheader(const char *filename);
@@ -155,6 +177,8 @@ extern int SCREEN_TOP;
 extern int interlace;
 extern int ffmode;
 extern int screenscan;
+extern int font_half;
+extern int font_vhalf;
 extern int SCREEN_WIDTH;
 extern int SCREEN_HEIGHT;
 extern int SCREEN_MARGIN;
@@ -180,6 +204,10 @@ int GetFontMargin(int type);
 int GetFontSize(int type);
 void SetFontBold(int flag);
 int GetFontBold(void);
+void SetFontHalf(int flag);
+int GetFontHalf(void);
+void SetFontVHalf(int flag);
+int GetFontVHalf(void);
 int checkFONTX2header(const char *path);
 void drawChar(unsigned char c, int x, int y, uint64 colour);
 int printXY(const unsigned char *s, int x, int y, uint64 colour, int draw);
@@ -212,7 +240,10 @@ enum	//getFilePath
 	ANY_FILE = 0,
 	ELF_FILE,
 	DIR,
-	FNT_FILE
+	FNT_FILE,
+	IRX_FILE,
+	JPG_FILE,
+	TXT_FILE
 };
 /* MessageBox */
 #define MB_OK           0x00000000
@@ -247,5 +278,9 @@ extern LANGUAGE *lang;
 void InitLanguage(void);
 void FreeLanguage(void);
 void SetLanguage(const int langID);
+
+/* tek.c */
+int tek_getsize(unsigned char *p);
+int tek_decomp(unsigned char *p, char *q, int size);
 
 #endif

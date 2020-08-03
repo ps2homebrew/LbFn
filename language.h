@@ -72,6 +72,8 @@ typedef struct
 	char filer_elffile_hint2[MAX_LANGUAGE_STR];
 	char filer_fntfile_hint1[MAX_LANGUAGE_STR];
 	char filer_fntfile_hint2[MAX_LANGUAGE_STR];
+	char filer_irxfile_hint1[MAX_LANGUAGE_STR];
+	char filer_irxfile_hint2[MAX_LANGUAGE_STR];
 	char filer_dir_hint[MAX_LANGUAGE_STR];
 //	char filer_export_files[MAX_LANGUAGE_STR];
 //	char filer_export_header[MAX_LANGUAGE_STR];
@@ -90,13 +92,14 @@ typedef struct
 
 	//config
 	char conf_setting_button[MAX_LANGUAGE_STR];
+	char conf_setting_color[MAX_LANGUAGE_STR];
 	char conf_setting_screen[MAX_LANGUAGE_STR];
 	char conf_setting_network[MAX_LANGUAGE_STR];
 	char conf_setting_font[MAX_LANGUAGE_STR];
 	char conf_setting_misc[MAX_LANGUAGE_STR];
 	//button
 	char conf_buttonsettinginit[MAX_LANGUAGE_STR];
-	//screen
+	//color
 	char conf_background[MAX_LANGUAGE_STR];
 	char conf_frame[MAX_LANGUAGE_STR];
 	char conf_normaltext[MAX_LANGUAGE_STR];
@@ -108,6 +111,8 @@ typedef struct
 	char conf_ps1save[MAX_LANGUAGE_STR];
 	char conf_elffile[MAX_LANGUAGE_STR];
 	char conf_psufile[MAX_LANGUAGE_STR];
+	char conf_presetcolor[MAX_LANGUAGE_STR];
+	//screen
 	char conf_screen_x[MAX_LANGUAGE_STR];
 	char conf_screen_y[MAX_LANGUAGE_STR];
 	char conf_tvmode[MAX_LANGUAGE_STR];
@@ -134,10 +139,16 @@ typedef struct
 	char conf_CharMargin[MAX_LANGUAGE_STR];
 	char conf_LineMargin[MAX_LANGUAGE_STR];
 	char conf_FontBold[MAX_LANGUAGE_STR];
+	char conf_FontHalf[MAX_LANGUAGE_STR];
+	char conf_FontVHalf[MAX_LANGUAGE_STR];
 	char conf_AsciiMarginTop[MAX_LANGUAGE_STR];
 	char conf_AsciiMarginLeft[MAX_LANGUAGE_STR];
 	char conf_KanjiMarginTop[MAX_LANGUAGE_STR];
 	char conf_KanjiMarginLeft[MAX_LANGUAGE_STR];
+	char conf_FontScaler[MAX_LANGUAGE_STR];
+	char conf_FontScaler_A[MAX_LANGUAGE_STR];
+	char conf_FontScaler_B[MAX_LANGUAGE_STR];
+	char conf_FontScaler_C[MAX_LANGUAGE_STR];
 	char conf_fontsettinginit[MAX_LANGUAGE_STR];
 	//misc
 	char conf_language[MAX_LANGUAGE_STR];
@@ -157,6 +168,10 @@ typedef struct
 	char conf_defaultdetail_none[MAX_LANGUAGE_STR];
 	char conf_defaultdetail_size[MAX_LANGUAGE_STR];
 	char conf_defaultdetail_modifytime[MAX_LANGUAGE_STR];
+	char conf_usbmass_charset[MAX_LANGUAGE_STR];
+	char conf_usbmass_use[MAX_LANGUAGE_STR];
+	char conf_usbmass_path[MAX_LANGUAGE_STR];
+	char conf_auto_decompression[MAX_LANGUAGE_STR];
 	char conf_miscsettinginit[MAX_LANGUAGE_STR];
 
 	char conf_ok[MAX_LANGUAGE_STR];
@@ -169,6 +184,7 @@ typedef struct
 	char conf_away[MAX_LANGUAGE_STR];
 	char conf_change[MAX_LANGUAGE_STR];
 	char conf_up[MAX_LANGUAGE_STR];
+	char conf_horizontalresolution[MAX_LANGUAGE_STR];
 
 } LANGUAGE;
 

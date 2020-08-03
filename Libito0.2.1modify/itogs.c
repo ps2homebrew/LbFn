@@ -94,36 +94,112 @@ void itoGsEnvSubmit(itoGsEnv* env)
 					ito.screen.mag_x = 3; 
 					break;
 				}
+				case 960:
+				case 1024:
+				{
+					ito.screen.mag_x = 2;
+					break;
+				}
+				case 1280:
+				case 1408:
+				case 1440:
+				case 1536:
+				{
+					ito.screen.mag_x = 1;
+					break;
+				}
 				//-----------------------------------------------------------------
 				// default width to 640 
 				//-----------------------------------------------------------------
 				default:
 				{
-					width = 640;
+					//width = 640;
 					ito.screen.mag_x = 3;
 					break;
 				}
 			}
 		}
-		else if(env->vmode==0x50)	//480p
+		else if((env->vmode==0x50)||(env->vmode==0x40))	//480p
 		{
 			//env->interlace = ITO_NON_INTERLACE;
 			//env->ffmode = ITO_FIELD;
-			ito.screen.mag_x = 1; 
+			if (width <= 192) {
+				ito.screen.mag_x = 5;
+			} else if (width <= 256) {
+				ito.screen.mag_x = 4;
+			} else if (width <= 360) {
+				ito.screen.mag_x = 3;
+			} else if (width <= 512) {
+				ito.screen.mag_x = 2;
+			} else if (width <= 1024) {
+				ito.screen.mag_x = 1;
+			} else {
+				ito.screen.mag_x = 0; 
+			}
 		}
-		else if(env->vmode==0x51)	//1080i
+		else if((env->vmode==0x51)||(env->vmode==0x41))	//1080i
 		{
 			//env->screen.psm = ITO_RGBA16;
 			//env->interlace = ITO_INTERLACE;
 			//env->ffmode = ITO_FIELD;
-			ito.screen.mag_x = 1; 
+			
+			if (width <= 240) {
+				ito.screen.mag_x = 7;
+			} else if (width <= 320) {
+				ito.screen.mag_x = 5;
+			} else if (width <= 384) {
+				ito.screen.mag_x = 4;
+			} else if (width <= 480) {
+				ito.screen.mag_x = 3;
+			} else if (width <= 640) {
+				ito.screen.mag_x = 2;
+			} else if (width <= 960) {
+				ito.screen.mag_x = 1;
+			} else {
+				ito.screen.mag_x = 0;
+			}
 		}
-		else if(env->vmode==0x52)	//720p
+		else if((env->vmode==0x52)||(env->vmode==0x42))	//720p
 		{
 			//env->screen.psm = ITO_RGBA16;
 			//env->interlace = ITO_NON_INTERLACE;
 			//env->ffmode = ITO_FIELD;
-			ito.screen.mag_x = 0; 
+			if (width <= 256) {
+				ito.screen.mag_x = 4;
+			} else if (width <= 320) {
+				ito.screen.mag_x = 3;
+			} else if (width <= 480) {
+				ito.screen.mag_x = 2;
+			} else if (width <= 640) {
+				ito.screen.mag_x = 1;
+			} else {
+				ito.screen.mag_x = 0;
+			}
+		}
+		else if((env->vmode==0x53)||(env->vmode==0x43))	//1080pH
+		{
+			//env->screen.psm = ITO_RGBA16;
+			//env->interlace = ITO_NON_INTERLACE;
+			//env->ffmode = ITO_FIELD;
+			//env->vmode=0x52;
+			env->vmode-= 2;
+			if (width <= 240) {
+				ito.screen.mag_x = 7;
+			} else if (width <= 320) {
+				ito.screen.mag_x = 5;
+			} else if (width <= 384) {
+				ito.screen.mag_x = 4;
+			} else if (width <= 480) {
+				ito.screen.mag_x = 3;
+			} else if (width <= 640) {
+				ito.screen.mag_x = 2;
+			} else if (width <= 960) {
+				ito.screen.mag_x = 1;
+			} else {
+				ito.screen.mag_x = 0;
+			}
+		}
+		else {
 		}
 
 		width = (width - 1) * (ito.screen.mag_x + 1);

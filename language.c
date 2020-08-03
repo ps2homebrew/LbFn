@@ -89,6 +89,8 @@ void SetLanguage(const int langID)
 		strcpy(lang->filer_elffile_hint2, "○:OK ×:Cancel △:Up □:ELF->*");
 		strcpy(lang->filer_fntfile_hint1, "○:OK ×:Cancel △:Up □:*->FNT");
 		strcpy(lang->filer_fntfile_hint2, "○:OK ×:Cancel △:Up □:FNT->*");
+		strcpy(lang->filer_irxfile_hint1, "○:OK ×:Cancel △:Up □:*->IRX");
+		strcpy(lang->filer_irxfile_hint2, "○:OK ×:Cancel △:Up □:IRX->*");
 		strcpy(lang->filer_dir_hint, "○:OK ×:Cancel △:Up Start:Choose");
 		strcpy(lang->filer_l2popup_detail, "Detail Mode");
 		strcpy(lang->filer_l2popup_dirsize, "Get DirSize");
@@ -103,6 +105,7 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_initializeconfig, "Initialize Config");
 
 		strcpy(lang->conf_setting_button,  "BUTTON SETTING");
+		strcpy(lang->conf_setting_color,   "COLOR SETTING");
 		strcpy(lang->conf_setting_screen,  "SCREEN SETTING");
 		strcpy(lang->conf_setting_network, "NETWORK SETTING");
 		strcpy(lang->conf_setting_font,    "FONT SETTING");
@@ -112,7 +115,7 @@ void SetLanguage(const int langID)
 
 		//button
 		strcpy(lang->conf_buttonsettinginit, "BUTTON SETTING INIT");
-		//screen
+		//color
 		strcpy(lang->conf_background, "BACK GROUND   ");
 		strcpy(lang->conf_frame, "FRAME         ");
 		strcpy(lang->conf_normaltext, "NORMAL TEXT   ");
@@ -124,6 +127,8 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_ps1save, "PS1 SAVE      ");
 		strcpy(lang->conf_elffile, "ELF FILE      ");
 		strcpy(lang->conf_psufile, "PSU FILE      ");
+		strcpy(lang->conf_presetcolor, "LOAD PRESET COLOR");
+		//screen
 		strcpy(lang->conf_tvmode, "TV MODE");
 		strcpy(lang->conf_interlace, "INTERLACE");
 		strcpy(lang->conf_ffmode, "FFMODE");
@@ -150,6 +155,8 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_CharMargin, "CHAR MARGIN");
 		strcpy(lang->conf_LineMargin, "LINE MARGIN");
 		strcpy(lang->conf_FontBold, "FONT BOLD");
+		strcpy(lang->conf_FontHalf, "FIX FONT WIDTH ");
+		strcpy(lang->conf_FontVHalf, "FIX FONT HEIGHT");
 		strcpy(lang->conf_AsciiMarginTop,  "ASCII MARGIN TOP ");
 		strcpy(lang->conf_AsciiMarginLeft, "ASCII MARGIN LEFT");
 		strcpy(lang->conf_KanjiMarginTop,  "KANJI MARGIN TOP ");
@@ -173,6 +180,9 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_defaultdetail_none, "NONE");
 		strcpy(lang->conf_defaultdetail_size, "SIZE");
 		strcpy(lang->conf_defaultdetail_modifytime, "MODIFYTIME");
+		strcpy(lang->conf_usbmass_charset, "USB_MASS LFN CHARSET");
+		strcpy(lang->conf_usbmass_use, "USE EXTEND USB_MASS");
+		strcpy(lang->conf_usbmass_path, "USB_MASS.IRX");
 		strcpy(lang->conf_miscsettinginit, "MISC SETTING INIT");
 
 		strcpy(lang->conf_on, "ON");
@@ -183,6 +193,7 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_away, "Away");
 		strcpy(lang->conf_change, "Change");
 		strcpy(lang->conf_up, "Up");
+		strcpy(lang->conf_horizontalresolution, "Resolution ");
 		}
 	}
 	if(l==LANG_JAPANESE){
@@ -249,6 +260,8 @@ void SetLanguage(const int langID)
 		strcpy(lang->filer_elffile_hint2, "○:決定 ×:キャンセル △:上へ □:ELF->*");
 		strcpy(lang->filer_fntfile_hint1, "○:決定 ×:キャンセル △:上へ □:*->FNT");
 		strcpy(lang->filer_fntfile_hint2, "○:決定 ×:キャンセル △:上へ □:FNT->*");
+		strcpy(lang->filer_irxfile_hint1, "○:決定 ×:キャンセル △:上へ □:*->IRX");
+		strcpy(lang->filer_irxfile_hint2, "○:決定 ×:キャンセル △:上へ □:IRX->*");
 		strcpy(lang->filer_dir_hint, "○:決定 ×:キャンセル △:上へ Start:フォルダ選択");
 		strcpy(lang->filer_l2popup_detail, "詳細表\示 切り替え");
 		strcpy(lang->filer_l2popup_dirsize, "フォルダサイズ表\示");
@@ -263,6 +276,7 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_initializeconfig, "設定初期化");
 
 		strcpy(lang->conf_setting_button,  "ランチャー");
+		strcpy(lang->conf_setting_color,   "配色設定");
 		strcpy(lang->conf_setting_screen,  "画面設定");
 		strcpy(lang->conf_setting_network, "IP設定");
 		strcpy(lang->conf_setting_font,    "フォント設定");
@@ -272,18 +286,20 @@ void SetLanguage(const int langID)
 
 		//button
 		strcpy(lang->conf_buttonsettinginit, "「ランチャー設定」を初期化する");
-		//screen
-		strcpy(lang->conf_background, "背景の色      ");
-		strcpy(lang->conf_frame, "フレームの色  ");
-		strcpy(lang->conf_normaltext, "テキスト      ");
+		//color
+		strcpy(lang->conf_background,    "背景の色      ");
+		strcpy(lang->conf_frame,         "フレームの色  ");
+		strcpy(lang->conf_normaltext,    "テキスト      ");
 		strcpy(lang->conf_highlighttext, "テキスト強調  ");
-		strcpy(lang->conf_disabletext, "テキスト無効  ");
-		strcpy(lang->conf_folder, "フォルダ      ");
-		strcpy(lang->conf_file, "ファイル      ");
-		strcpy(lang->conf_ps2save, "PS2 セーブ    ");
-		strcpy(lang->conf_ps1save, "PS1 セーブ    ");
-		strcpy(lang->conf_elffile, "ELF ファイル  ");
-		strcpy(lang->conf_psufile, "PSU ファイル  ");
+		strcpy(lang->conf_disabletext,   "テキスト無効  ");
+		strcpy(lang->conf_folder,        "フォルダ      ");
+		strcpy(lang->conf_file,          "ファイル      ");
+		strcpy(lang->conf_ps2save,       "PS2 セーブ    ");
+		strcpy(lang->conf_ps1save,       "PS1 セーブ    ");
+		strcpy(lang->conf_elffile,       "ELF ファイル  ");
+		strcpy(lang->conf_psufile,       "PSU ファイル  ");
+		strcpy(lang->conf_presetcolor,   "配色設定の初期化");
+		//screen
 		strcpy(lang->conf_tvmode, "TV MODE");
 		strcpy(lang->conf_interlace, "インターレース");
 		strcpy(lang->conf_ffmode, "FFMODE");
@@ -310,6 +326,8 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_CharMargin, "文字の間隔");
 		strcpy(lang->conf_LineMargin, "行の間隔  ");
 		strcpy(lang->conf_FontBold, "太字にする");
+		strcpy(lang->conf_FontHalf, "フォントの幅を補正する　");
+		strcpy(lang->conf_FontVHalf, "フォントの高さを補正する");
 		strcpy(lang->conf_AsciiMarginTop, "アスキーフォントの上の間隔");
 		strcpy(lang->conf_AsciiMarginLeft, "アスキーフォントの左の間隔");
 		strcpy(lang->conf_KanjiMarginTop, "漢字フォントの上の間隔");
@@ -333,6 +351,9 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_defaultdetail_none, "なし");
 		strcpy(lang->conf_defaultdetail_size, "サイズ");
 		strcpy(lang->conf_defaultdetail_modifytime, "更新日時");
+		strcpy(lang->conf_usbmass_charset, "USB_MASS ファイル名の文字コード");
+		strcpy(lang->conf_usbmass_use, "外部USB_MASSドライバを使用する");
+		strcpy(lang->conf_usbmass_path, "USB_MASS.IRX");
 		strcpy(lang->conf_miscsettinginit, "「その他設定」を初期化する");
 
 		strcpy(lang->conf_on, "ON");
@@ -343,6 +364,7 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_away, "減らす");
 		strcpy(lang->conf_change, "変更");
 		strcpy(lang->conf_up, "上へ");
+		strcpy(lang->conf_horizontalresolution, "水平解像度");
 		}
 	}
 }

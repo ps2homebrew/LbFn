@@ -14,9 +14,9 @@ PS2_IP=192.168.0.10
 #------------------------------------
 EE_BIN = LbFn.ELF
 
-EE_OBJS = main.o pad.o config.o elf.o draw.o loader.o  filer.o cd.o language.o cnf.o\
+EE_OBJS = main.o pad.o config.o elf.o draw.o loader.o  filer.o cd.o language.o cnf.o tek.o\
 	poweroff.o iomanx.o filexio.o ps2atad.o ps2dev9.o ps2hdd.o ps2fs.o\
-	usbd.o usbhdfsd.o cdvd.o ps2ip.o ps2smap.o ps2ftpd.o fakehost.o
+	usbd.o usbhdfsd.o cdvd.o ps2ip.o ps2smap.o ps2ftpd.o fakehost.o osaskeuc.o
 
 EE_INCS := -I$(LIBITO)/include -I$(PS2DEV)/libcdvd/ee
 
@@ -101,6 +101,9 @@ loader.s:
 
 icon.s:image/icon.iif
 	bin2s image/icon.iif icon.s icon_iif
+
+osaskeuc.s:
+	bin2s OSASKEUC.BIN osaskeuc.s osaskeuc_bin
 
 cd.o config.o draw.o elf.o filer.o main.o pad.o language.o cnf.o:launchelf.h language.h cnf.h
 

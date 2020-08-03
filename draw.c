@@ -1,4 +1,5 @@
 #include "launchelf.h"
+#define	FULLHD_WIDTH	setting->fullhd_width
 
 //----------------------------------------------------------
 typedef struct {
@@ -48,6 +49,7 @@ int MAX_ROWS_X;
 int char_Margin;	//文字の間隔
 int line_Margin;	//行の間隔
 int font_bold;
+int font_half, font_vhalf;
 
 int interlace;
 int ffmode;
@@ -124,22 +126,20 @@ unsigned short font_sjis_table[] = {
 void setupito(int tvmode)
 {
 	uint8 vmode;
-	uint8 psm;
+	uint8 psm=0;
+	int buffer_height_t;
 
-	if(tvmode==0)
-		vmode = ITO_VMODE_AUTO;
-	else if(tvmode==1)
-		vmode = ITO_VMODE_NTSC;
-	else if(tvmode==2)
-		vmode = ITO_VMODE_PAL;
-	else if(tvmode==3)
-		vmode = 0x50;
-	else if(tvmode==4)
-		vmode = 0x52;
-	else if(tvmode==5)
-		vmode = 0x51;
-	else
-		vmode = ITO_VMODE_NTSC;
+	switch(tvmode)
+	{
+		case 0:	{vmode = ITO_VMODE_AUTO; break;}
+		case 1:	{vmode = ITO_VMODE_NTSC; break;}
+		case 2:	{vmode = ITO_VMODE_PAL; break;}
+		case 3:	{vmode = 0x50; break;}
+		case 4:	{vmode = 0x52; break;}
+		case 5:	{vmode = 0x51; break;}
+		case 6:	{vmode = 0x53; break;}
+		default:{vmode = ITO_VMODE_AUTO; break;}
+	}
 
 	if(screenscan){
 		switch(vmode)
@@ -169,7 +169,7 @@ void setupito(int tvmode)
 			}
 			case 0x51://1080i
 			{
-				buffer_width = 960;//-48;
+				buffer_width = FULLHD_WIDTH;//-48;
 				buffer_height= 1080;//-56;
 				psm = ITO_RGBA16;
 				//setting->interlace = ITO_NON_INTERLACE;
@@ -185,8 +185,18 @@ void setupito(int tvmode)
 				//setting->ffmode = ITO_FIELD;
 				break;
 			}
+			case 0x53://1080p
+			{
+				buffer_width = FULLHD_WIDTH;//-48;
+				buffer_height= 1080;//-56;
+				psm = ITO_RGBA16;
+				//setting->interlace = ITO_NON_INTERLACE;
+				//setting->ffmode = ITO_FIELD;
+				break;
+			}
 			default:
 			{
+				break;
 				//NTSC
 				buffer_width = 704;
 				buffer_height= 480;
@@ -224,7 +234,7 @@ void setupito(int tvmode)
 			}
 			case 0x51://1080i
 			{
-				buffer_width = 960-64;//-48;
+				buffer_width = FULLHD_WIDTH-((int)(FULLHD_WIDTH / 20));//960-64;//-48;
 				buffer_height= 1080-56;
 				psm = ITO_RGBA16;
 				//setting->interlace = ITO_NON_INTERLACE;
@@ -240,8 +250,18 @@ void setupito(int tvmode)
 				//setting->ffmode = ITO_FIELD;
 				break;
 			}
+			case 0x53:
+			{
+				buffer_width = FULLHD_WIDTH-((int)(FULLHD_WIDTH / 20));//960-64;//-48;
+				buffer_height= 1080-56;
+				psm = ITO_RGBA16;
+				//setting->interlace = ITO_NON_INTERLACE;
+				//setting->ffmode = ITO_FIELD;
+				break;
+			}
 			default:
 			{
+				break;
 				//NTSC
 				buffer_width = 640;
 				buffer_height= 448;
@@ -251,6 +271,12 @@ void setupito(int tvmode)
 			}
 		}
 	}
+	
+	if (ffmode == ITO_FIELD)
+		buffer_height_t = buffer_height;
+	else
+		buffer_height_t = buffer_height >> 1;
+	
 	// screen resolution
 	screen_env.screen.width		= buffer_width;
 	screen_env.screen.height	= buffer_height;
@@ -264,18 +290,18 @@ void setupito(int tvmode)
 	screen_env.framebuffer1.y	= 0;
 	
 	screen_env.framebuffer2.x	= 0;
-	screen_env.framebuffer2.y	= buffer_height;
-
+	screen_env.framebuffer2.y	= buffer_height_t;
+	
 	// zbuffer
 	screen_env.zbuffer.x		= 0;
-	screen_env.zbuffer.y		= buffer_height*2;
+	screen_env.zbuffer.y		= buffer_height_t*2;
 	screen_env.zbuffer.psm		= ITO_ZBUF16;
 	
 	// scissor 
 	screen_env.scissor_x1		= 0;
 	screen_env.scissor_y1		= 0;
 	screen_env.scissor_x2		= buffer_width;
-	screen_env.scissor_y2		= buffer_height;
+	screen_env.scissor_y2		= buffer_height_t;
 	
 	// misc
 	screen_env.dither			= TRUE;
@@ -491,8 +517,9 @@ void SetHeight(void)
 				break;
 			}
 			case 5:	//1080i
+			case 6:
 			{
-				SCREEN_WIDTH = 960;//1280;1440-72;//1920-96;
+				SCREEN_WIDTH = FULLHD_WIDTH;//960;//1280;1440-72;//1920-96;
 				SCREEN_LEFT = setting->screen_x_1080i;
 				SCREEN_TOP = setting->screen_y_1080i;
 				if(setting->ffmode_1080i==FALSE)
@@ -567,8 +594,9 @@ void SetHeight(void)
 				break;
 			}
 			case 5:	//1080i
+			case 6:
 			{
-				SCREEN_WIDTH = 960-64;//-48;//1280;1440-72;//1920-96;
+				SCREEN_WIDTH = (FULLHD_WIDTH-((int)(FULLHD_WIDTH / 20))+63) & 0x7fc0;//-48;//1280;1440-72;//1920-96;
 				SCREEN_LEFT = setting->screen_x_1080i;
 				SCREEN_TOP = setting->screen_y_1080i;
 				if(setting->ffmode_1080i==FALSE)
@@ -581,14 +609,24 @@ void SetHeight(void)
 		}
 	}
 	//FONT_WIDTH
-	FONT_WIDTH = ascii_data.width + char_Margin;
+	if (font_half > 0) 
+		FONT_WIDTH = (ascii_data.width+font_half) / (font_half+1) + char_Margin;
+	else if (font_half == 0)
+		FONT_WIDTH = ascii_data.width + char_Margin;
+	else
+		FONT_WIDTH = ascii_data.width * (-font_half+1) + char_Margin;
 
 	//FONT_HEIGHT
 	if(ascii_data.height>=kanji_data.height)
-		FONT_HEIGHT = ascii_data.height + line_Margin;
+		FONT_HEIGHT = ascii_data.height;// + line_Margin;
 	else
-		FONT_HEIGHT = kanji_data.height + line_Margin;
-
+		FONT_HEIGHT = kanji_data.height;// + line_Margin;
+	if (font_vhalf > 0)
+		FONT_HEIGHT = (FONT_HEIGHT+font_vhalf) / (font_vhalf+1);
+	else if (font_vhalf < 0)
+		FONT_HEIGHT*= -font_vhalf+1;
+	FONT_HEIGHT+= line_Margin;
+	
 	//MAX_ROWS
 	MAX_ROWS = SCREEN_HEIGHT/FONT_HEIGHT-6;
 	MAX_ROWS_X = SCREEN_WIDTH/FONT_WIDTH-11;
@@ -601,10 +639,11 @@ void SetHeight(void)
 //アスキーフォントをロード
 int InitFontAscii(const char *path)
 {
-	int fd=0;
+	int fd=0, dsize;
 	size_t size;
 	FONTX_HEADER *fontx_header_ascii;
 	char fullpath[MAX_PATH];
+	char *tekbuff=NULL;
 
 	if(init_ascii==1) FreeFontAscii();
 
@@ -659,6 +698,8 @@ int InitFontAscii(const char *path)
 					fullpath[0]=0;
 			}
 		}
+		else if(setting->usbmass_char && !strncmp(path, "mass", 4))
+			sjistoutf(path, fullpath, MAX_PATH-2);
 		else
 			strcpy(fullpath, path);
 
@@ -666,22 +707,53 @@ int InitFontAscii(const char *path)
 		fd = fioOpen(fullpath, O_RDONLY);
 		if(fd<0) return -1;
 	
+		//圧縮判定用
+		fioRead(fd, fullpath, 32);
+
 		//サイズを調べる
 		size = fioLseek(fd, 0, SEEK_END);
 		fioLseek(fd, 0, SEEK_SET);	//シークを0に戻す
 
-		//メモリを確保
-		font_ascii = (char*)malloc(size);
-		if(font_ascii==NULL){
+		if ((dsize = tek_getsize(fullpath))>=0) {
+			//tek展開
+			//メモリを確保
+			tekbuff = (char*)malloc(size);
+			if(tekbuff==NULL){
+				fioClose(fd);
+				return -1;
+			}
+			//元データを読み込む
+			fioRead(fd, tekbuff, (size_t)size);
+			
+			//クローズ
 			fioClose(fd);
-			return -1;
-		}
-		
-		//メモリに読み込む
-		fioRead(fd, font_ascii, (size_t)size);
+			
+			//展開先バッファを確保
+			font_ascii = (char*)malloc(dsize);
+			if(font_ascii==NULL){
+				free(tekbuff);
+				return -1;
+			}
+			//tek展開
+			if(tek_decomp(tekbuff, font_ascii, size)<0){
+				free(tekbuff);
+				free(font_ascii);
+				return -1;
+			}
+		} else {
+			//メモリを確保
+			font_ascii = (char*)malloc(size);
+			if(font_ascii==NULL){
+				fioClose(fd);
+				return -1;
+			}
 
-		//クローズ
-		fioClose(fd);
+			//メモリに読み込む
+			fioRead(fd, font_ascii, (size_t)size);
+
+			//クローズ
+			fioClose(fd);
+		}
 	}
 
 	//ヘッダのポインタ
@@ -717,10 +789,11 @@ int InitFontAscii(const char *path)
 //漢字フォントをロード
 int InitFontKnaji(const char *path)
 {
-	int fd=0;
+	int fd=0, dsize;
 	size_t size;
 	FONTX_HEADER *fontx_header_kanji;
 	char fullpath[MAX_PATH];
+	char *tekbuff=NULL;
 
 	if(init_kanji==1) FreeFontKanji();
 
@@ -778,6 +851,8 @@ int InitFontKnaji(const char *path)
 					fullpath[0]=0;
 			}
 		}
+		else if(setting->usbmass_char && !strncmp(path, "mass", 4))
+			sjistoutf(path, fullpath, MAX_PATH-2);
 		else
 			strcpy(fullpath, path);
 
@@ -785,22 +860,53 @@ int InitFontKnaji(const char *path)
 		fd = fioOpen(fullpath, O_RDONLY);
 		if(fd<0) return -1;
 
+		//圧縮判定用
+		fioRead(fd, fullpath, 32);
+
 		//サイズを調べる
 		size = fioLseek(fd, 0, SEEK_END);
 		fioLseek(fd, 0, SEEK_SET);	//シークを0に戻す
 
-		//メモリを確保
-		font_kanji = (char*)malloc(size);
-		if(font_kanji==NULL){
+		if ((dsize = tek_getsize(fullpath))>=0) {
+			//tek展開
+			//メモリを確保
+			tekbuff = (char*)malloc(size);
+			if(tekbuff==NULL){
+				fioClose(fd);
+				return -1;
+			}
+			//元データを読み込む
+			fioRead(fd, tekbuff, (size_t)size);
+			
+			//クローズ
 			fioClose(fd);
-			return -1;
+			
+			//展開先バッファを確保
+			font_kanji = (char*)malloc(dsize);
+			if(font_kanji==NULL){
+				free(tekbuff);
+				return -1;
+			}
+			//tek展開
+			if(tek_decomp(tekbuff, font_kanji, size)<0){
+				free(tekbuff);
+				free(font_kanji);
+				return -1;
+			}
+		} else {
+			//メモリを確保
+			font_kanji = (char*)malloc(size);
+			if(font_kanji==NULL){
+				fioClose(fd);
+				return -1;
+			}
+
+			//メモリに読み込む
+			fioRead(fd, font_kanji, (size_t)size);
+
+			//クローズ
+			fioClose(fd);
 		}
-
-		//メモリに読み込む
-		fioRead(fd, font_kanji, (size_t)size);
-
-		//クローズ
-		fioClose(fd);
 	}
 	
 	//ヘッダのポインタ
@@ -819,7 +925,7 @@ int InitFontKnaji(const char *path)
 	kanji_data.width = fontx_header_kanji->XSize;
 	kanji_data.height = fontx_header_kanji->YSize;
 	//1文字のサイズ算出
-	kanji_data.size = ((kanji_data.width-1)/8+1) * kanji_data.height;
+	kanji_data.size = ((kanji_data.width+7)/8) * kanji_data.height;
 	//
 	kanji_data.Tnum = fontx_header_kanji->Tnum;
 	//
@@ -917,11 +1023,17 @@ int GetFontSize(int type)
 	switch(type)
 	{
 		case ASCII_FONT_WIDTH:
-			return ascii_data.width;
+			if (font_half) 
+				return ascii_data.width >> 1;
+			else
+				return ascii_data.width;
 		case ASCII_FONT_HEIGHT:
 			return ascii_data.height;
 		case KANJI_FONT_WIDTH:
-			return kanji_data.width;
+			if (font_half)
+				return kanji_data.width >> 1;
+			else
+				return kanji_data.width;
 		case KANJI_FONT_HEIGHT:
 			return kanji_data.height;
 	}
@@ -944,15 +1056,61 @@ int GetFontBold(void)
 }
 
 //------------------------------------------------------------
+//フォントテストを設定
+void SetFontHalf(int flag)
+{
+	font_half = flag;
+	if (flag > 0)
+		FONT_WIDTH = (ascii_data.width+flag) / (flag+1) + char_Margin;
+	else if (flag == 0)
+		FONT_WIDTH = ascii_data.width + char_Margin;
+	else
+		FONT_WIDTH = ascii_data.width * (-flag+1) + char_Margin;
+	return;
+}
+
+//------------------------------------------------------------
+//フォントテストの取得
+int GetFontHalf(void)
+{
+	return font_half;
+}
+
+//------------------------------------------------------------
+//垂直フォントサイズ補正を設定
+void SetFontVHalf(int flag)
+{
+	font_vhalf = flag;
+	if (flag > 0)
+		FONT_HEIGHT = (ascii_data.height+flag) / (flag+1) + line_Margin;
+	else if (flag == 0)
+		FONT_HEIGHT = ascii_data.height + line_Margin;
+	else
+		FONT_HEIGHT = ascii_data.height * (-flag+1) + line_Margin;
+	return;
+}
+
+//------------------------------------------------------------
+//垂直フォントサイズ補正値の取得
+int GetFontVHalf(void)
+{
+	return font_vhalf;
+}
+
+//------------------------------------------------------------
 //FONTX2ファイルのヘッダチェック
 int checkFONTX2header(const char *path)
 {
-	char *buf=NULL;
+	//char *buf;
 	int fd, size=0;
 	char fullpath[MAX_PATH], tmp[MAX_PATH], *p;
+	char buf[32];
 	FONTX_HEADER *fontx_header;
 
-	strcpy(fullpath,path);
+	if(setting->usbmass_char && !strncmp(path, "mass", 4))
+		sjistoutf(path, fullpath, MAX_PATH-2);
+	else
+		strcpy(fullpath,path);
 
 	if(!strncmp(fullpath, "hdd0", 4)) {
 		sprintf(tmp, "hdd0:%s", &path[6]);
@@ -971,8 +1129,8 @@ int checkFONTX2header(const char *path)
 			goto error;
 		}
 		fileXioLseek(fd, 0, SEEK_SET);
-		buf = (char*)malloc(17);
-		fileXioRead(fd, buf, 17);
+		//buf = (char*)malloc(32);
+		fileXioRead(fd, buf, 32);
 		fileXioClose(fd);
 		fileXioUmount("pfs0:");
 	}
@@ -985,8 +1143,8 @@ int checkFONTX2header(const char *path)
 			goto error;
 		}
 		fioLseek(fd, 0, SEEK_SET);
-		buf = (char*)malloc(17);
-		fioRead(fd, buf, 17);
+		//buf = (char*)malloc(32);
+		fioRead(fd, buf, 32);
 		fioClose(fd);
 	}
 	else {
@@ -998,11 +1156,13 @@ int checkFONTX2header(const char *path)
 
 	//ヘッダチェック
 	if(strncmp(fontx_header->Identifier, "FONTX2", 6)!=0){
-		free(buf);
-		goto error;
+		if(tek_getsize(buf)<0){
+			//free(buf);
+			goto error;
+		}
 	}
 
-	free(buf);
+	//free(buf);
 	return 1;
 error:
 	return -1;
@@ -1013,9 +1173,10 @@ error:
 void drawChar(unsigned char c, int x, int y, uint64 color)
 {
 	unsigned int i, j;
-	unsigned char cc;
+	//unsigned char cc;
 	unsigned char *pc=0;
-	int n;
+	int n, bts, xl, xw, bty;
+	unsigned int  msks, msk, rpx, rpy;
 
 	//初期化していないか、初期化失敗している
 	if(!init_ascii) return;
@@ -1024,37 +1185,69 @@ void drawChar(unsigned char c, int x, int y, uint64 color)
 	if(c==' ') return;
 
 	pc = &font_ascii[ascii_data.offset + c * ascii_data.size];
-	cc = *pc++;
 
-	for(i=0; i<ascii_data.height; i++){
-		n = ascii_data.width;
-		if(n>8) n=8;
-		for(j=0; j<n; j++){
-			if(cc & 0x80){
-				if(setting->FontBold)
-					itoLine(color, x+j, y+i, 0, color, x+j+2, y+i, 0);
-				else
-					itoPoint(color, x+j, y+i, 0);
-			}
-			cc = cc << 1;
-		}
-		cc = *pc++;
-		if(ascii_data.width>8){
-			n = ascii_data.width-8;
-			if(n>8) n=8;
-			for(j=0; j<n; j++) {
-				if(cc & 0x80){
-					if(setting->FontBold)
-						itoLine(color, x+8+j, y+i, 0, color, x+8+j+2, y+i, 0);
-					else
-						itoPoint(color, x+8+j, y+i, 0);
-				}
-				cc = cc << 1;
-			}
-			cc = *pc++;
-		}
+	if (GetFontHalf() == 0) {
+		// 標準
+		msk = 0x80; bts = 1; rpx = 1;
+	} else if (GetFontHalf() > 0) {
+		// 縮小
+		msk = 0x80; bts = GetFontHalf() + 1; rpx = 1;
+		for (i = 1; i < bts; i++) msk |= 0x80 >> i;
+	} else {
+		msk = 0x80; bts = 1; rpx = -GetFontHalf() + 1;
 	}
-	return;
+	msk*= 0x01010101;
+	msks = msk;
+	if (GetFontVHalf() == 0) {
+		// 標準
+		rpy = 1;	// rpy: リピートライン数(1:標準)
+		bty = 1;	// bty: スキップライン数(1:標準)
+	} else if (GetFontVHalf() > 0) {
+		// 縮小
+		rpy = 1; bty = GetFontVHalf()+1;
+	} else {
+		rpy = -GetFontVHalf()+1; bty = 1;
+	}
+	for(i=0; i<ascii_data.height; i+=bty) {
+		xl = -1; xw = 0;
+		for(j=0; j<ascii_data.width; j+=bts) {
+			if (pc[j >> 3] & msk) {
+				if (xl < 0) xl = j/bts;
+				xw++;
+			} else if (xl >= 0) {
+				if ((xw > 1) || setting->FontBold || (rpx > 1)) {
+					if (rpy > 1)
+						for (n = 0; n < rpy; n++)
+							itoLine(color, x+xl*rpx, y+i*rpy+n, 0, color, x+(xl+xw)*rpx+setting->FontBold, y+i*rpy+n, 0);
+					else
+						itoLine(color, x+xl*rpx, y+i/bty, 0, color, x+(xl+xw)*rpx+setting->FontBold, y+i/bty, 0);
+				} else {
+					if (rpy > 1)
+						itoLine(color, x+xl, y+i*rpy, 0, color, x+xl, y+i*rpy+rpy, 0);
+					else
+						itoPoint(color, x+xl, y+i/bty, 0);
+				}
+				xl = -1; xw = 0;
+			}
+			msk = msk >> bts;
+		}
+		if (xw > 0) {
+			if ((xw > 1) || setting->FontBold || (rpx > 1)) {
+				if (rpy > 1)
+					for (n = 0; n < rpy; n++)
+						itoLine(color, x+xl*rpx, y+i*rpy+n, 0, color, x+(xl+xw)*rpx+setting->FontBold, y+i*rpy+n, 0);
+				else
+					itoLine(color, x+xl*rpx, y+i/bty, 0, color, x+(xl+xw)*rpx+1+setting->FontBold, y+i/bty, 0);
+			} else {
+				if (rpy > 1)
+					itoLine(color, x+xl, y+i*rpy, 0, color, x+xl, y+i*rpy+rpy, 0);
+				else
+					itoPoint(color, x+xl, y+i/bty, 0);
+			}
+		}
+		pc+= ((ascii_data.width + 7) >> 3) * bty;
+		msk = msks;
+	}
 }
 
 //-------------------------------------------------
@@ -1064,9 +1257,11 @@ void drawChar_SJIS(unsigned int c, int x, int y, uint64 color)
 	FONTX_HEADER *fontx_header_kanji;
 	int i, j, a;
 	int ret, sum;
-	unsigned char cc;
+	//unsigned char cc;
 	unsigned char *pc;
-	int n;
+	int n, bts, xl, xw, bty;
+	unsigned int msks, msk, rpx;
+	unsigned int rpy;
 
 	//初期化していないか、初期化失敗している
 	if(!init_kanji) return;
@@ -1094,63 +1289,75 @@ void drawChar_SJIS(unsigned int c, int x, int y, uint64 color)
 	//
 	a = sum + ret + ( c - fontx_header_kanji->Block[ret].Start );
 	pc = &font_kanji[kanji_data.offset + a * kanji_data.size];
-	cc = *pc++;
+	//cc = *pc;
 
-	for(i=0; i<kanji_data.height; i++) {
-		n = kanji_data.width;
-		if(n>8) n=8;
-		for(j=0; j<n; j++) {
-			if(cc & 0x80){
-				if(setting->FontBold)
-					itoLine(color, x+j, y+i, 0, color, x+j+2, y+i, 0);
-				else
-					itoPoint(color, x+j, y+i, 0);
-			}
-			cc = cc << 1;
-		}
-		cc = *pc++;
-		if(kanji_data.width>8){
-			n = kanji_data.width-8;
-			if(n>8) n=8;
-			for(j=0; j<n; j++) {
-				if(cc & 0x80){
-					if(setting->FontBold)
-						itoLine(color, x+8+j, y+i, 0, color, x+8+j+2, y+i, 0);
+	//	msk:	マスクビット
+	//	bts:	シフトビット数
+	//	rpx:	水平倍率
+	// GetFontHalf() < 0: 拡大 (-n 倍)
+	//				 = 0: 標準 (等倍)
+	//				 > 0: 縮小 (1/(n+1)倍)
+	if (GetFontHalf() == 0) {
+		// 標準
+		msk = 0x80; bts = 1; rpx = 1;
+	} else if (GetFontHalf() > 0) {
+		// 縮小
+		msk = 0x80; bts = GetFontHalf() + 1; rpx = 1;
+		for (i = 1; i < bts; i++) msk |= 0x80 >> i;
+	} else {
+		msk = 0x80; bts = 1; rpx = -GetFontHalf() + 1;
+	}
+	msk*= 0x01010101;
+	msks = msk;
+	if (GetFontVHalf() == 0) {
+		// 標準
+		rpy = 1;	// rpy: リピートライン数(1:標準)
+		bty = 1;	// bty: スキップライン数(1:標準)
+	} else if (GetFontVHalf() > 0) {
+		// 縮小
+		rpy = 1; bty = GetFontVHalf()+1;
+	} else {
+		rpy = -GetFontVHalf()+1; bty = 1;
+	}
+	for(i=0; i<kanji_data.height; i+=bty) {
+		xl = -1; xw = 0;
+		for(j=0; j<kanji_data.width; j+=bts) {
+			if (pc[j >> 3] & msk) {
+				if (xl < 0) xl = j/bts;
+				xw++;
+			} else if (xl >= 0) {
+				if ((xw > 1) || setting->FontBold || (rpx > 1)) {
+					if (rpy > 1)
+						for (n = 0; n < rpy; n++)
+							itoLine(color, x+xl*rpx, y+i*rpy+n, 0, color, x+(xl+xw)*rpx+setting->FontBold, y+i*rpy+n, 0);
 					else
-						itoPoint(color, x+8+j, y+i, 0);
+						itoLine(color, x+xl*rpx, y+i/bty, 0, color, x+(xl+xw)*rpx+setting->FontBold, y+i/bty, 0);
+				} else {
+					if (rpy > 1)
+						itoLine(color, x+xl, y+i*rpy, 0, color, x+xl, y+i*rpy+rpy, 0);
+					else
+						itoPoint(color, x+xl, y+i/bty, 0);
 				}
-				cc = cc << 1;
+				xl = -1; xw = 0;
 			}
-			cc = *pc++;
-			if(kanji_data.width>16){
-				n = kanji_data.width-16;
-				if(n>8) n=8;
-				for(j=0; j<n; j++) {
-					if(cc & 0x80){
-						if(setting->FontBold)
-							itoLine(color, x+16+j, y+i, 0, color, x+16+j+2, y+i, 0);
-						else
-							itoPoint(color, x+16+j, y+i, 0);
-					}
-					cc = cc << 1;
-				}
-				cc = *pc++;
-				if(kanji_data.width>24){
-					n = kanji_data.width-24;
-					if(n>8) n=8;
-					for(j=0; j<n; j++) {
-						if(cc & 0x80){
-							if(setting->FontBold)
-								itoLine(color, x+24+j, y+i, 0, color, x+24+j+2, y+i, 0);
-							else
-								itoPoint(color, x+24+j, y+i, 0);
-						}
-						cc = cc << 1;
-					}
-					cc = *pc++;
-				}
+			msk = msk >> bts;
+		}
+		if (xw > 0) {
+			if ((xw > 1) || setting->FontBold || (rpx > 1)) {
+				if (rpy > 1)
+					for (n = 0; n < rpy; n++)
+						itoLine(color, x+xl*rpx, y+i*rpy+n, 0, color, x+(xl+xw)*rpx+setting->FontBold, y+i*rpy+n, 0);
+				else
+					itoLine(color, x+xl*rpx, y+i/bty, 0, color, x+(xl+xw)*rpx+1+setting->FontBold, y+i/bty, 0);
+			} else {
+				if (rpy > 1)
+					itoLine(color, x+xl, y+i*rpy, 0, color, x+xl, y+i*rpy+rpy, 0);
+				else
+					itoPoint(color, x+xl, y+i/bty, 0);
 			}
 		}
+		pc+= ((kanji_data.width + 7) >> 3) * bty;
+		msk = msks;
 	}
 }
 
@@ -1181,7 +1388,12 @@ int printXY(const unsigned char *s, int x, int y, uint64 color, int draw)
 				}
 				drawChar_SJIS(code, x+kanji_MarginLeft, y+kanji_MarginTop, color);
 			}
-			x += kanji_data.width + char_Margin * 2;
+			if (font_half > 0)
+				x += (kanji_data.width+font_half) / (font_half+1) + char_Margin * 2;
+			else if (font_half == 0)
+				x += kanji_data.width + char_Margin * 2;
+			else
+				x += kanji_data.width * (-font_half+1) + char_Margin * 2;
 		}
 		else{
 			if(draw){
@@ -1195,7 +1407,12 @@ int printXY(const unsigned char *s, int x, int y, uint64 color, int draw)
 				drawChar(s[i], x+ascii_MarginLeft, y+ascii_MarginTop, color);
 			}
 			i++;
-			x += ascii_data.width + char_Margin;
+			if (font_half > 0)
+				x += (ascii_data.width+font_half) / (font_half+1) + char_Margin;
+			else if (font_half == 0)
+				x += ascii_data.width + char_Margin;
+			else
+				x += ascii_data.width * (-font_half+1) + char_Margin;
 		}
 	}
 
