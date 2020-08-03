@@ -34,7 +34,7 @@ SND_FUNC dec;
 SND_INFO info;
 ////////////////////////////////
 // デバッグ用トラップ
-
+extern int viewmallocs;
 static void *X_malloc(size_t mallocsize)
 {
 	void *ret;
@@ -42,13 +42,13 @@ static void *X_malloc(size_t mallocsize)
 	if (ret == NULL)
 		printf("viewer: malloc failed (ofs: %08X, size: %d)\n", (unsigned int) ret, mallocsize);
 	else
-		printf("viewer: malloc valid (ofs: %08X, size: %d)\n", (unsigned int) ret, mallocsize);
+		printf("viewer: malloc valid (ofs: %08X, size: %d) [%d]\n", (unsigned int) ret, mallocsize, ++viewmallocs);
 	return ret;
 }
 static void X_free(void *mallocdata)
 {
 	if (mallocdata != NULL) {
-		printf("viewer: free valid (ofs: %08X)\n", (unsigned int) mallocdata);
+		printf("viewer: free valid (ofs: %08X) [%d]\n", (unsigned int) mallocdata, --viewmallocs);
 		free(mallocdata);
 	} else 
 		printf("viewer: free failed (ofs: %08X)\n", (unsigned int) mallocdata);

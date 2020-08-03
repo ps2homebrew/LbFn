@@ -2138,7 +2138,7 @@ int main(int argc, char *argv[])
 		MessageBox("Screen Setting Initialize", LBF_VER, MB_OK);
 	}
 	if (!wallpaper && setting->wallpaper[0].flag)
-		wallpapersetup();
+		wallpapersetup(0);
 
 	//ƒ‰ƒ“ƒ`ƒƒ[ƒƒCƒ“
 	LaunchMain();

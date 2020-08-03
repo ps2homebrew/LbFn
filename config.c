@@ -1202,8 +1202,18 @@ no_error:
 			strcat(path, "/LBFN.INI");
 		}
 		else{
-			//SYS-CONFがなかったらLaunchELFのディレクトリにセーブ
-			sprintf(path, "%sLBFN.INI", LaunchElfDir);
+			if (mcport==0 && boot!=MC_BOOT) {
+				path[2]++;
+				fd = fioDopen(path);
+				if (fd >= 0) {
+					fioDclose(fd);
+					strcat(path, "/LBFN.INI");
+				}
+			} 
+			if (fd < 0) {
+				//SYS-CONFがなかったらLaunchELFのディレクトリにセーブ
+				sprintf(path, "%sLBFN.INI", LaunchElfDir);
+			}
 		}
 	}
 
@@ -1268,11 +1278,18 @@ void loadConfig(char *mainMsg)
 		if(mcport==0||mcport==1){
 	//printf("debug:: 7\n");
 			sprintf(path, "mc%d:/SYS-CONF/LBFN.INI", mcport);
-			printf("LoadConfig: path: %s\n", path);
 			fd = fioOpen(path, O_RDONLY);
 			if(fd >= 0)
 				fioClose(fd);
-			else
+			else if (mcport==0 && boot!=MC_BOOT) {
+				path[2]++;
+				fd = fioOpen(path, O_RDONLY);
+				if (fd >= 0) {
+					fioClose(fd);
+				}
+			} 
+			printf("LoadConfig: path: %s\n", path);
+			if (fd < 0)
 				path[0]=0;
 		}
 	}
@@ -1501,7 +1518,7 @@ void loadConfig(char *mainMsg)
 		sprintf(mainMsg, "%s (%s)", lang->conf_initializeconfig, path);
 	}
 	cnf_free();
-	wallpapersetup();
+	wallpapersetup(0);
 	return;
 }
 
@@ -1770,12 +1787,12 @@ void config_screen_mode(SETTING *setting)
 					SetHeight();
 					wallpaper = 0;
 					screen_clear();
-				//	wallpapersetup();
+				//	wallpapersetup(0);
 				//	if (wallpaper)	screen_clear();
 					if ((sel == 1) || (MessageBox(lang->conf_screenmodemsg2, LBF_VER, MB_OKCANCEL|MB_DEFBUTTON2|MB_USETIMEOUT) == IDOK)) {
 						ret = sel-1;
 						oldvmode = setting->tvmode;
-						wallpapersetup();
+						wallpapersetup(0);
 						break;
 					}
 					setting->tvmode = oldvmode;
@@ -1785,7 +1802,7 @@ void config_screen_mode(SETTING *setting)
 					SetHeight();
 				//	wallpaper = 0;
 				//	screen_clear();
-				//	wallpapersetup();
+				//	wallpapersetup(0);
 					wallpaper = wp;
 				}
 			}
@@ -2042,7 +2059,7 @@ void config_screen_edit(SETTING *setting)
 					oldpsm = psm;
 					oldsize = size;
 					olddither = dith;
-					wallpapersetup();
+					wallpapersetup(1);
 					redraw = fieldbuffers;
 				}
 			}
@@ -2052,7 +2069,7 @@ void config_screen_edit(SETTING *setting)
 	}
 	//return ret;
 	if (setting->wallpaper[0].flag && setting->wallpaperpath[0] && (oldframe!=frame||oldinter!=inter||psm!=oldpsm||size!=oldsize||dith!=olddither))
-		wallpapersetup();
+		wallpapersetup(1);
 	return;
 }
 
@@ -2420,6 +2437,7 @@ void gsconfig_easy(GSREG *gsregs)
 		vmoded = FALSE;
 		changed = TRUE;
 	}
+	wallpapersetup(0);
 	return;
 }
 
@@ -4340,7 +4358,7 @@ void config_misc(SETTING *setting)
 						setting->wallpaper[1].brightness = 128;
 				}
 				else if(sel==WALLPAPERPREVIEW) {
-					wallpapersetup();
+					wallpapersetup(1);
 				}
 				else if(sel==MISCINIT){
 					//init
@@ -4374,6 +4392,9 @@ void config_misc(SETTING *setting)
 					setting->wallpaper[1].brightness -= i;
 					if (setting->wallpaper[1].brightness < -128)
 						setting->wallpaper[1].brightness = -128;
+				}
+				else if(sel==WALLPAPERPREVIEW) {
+					wallpapersetup(0);
 				}
 			}
 			else if(new_pad & PAD_SQUARE) {
@@ -5006,7 +5027,7 @@ void config(char *mainMsg)
 					free(tmpsetting);
 					saveConfig(mainMsg);
 					SetFontMargin(LINE_MARGIN, setting->LineMargin);
-					wallpapersetup();
+					wallpapersetup(0);
 					break;
 				}
 				if(sel==CANCEL){	//cansel
@@ -5037,7 +5058,7 @@ void config(char *mainMsg)
 					setupito(setting->tvmode);
 					SetHeight();
 					set_viewerconfig((int[]){setting->txt_linenumber, setting->txt_tabmode, setting->txt_chardisp, setting->img_fullscreen, setting->txt_wordwrap, setting->img_resize, setting->img_aniauto, setting->img_position});
-					wallpapersetup();
+					wallpapersetup(0);
 					mainMsg[0] = 0;
 					break;
 				}

@@ -85,7 +85,7 @@ int info_PNG(int *info, char *buff, int size);
 
 ////////////////////////////////
 // デバッグ用トラップ
-
+int viewmallocs=0;
 static void *X_malloc(size_t mallocsize)
 {
 	void *ret;
@@ -93,13 +93,13 @@ static void *X_malloc(size_t mallocsize)
 	if (ret == NULL)
 		printf("viewer: malloc failed (ofs: %08X, size: %d)\n", (unsigned int) ret, mallocsize);
 	else
-		printf("viewer: malloc valid (ofs: %08X, size: %d)\n", (unsigned int) ret, mallocsize);
+		printf("viewer: malloc valid (ofs: %08X, size: %d) [%d]\n", (unsigned int) ret, mallocsize, ++viewmallocs);
 	return ret;
 }
 static void X_free(void *mallocdata)
 {
 	if (mallocdata != NULL) {
-		printf("viewer: free valid (ofs: %08X)\n", (unsigned int) mallocdata);
+		printf("viewer: free valid (ofs: %08X) [%d]\n", (unsigned int) mallocdata, --viewmallocs);
 		free(mallocdata);
 	} else 
 		printf("viewer: free failed (ofs: %08X)\n", (unsigned int) mallocdata);
@@ -1450,7 +1450,7 @@ int imgview(int mode, char *file, unsigned char *buffer0, int w, int h, int bppf
 {	// イメージビューア
 	// mode:	b1	=1:スライドモード
 	//			b3	=1:アニメーションウェイト対応
-	int redraw=fieldbuffers,redi=0,bpp,bppb,ani,oq,q,cls=0;
+	int redraw=framebuffers,redi=0,bpp,bppb,ani,oq,q,cls=0;
 	//int sl=0,st=0,sw=1,sh=1; // カーソル位置
 	int tl,tt,tw,th,x,y,ff,fm;
 	int vl,vt,vw,vh; // ビューポート(描画可能範囲)
@@ -1468,7 +1468,7 @@ int imgview(int mode, char *file, unsigned char *buffer0, int w, int h, int bppf
 	char msg0[MAX_PATH], msg1[MAX_PATH];
 	unsigned char *buffer=NULL,*tmpbuf=NULL;
 	double mx,my,dx,dy,gw,gh,pw;	// 倍率
-	int cx,cy,ox,oy,cz,oz;
+	int cx,cy,ox,oy,cz,oz,ret;
 	int vmode,dither,tbb,oresizer=!resizer;
 	vmode = setting->tvmode;
 	if (!gsregs[vmode].loaded) vmode = (ITO_VMODE_AUTO)-1;
@@ -1515,7 +1515,7 @@ int imgview(int mode, char *file, unsigned char *buffer0, int w, int h, int bppf
 	}
 	printf("vi: bpp=%d, dither=%d, screen_depth:%d (%d) size=%4dx%4d\n", bpp, dither, screen_depth, 4-screen_depth, w, h);
 	if (!buffer) buffer = buffer0;
-	oq = q;
+	oq = q; ret = 0;
 	// イメージ全体をアスペクト比を保ったままビューポート全体に表示するように初期値を調整
 	// イメージ1ドット進むごとに画面はbx,byピクセル進む(=拡大率)
 	//mx = (double) vw / w;
@@ -1600,6 +1600,7 @@ int imgview(int mode, char *file, unsigned char *buffer0, int w, int h, int bppf
 	static int entered=0;
 	//if (entered) padExitPressMode(--entered, 0);
 	if (!entered) padEnterPressMode(entered++, 0);
+	//	printf("viewer: frames:%d, fields:%d, redraw:%d\n", framebuffers, fieldbuffers, redraw);
 	while(1){
 	//	waitPadReady(0, 0);
 		if(readpad()){
@@ -1607,17 +1608,15 @@ int imgview(int mode, char *file, unsigned char *buffer0, int w, int h, int bppf
 			if (new_pad & PAD_CROSS) break;
 			if (new_pad & PAD_SELECT) break;
 			if (new_pad & PAD_CIRCLE) {
-				redraw = fieldbuffers;
+				redraw = framebuffers;
 				fullscreen = !fullscreen;
-				if (ffmode) {
+				clrScr(setting->color[COLOR_BACKGROUND]);
+				itoGsFinish();
+				if (framebuffers > 1) {
+					itoSetActiveFrameBuffer(itoGetActiveFrameBuffer()^1);
 					clrScr(setting->color[COLOR_BACKGROUND]);
 					itoGsFinish();
-					if (framebuffers > 1) {
-						itoSetActiveFrameBuffer(itoGetActiveFrameBuffer()^1);
-						clrScr(setting->color[COLOR_BACKGROUND]);
-						itoGsFinish();
-						itoSetActiveFrameBuffer(itoGetActiveFrameBuffer()^1);
-					}
+					itoSetActiveFrameBuffer(itoGetActiveFrameBuffer()^1);
 				}
 			}
 			if (new_pad & PAD_SQUARE) {
@@ -1636,12 +1635,13 @@ int imgview(int mode, char *file, unsigned char *buffer0, int w, int h, int bppf
 				}
 			}
 			if (mode & 2) {
-				if (new_pad & PAD_L1) return 1;
-				if (new_pad & PAD_R1) return 2;
+				if (new_pad & PAD_L1) ret = 1;
+				if (new_pad & PAD_R1) ret = 2;
 				if (!(paddata & PAD_L2)) {
-					if (new_pad & PAD_UP) return 1;
-					if (new_pad & PAD_DOWN) return 2;
+					if (new_pad & PAD_UP) ret = 1;
+					if (new_pad & PAD_DOWN) ret = 2;
 				}
+				if (ret) break;
 			}
 			if (ani) {
 				if (!(paddata & PAD_L2)) {
@@ -1948,7 +1948,7 @@ int imgview(int mode, char *file, unsigned char *buffer0, int w, int h, int bppf
 //	waitPadReady(0, 0);
 	if (tmpbuf != NULL) free(tmpbuf);
 	nobgmpos = 0;
-	return 0;
+	return ret;
 }
 
 //int set_viewerconfig(int linedisp, int tabspaces, int chardisp, int screenmode, int textwrap, int drawtype)
@@ -2886,8 +2886,17 @@ void X_clrScr(void) {
 		return;
 	} else if (tw > 2048) {
 		return X_itoSprite(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
+	} else if ((fieldbuffers>1 || framebuffers==1) && setting->wallpaper[0].brightness) {
+		int a,b,c;
+		b = SCREEN_HEIGHT >> 1;
+		a = b >> 1; c = b + a;
+		X_itoSprite(0, 0, SCREEN_WIDTH, a, 0);
+		X_itoSprite(0, a, SCREEN_WIDTH, b, 0);
+		X_itoSprite(0, b, SCREEN_WIDTH, c, 0);
+		X_itoSprite(0, c, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
+		return;
 	}
-	
+	//	printf("fields=%d, frames=%d, bright=%4d\n", fieldbuffers, framebuffers, setting->wallpaper[0].brightness);
 	int base;
 	itoGsFinish();
 	
@@ -2910,6 +2919,7 @@ void X_clrScr(void) {
 		itoSprite(0xFFFFFF | ( base << 24), 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
 	}
 	itoPrimAlphaBlending(FALSE);
+	//*/
 }
 void X_itoSprite(int left, int top, int right, int bottom, int window) {
 	if (!wallpaper || (tb != 4-screen_depth)) {
@@ -2933,6 +2943,7 @@ void X_itoSprite(int left, int top, int right, int bottom, int window) {
 		}
 	} else {
 		GsLoadImage(&scrnbuff[src], &(GS_IMAGE){.x=left,.y=top,.width=right-left,.height=bottom-top,.vram_addr=base,.vram_width=(SCREEN_WIDTH+63)/64,.pix_mode=4-tb});
+		//printf("!!");
 	}
 	
 	// 明るさ調整
@@ -3282,13 +3293,13 @@ int wallpaperfree(void) {
 	}
 	return 0;
 }
-void wallpapersetup(void) {
+void wallpapersetup(int reload) {
 	int i,fd,ff,type,size,dsize,bpp,tvmode,dither,info[8]; char *c,*decoded,*buffer;
 	//wallpaper = 0;
 	printf("wallpapersetup: flag:%d, src:%s\n", setting->wallpaper[0].flag, setting->wallpaperpath);
 	tvmode = setting->tvmode;
 	if (gsregs[tvmode].loaded != 1) tvmode = ITO_VMODE_AUTO-1;
-	if (setting->wallpaper[0].flag && setting->wallpaperpath[0] && (wpclip<0 || wpclip!=setting->wallpaper[0].clipmode || wpvmode<0 || wpvmode!=tvmode)) {
+	if (setting->wallpaper[0].flag && setting->wallpaperpath[0] && (wpclip<0 || wpclip!=setting->wallpaper[0].clipmode || wpvmode<0 || wpvmode!=tvmode || strcmp(setting->wallpaperpath, wpold) || reload)) {
 		if (scrnsize != (i = screen_tex_size())) {
 			scrnsize = i;
 			if (scrnbuff != NULL) free(scrnbuff);

@@ -1,6 +1,7 @@
 --------------------------------------------
-LbFn version 0.70.17src by nika (2010/10/10)
+LbFn version 0.70.18src by nika (2011/10/24)
 --------------------------------------------
+(I'm sorry, this document is Japanese only.)
 
 ソースを改変することに制限はありません
 LbF/LbFnを改変したものを公開するときは、

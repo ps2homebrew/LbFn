@@ -31,7 +31,7 @@
 #include <libmouse.h>
 
 // バージョン
-#define LBFN_VER "LbFn v0.70.17"
+#define LBFN_VER "LbFn v0.70.18"
 
 // 垂直スキャンレート
 //#define SCANRATE (ITO_VMODE_AUTO==ITO_VMODE_PAL ? 50:60)
@@ -617,7 +617,7 @@ void X_clrScr(void);
 void itoNoVSync(void);
 int wallpapercache(int type);	// (bpp=0:only filecache)
 int wallpaperfree(void);
-void wallpapersetup(void);
+void wallpapersetup(int reload);
 int stretchblt(char *dist, char *src, 
 				int ds, int ss, int db, int sb, int dp, int sp,
 				int dl, int dt, int sl, int st, 
