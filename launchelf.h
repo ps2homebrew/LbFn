@@ -30,7 +30,7 @@
 #include "cnf.h"
 
 // バージョン
-#define LBF_VER "LbFn v0.70.7"
+#define LBF_VER "LbFn v0.70.9"
 
 // 垂直スキャンレート
 #define SCANRATE (ITO_VMODE_AUTO==ITO_VMODE_NTSC ? 60:50)
@@ -65,6 +65,7 @@ enum
 	COLOR_PS1SAVE,
 	COLOR_ELF,
 	COLOR_PSU,
+	COLOR_TXT,
 	NUM_COLOR
 };
 

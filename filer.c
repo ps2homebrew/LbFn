@@ -65,6 +65,8 @@ enum
 	GETSIZE,
 	EXPORT,
 	IMPORT,
+//	COMPRESS,
+	VIEWER,
 	NUM_MENU
 };
 
@@ -123,6 +125,9 @@ char psb_argv[MAX_ARGC][MAX_PATH+2];
 
 //プロトタイプ宣言
 void sjis2ascii(const unsigned char *in, unsigned char *out);
+//int winmain(int compress, char *infile, char *outfile);
+int txteditfile(int mode, char *filename);
+int txtedit(int mode, char *file, unsigned char *buffer, unsigned int size);
 
 //-------------------------------------------------
 //メッセージボックス
@@ -946,6 +951,8 @@ int menu(const char *path, const char *file)
 		enable[GETSIZE] = FALSE;
 		enable[EXPORT] = FALSE;
 		enable[IMPORT] = FALSE;
+		//enable[COMPRESS] = FALSE;
+		enable[VIEWER] = FALSE;
 	}
 
 	if(!strncmp(path, "mc", 2))
@@ -978,12 +985,19 @@ int menu(const char *path, const char *file)
 			enable[GETSIZE] = FALSE;
 			enable[EXPORT] = FALSE;
 			enable[IMPORT] = FALSE;
+			//enable[COMPRESS] = FALSE;
+			enable[VIEWER] = FALSE;
 		}
+		else if(strchr(file,'/'))
+			enable[VIEWER] = FALSE;
 	}
 	else{
 		//マークしたファイルがある
 		enable[RENAME] = FALSE;
 	}
+	if(nmarks>1)
+		enable[VIEWER] = FALSE;
+	
 
 	//クリップボードに記憶したファイルがない
 	if(nclipFiles==0)
@@ -1024,6 +1038,8 @@ int menu(const char *path, const char *file)
 			else if(i==GETSIZE) strcpy(tmp, lang->filer_menu_getsize);
 			else if(i==EXPORT) strcpy(tmp, lang->filer_menu_exportpsu);
 			else if(i==IMPORT) strcpy(tmp, lang->filer_menu_importpsu);
+			//else if(i==COMPRESS) strcpy(tmp, lang->filer_menu_compress);
+			else if(i==VIEWER) strcpy(tmp, lang->filer_menu_editor);
 
 			if(enable[i]){
 				if(sel==i)
@@ -3522,6 +3538,61 @@ void getFilePath(char *out, int cnfmode)
 									cd = TRUE;
 								}
 							}
+						}
+	/*
+						else if(ret==COMPRESS){	// 圧縮
+							char inpath[MAX_PATH];
+							char outpath[MAX_PATH];
+							
+								if(nmarks==0){
+									strcpy(inpath, path);
+									strcpy(outpath, path);
+									strcat(inpath, files[sel].name);
+									strcat(outpath, files[sel].name);
+									strcat(outpath, ".tk2");
+									ret = winmain(2, inpath, outpath);
+								}
+								else{
+									for(i=0; i<nfiles; i++){
+										if(marks[i]){
+											if(!(files[i].attr & MC_ATTR_SUBDIR)){	//フォルダのとき
+												strcpy(inpath, path);
+												strcpy(inpath, files[i].name);
+												strcpy(outpath, path);
+												strcpy(outpath, files[i].name);
+												strcpy(outpath, ".tk2");
+												ret = winmain(2, inpath, outpath);
+												if(ret<0) break;	//中断する
+											}
+										}
+									}
+								}
+								cd = TRUE;
+						}
+	*/
+						else if(ret==VIEWER) {
+							char fullpath[MAX_PATH];
+							
+							strcpy(fullpath, path);
+							if(nmarks==0){
+								// カーソル位置のファイル
+								strcat(fullpath, files[sel].name);
+								txteditfile(0, fullpath);
+							}
+							else{
+								// 最初のファイル
+								for(i=0; i<nfiles; i++){
+									if(marks[i]){
+										if((files[i].type != TYPE_DIR) && (files[i].type != TYPE_PS1SAVE) && (files[i].type != TYPE_PS2SAVE)){
+											strcat(fullpath, files[i].name);
+											txteditfile(0, fullpath);
+											break;
+										}
+									}
+								}
+							}
+							cd = FALSE;
+							pushed = FALSE;
 						}
 					}
 					else if(new_pad & PAD_CROSS) {	// マーク

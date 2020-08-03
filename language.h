@@ -37,6 +37,8 @@ typedef struct
 	char filer_menu_getsize[MAX_LANGUAGE_STR];
 	char filer_menu_exportpsu[MAX_LANGUAGE_STR];
 	char filer_menu_importpsu[MAX_LANGUAGE_STR];
+	char filer_menu_compress[MAX_LANGUAGE_STR];
+	char filer_menu_editor[MAX_LANGUAGE_STR];
 	char filer_overwrite[MAX_LANGUAGE_STR];
 	char filer_not_elf[MAX_LANGUAGE_STR];
 #ifdef ENABLE_PSB
@@ -83,6 +85,13 @@ typedef struct
 	char filer_l2popup_dirsize[MAX_LANGUAGE_STR];
 	char filer_l2popup_icon[MAX_LANGUAGE_STR];
 	char filer_l2popup_flicker[MAX_LANGUAGE_STR];
+	
+	//editor
+	char editor_viewer_help[MAX_LANGUAGE_STR];
+	char editor_l2popup_tabmode[MAX_LANGUAGE_STR];
+	char editor_l2popup_charset[MAX_LANGUAGE_STR];
+	char editor_l2popup_linenum[MAX_LANGUAGE_STR];
+	char editor_l2popup_flicker[MAX_LANGUAGE_STR];
 
 	//config
 	char conf_savefailed[MAX_LANGUAGE_STR];
@@ -111,6 +120,7 @@ typedef struct
 	char conf_ps1save[MAX_LANGUAGE_STR];
 	char conf_elffile[MAX_LANGUAGE_STR];
 	char conf_psufile[MAX_LANGUAGE_STR];
+	char conf_txtfile[MAX_LANGUAGE_STR];
 	char conf_flicker_alpha[MAX_LANGUAGE_STR];
 	char conf_presetcolor[MAX_LANGUAGE_STR];
 	//screen

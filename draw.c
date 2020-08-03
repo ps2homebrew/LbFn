@@ -129,6 +129,7 @@ void setupito(int tvmode)
 	uint8 psm=0;
 	int buffer_height_t;
 
+	vmode = ITO_VMODE_AUTO;
 	switch(tvmode)
 	{
 		case 0:	{vmode = ITO_VMODE_AUTO; break;}
@@ -138,7 +139,6 @@ void setupito(int tvmode)
 		case 4:	{vmode = 0x52; break;}
 		case 5:	{vmode = 0x51; break;}
 		case 6:	{vmode = 0x53; break;}
-		default:{vmode = ITO_VMODE_AUTO; break;}
 	}
 
 	if(screenscan){

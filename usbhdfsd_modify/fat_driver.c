@@ -20,7 +20,7 @@
 #include "mass_debug.h"
 
 // added by nika
-extern void sjistoucs(unsigned char* dst, unsigned char* src, int maxdstsize);
+//extern void sjistoucs(unsigned char* dst, unsigned char* src, int maxdstsize);
 extern void ucstosjis(unsigned char* dst, unsigned char* src, int maxdstsize);
 
 // Added by Hermes
@@ -550,8 +550,7 @@ int fat_getDirentry(fat_direntry_sfn* dsfn, fat_direntry_lfn* dlfn, fat_direntry
 		
 		// UTF-16 to SJIS convert
 		ucstosjis(dir->name, uname, FAT_MAX_NAME);
-		uname[0] = 0;
-		uname[1] = 0;
+		uname[0] = 0; uname[1] = 0;
 		
 		if (dir->name[0] == 0) { //long name desn't exit
 			for (i =0 ; dir->sname[i] !=0; i++) dir->name[i] = dir->sname[i];

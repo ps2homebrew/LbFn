@@ -54,6 +54,8 @@ void SetLanguage(const int langID)
 		strcpy(lang->filer_menu_getsize, "Get Size");
 		strcpy(lang->filer_menu_exportpsu, "Export psu");
 		strcpy(lang->filer_menu_importpsu, "Import psu");
+		strcpy(lang->filer_menu_compress, "Compression");
+		strcpy(lang->filer_menu_editor, "Look");
 		strcpy(lang->filer_overwrite, "Overwrite?");
 		strcpy(lang->filer_not_elf, "This file isn't ELF.");
 #ifdef ENABLE_PSB
@@ -96,6 +98,14 @@ void SetLanguage(const int langID)
 		strcpy(lang->filer_l2popup_dirsize, "Get DirSize");
 		strcpy(lang->filer_l2popup_icon, "Icon");
 		strcpy(lang->filer_l2popup_flicker, "Flicker Control");
+		}
+		//editor
+		{
+		strcpy(lang->editor_viewer_help, "○:LineNumber □:TAB(%d) △/×:Exit Start:Disp.TAB/CR/LF Mode");
+		strcpy(lang->editor_l2popup_tabmode, "TABモード変更");
+		strcpy(lang->editor_l2popup_charset, "文字コード変更");
+		strcpy(lang->editor_l2popup_linenum, "行番号表\示");
+		strcpy(lang->editor_l2popup_flicker, "フリッカーコントロール");
 		}
 		//config
 		{
@@ -228,6 +238,8 @@ void SetLanguage(const int langID)
 		strcpy(lang->filer_menu_getsize, "サイズ取得");
 		strcpy(lang->filer_menu_exportpsu, "エクスポート");
 		strcpy(lang->filer_menu_importpsu, "インポート");
+		strcpy(lang->filer_menu_compress, "圧縮");
+		strcpy(lang->filer_menu_editor, "表\示");
 		strcpy(lang->filer_overwrite, "上書きしますか?");
 		strcpy(lang->filer_not_elf, "ELFファイルではありません");
 #ifdef ENABLE_PSB
@@ -271,6 +283,14 @@ void SetLanguage(const int langID)
 		strcpy(lang->filer_l2popup_icon, "アイコン表\示");
 		strcpy(lang->filer_l2popup_flicker, "フリッカーコントロール");
 		}
+		//editor
+		{
+		strcpy(lang->editor_viewer_help, "○:行番号表\示変更 □:TAB(%d) △/×:戻る Start:TAB/改行表\示");
+		strcpy(lang->editor_l2popup_tabmode, "TABモード変更");
+		strcpy(lang->editor_l2popup_charset, "文字コード変更");
+		strcpy(lang->editor_l2popup_linenum, "行番号表\示");
+		strcpy(lang->editor_l2popup_flicker, "フリッカーコントロール");
+		}
 		//config
 		{
 		strcpy(lang->conf_savefailed, "設定の保存に失敗しました");
@@ -301,7 +321,7 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_ps1save,       "PS1 セーブ    ");
 		strcpy(lang->conf_elffile,       "ELF ファイル  ");
 		strcpy(lang->conf_psufile,       "PSU ファイル  ");
-		strcpy(lang->conf_flicker_alpha, "フリッカー調整の不透明度");
+		strcpy(lang->conf_flicker_alpha, "フリッカーコントロールの不透明度");
 		strcpy(lang->conf_presetcolor,   "配色設定の初期化");
 		//screen
 		strcpy(lang->conf_tvmode, "TV MODE");
@@ -314,7 +334,7 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_screen_scan, "画面サイズ");
 		strcpy(lang->conf_screen_scan_crop, "ノーマル");
 		strcpy(lang->conf_screen_scan_full, "フル");
-		strcpy(lang->conf_flickercontrol, "フリッカー調整");
+		strcpy(lang->conf_flickercontrol, "フリッカーコントロール");
 		strcpy(lang->conf_screensettinginit, "「画面設定」を初期化する");
 		//network
 		strcpy(lang->conf_ipaddress, "IPアドレス  ");
