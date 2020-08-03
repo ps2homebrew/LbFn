@@ -53,7 +53,6 @@ const char *cnf_keyname[NUM_CNF_KEY] =
 	"export_dir",
 	"interlace",
 	"ffmode",
-//	"mass_filesize_check",
 };
 
 //デフォルトの設定の値
@@ -88,7 +87,6 @@ enum
 	DEF_DISCPS2SAVECHECK = FALSE,
 	DEF_DISCELFCHECK = FALSE,
 	DEF_LANGUAGE = LANG_ENGLISH,
-//	DEF_MASSFILESIZECHECK = TRUE,
 };
 
 //CONFIG
@@ -176,7 +174,6 @@ enum
 	FILEICON,
 	PS2SAVECHECK,
 	ELFCHECK,
-//	MASSCHECK,
 	EXPORTDIR,
 	MISCINIT,
 };
@@ -262,7 +259,6 @@ void InitMiscSetting(void)
 	setting->discELFCheck = DEF_DISCELFCHECK;
 	setting->Exportdir[0] = 0;
 	setting->language = DEF_LANGUAGE;
-//	setting->MassFileSizeCheck = DEF_MASSFILESIZECHECK;
 }
 
 //-------------------------------------------------
@@ -381,8 +377,6 @@ void saveConfig(char *mainMsg)
 			sprintf(tmp, "%d", setting->interlace);
 		if(i==43)
 			sprintf(tmp, "%d", setting->ffmode);
-//		if(i==44)
-//			sprintf(tmp, "%d", setting->MassFileSizeCheck);
 		//
 		ret = cnf_setstr(cnf_keyname[i], tmp);
 		if(ret<0){
@@ -574,11 +568,6 @@ void loadConfig(char *mainMsg)
 					if(setting->ffmode<0 || setting->ffmode>1)
 						setting->ffmode = DEF_FFMODE;
 				}
-//				if(i==44){
-//					setting->MassFileSizeCheck = atoi(tmp);
-//					if(setting->MassFileSizeCheck<0 || setting->MassFileSizeCheck>1)
-//						setting->MassFileSizeCheck = DEF_MASSFILESIZECHECK;
-//				}
 			}
 		}
 		//バージョンチェック
@@ -1550,8 +1539,6 @@ void config_misc(SETTING *setting)
 						setting->discPs2saveCheck = !setting->discPs2saveCheck;
 				else if(sel==ELFCHECK)
 						setting->discELFCheck = !setting->discELFCheck;
-//				else if(sel==MASSCHECK)
-//					setting->MassFileSizeCheck = !setting->MassFileSizeCheck;
 				else if(sel==EXPORTDIR)
 					getFilePath(setting->Exportdir, DIR);
 				else if(sel==MISCINIT){
@@ -1620,15 +1607,6 @@ void config_misc(SETTING *setting)
 				else
 					strcat(config[i], lang->conf_off);
 			}
-/*
-			else if(i==MASSCHECK){	//MASS FILESIZE CHECK
-				sprintf(config[i], "%s: " ,lang->conf_mass_filesize_check);
-				if(setting->MassFileSizeCheck)
-					strcat(config[i], lang->conf_on);
-				else
-					strcat(config[i], lang->conf_off);
-			}
-*/
 			else if(i==EXPORTDIR){	//EXPORT DIR
 				sprintf(config[i], "%s: %s", lang->conf_export_dir, setting->Exportdir);
 			}
@@ -1699,8 +1677,6 @@ void config_misc(SETTING *setting)
 			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
 		else if(sel==ELFCHECK)
 			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
-//		else if(sel==MASSCHECK)
-//			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
 		else if(sel==EXPORTDIR)
 			sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_edit, lang->conf_clear, lang->conf_up);
 		else if(sel==MISCINIT)

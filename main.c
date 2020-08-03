@@ -14,16 +14,14 @@ extern u8 *ps2fs_irx;
 extern int size_ps2fs_irx;
 extern u8 *poweroff_irx;
 extern int size_poweroff_irx;
-extern u8 *loader_elf;
-extern int size_loader_elf;
-extern u8 *ps2netfs_irx;
-extern int size_ps2netfs_irx;
+//extern u8 *loader_elf;
+//extern int size_loader_elf;
 extern u8 *iopmod_irx;
 extern int size_iopmod_irx;
 extern u8 *usbd_irx;
 extern int size_usbd_irx;
 extern void usbhdfsd_irx;
-extern int  size_usbhdfsd_irx;
+extern int size_usbhdfsd_irx;
 extern u8 *cdvd_irx;
 extern int size_cdvd_irx;
 extern u8 *ps2ip_irx;
@@ -35,6 +33,7 @@ extern int size_ps2ftpd_irx;
 
 //#define DEBUG
 #ifdef DEBUG
+#include <debug.h>
 #define dbgprintf(args...) scr_printf(args)
 #define dbginit_scr() init_scr()
 #else
@@ -57,7 +56,6 @@ int reset=FALSE;
 int usbmass=0;
 
 //--------------------------------------------------------------
-//PS2Net uLaunchELF3.60
 #define IPCONF_MAX_LEN  (3*16)
 char if_conf[IPCONF_MAX_LEN];
 int if_conf_len;
@@ -122,27 +120,36 @@ void FormatMemoryCard(void)
 		strcpy(dir, "mc0:/BIDATA-SYSTEM");/* japan */
 	else
 		strcpy(dir, "mc0:/BADATA-SYSTEM");/* us */
-	//
-	sprintf(path, "%s/BOOT.ELF", dir);
-	fd = fioOpen(path, O_RDONLY);
-	if(fd>=0){
-		size_bootelf = fioLseek(fd, 0, SEEK_END);
-		fioLseek(fd, 0, SEEK_SET);
-		bootelf = (char*)malloc(size_bootelf);
-		fioRead(fd, bootelf, size_bootelf);
-		fioClose(fd);
-		sprintf(log[n], "backup %s", path); n++;
+
+	//フォルダオープンしてみる
+	fd = fioDopen(dir);
+	if(fd<0){
+		dir[0]='\0';
 	}
-	//
-	sprintf(path, "%s/TITLE.DB", dir);
-	fd = fioOpen(path, O_RDONLY);
-	if(fd>=0){
-		size_titledb = fioLseek(fd, 0, SEEK_END);
-		fioLseek(fd, 0, SEEK_SET);
-		titledb = (char*)malloc(size_titledb);
-		fioRead(fd, titledb, size_titledb);
-		fioClose(fd);
-		sprintf(log[n], "backup %s", path); n++;
+	else{
+		fioDclose(fd);
+		//BOOT.ELF
+		sprintf(path, "%s/BOOT.ELF", dir);
+		fd = fioOpen(path, O_RDONLY);
+		if(fd>=0){
+			size_bootelf = fioLseek(fd, 0, SEEK_END);
+			fioLseek(fd, 0, SEEK_SET);
+			bootelf = (char*)malloc(size_bootelf);
+			fioRead(fd, bootelf, size_bootelf);
+			fioClose(fd);
+			sprintf(log[n], "backup %s", path); n++;
+		}
+		//TITLE.DB
+		sprintf(path, "%s/TITLE.DB", dir);
+		fd = fioOpen(path, O_RDONLY);
+		if(fd>=0){
+			size_titledb = fioLseek(fd, 0, SEEK_END);
+			fioLseek(fd, 0, SEEK_SET);
+			titledb = (char*)malloc(size_titledb);
+			fioRead(fd, titledb, size_titledb);
+			fioClose(fd);
+			sprintf(log[n], "backup %s", path); n++;
+		}
 	}
 
 	//ログ表示
@@ -170,7 +177,7 @@ void FormatMemoryCard(void)
 		if(mcSync(1,NULL,NULL)!=0) break;
 
 	//元に戻す
-	if((bootelf!=NULL)||(titledb!=NULL)){
+	if(dir){
 		//BxDATASYSTEM
 		fioMkdir(dir);
 		//
@@ -255,7 +262,18 @@ static void getIpConfig(void)
 }
 
 //--------------------------------------------------------------
-// loadModules
+void initsbv_patches(void)
+{
+	static int SbvPatchesInited=FALSE;
+	
+	if(!SbvPatchesInited){
+		sbv_patch_enable_lmb();
+		sbv_patch_disable_prefix_check();
+		SbvPatchesInited=TRUE;
+	}
+}
+
+//--------------------------------------------------------------
 void delay(int count)
 {
 	int i;
@@ -267,16 +285,50 @@ void delay(int count)
 }
 
 //--------------------------------------------------------------
-void initsbv_patches(void)
+//IRXファイル読み込み
+int load_irxfile(char *filename, int arg_len, char *args)
 {
-	static int SbvPatchesInited=FALSE;
-	
-	if(!SbvPatchesInited){
-		dbgprintf("Init MrBrown sbv_patches\n");
-		sbv_patch_enable_lmb();
-		sbv_patch_disable_prefix_check();
-		SbvPatchesInited=TRUE;
+	int fd, size;
+	char path[MAX_PATH];
+	int ret=-1;
+
+	if(boot == HOST_BOOT) goto mc;
+	if(boot == MASS_BOOT) goto mc;
+
+	sprintf(path, "%s%s", LaunchElfDir, filename);
+	fd = fioOpen(path, O_RDONLY);
+	if(fd>=0){
+		size = fioLseek(fd, 0, SEEK_END);
+		fioClose(fd);
+		if(size>=0){
+			ret = SifLoadModule(path, arg_len, args);
+			if(ret>=0) return 1;
+		}
 	}
+
+mc:
+	sprintf(path, "mc0:/SYS-CONF/%s", filename);
+	fd = fioOpen(path, O_RDONLY);
+	if(fd>=0){
+		size = fioLseek(fd, 0, SEEK_END);
+		fioClose(fd);
+		if(size>=0){
+			ret = SifLoadModule(path, arg_len, args);
+			if(ret>=0) return 2;
+		}
+	}
+
+	sprintf(path, "mc1:/SYS-CONF/%s", filename);
+	fd = fioOpen(path, O_RDONLY);
+	if(fd>=0){
+		size = fioLseek(fd, 0, SEEK_END);
+		fioClose(fd);
+		if(size>=0){
+			ret = SifLoadModule(path, arg_len, args);
+			if(ret>=0) return 3;
+		}
+	}
+	return -1;
 }
 
 //--------------------------------------------------------------
@@ -314,10 +366,53 @@ void	load_ps2dev9(void)
 	static int loaded=FALSE;
 	smod_mod_info_t	mod_t;
 
-	load_iomanx();
 	if(!loaded){
 		if(smod_get_mod_by_name( "dev9", &mod_t )==0)
 			SifExecModuleBuffer(&ps2dev9_irx, size_ps2dev9_irx, 0, NULL, &ret);
+		loaded=TRUE;
+	}
+}
+
+//--------------------------------------------------------------
+void	load_ps2atad(void)
+{
+	int ret;
+	static int loaded=FALSE;
+	smod_mod_info_t	mod_t;
+
+	if(!loaded){
+		if(smod_get_mod_by_name( "atad", &mod_t )==0)
+			SifExecModuleBuffer(&ps2atad_irx, size_ps2atad_irx, 0, NULL, &ret);
+		loaded=TRUE;
+	}
+}
+
+//--------------------------------------------------------------
+void	load_ps2hdd(void)
+{
+	int ret;
+	static int loaded=FALSE;
+	smod_mod_info_t	mod_t;
+	static char hddarg[] = "-o" "\0" "4" "\0" "-n" "\0" "20";
+
+	if(!loaded){
+		if(smod_get_mod_by_name( "hdd", &mod_t )==0)
+			SifExecModuleBuffer(&ps2hdd_irx, size_ps2hdd_irx, sizeof(hddarg), hddarg, &ret);
+		loaded=TRUE;
+	}
+}
+
+//--------------------------------------------------------------
+void	load_ps2fs(void)
+{
+	int ret;
+	static int loaded=FALSE;
+	smod_mod_info_t	mod_t;
+	static char pfsarg[] = "-m" "\0" "4" "\0" "-o" "\0" "10" "\0" "-n" "\0" "40";
+
+	if(!loaded){
+		if(smod_get_mod_by_name( "pfs_driver", &mod_t )==0)
+			SifExecModuleBuffer(&ps2fs_irx, size_ps2fs_irx, sizeof(pfsarg), pfsarg, &ret);
 		loaded=TRUE;
 	}
 }
@@ -329,10 +424,21 @@ void	load_ps2ip(void)
 	static int loaded=FALSE;
 	smod_mod_info_t	mod_t;
 
-	load_ps2dev9();
-	if(!loaded){	
+	if(!loaded){
 		if(smod_get_mod_by_name( "TCP/IP Stack", &mod_t )==0)
 			SifExecModuleBuffer(&ps2ip_irx, size_ps2ip_irx, 0, NULL, &ret);
+		loaded=TRUE;
+	}
+}
+
+//--------------------------------------------------------------
+void	load_ps2smap(void)
+{
+	int ret;
+	static int loaded=FALSE;
+	smod_mod_info_t	mod_t;
+
+	if(!loaded){	
 		if(smod_get_mod_by_name( "INET_SMAP_driver", &mod_t )==0)
 			SifExecModuleBuffer(&ps2smap_irx, size_ps2smap_irx, if_conf_len, &if_conf[0], &ret);
 		loaded=TRUE;
@@ -340,61 +446,136 @@ void	load_ps2ip(void)
 }
 
 //--------------------------------------------------------------
-void	load_ps2atad(void)
-{
-	int ret;
-	static char hddarg[] = "-o" "\0" "4" "\0" "-n" "\0" "20";
-	static char pfsarg[] = "-m" "\0" "4" "\0" "-o" "\0" "10" "\0" "-n" "\0" "40";
-	static int loaded=FALSE;
-	smod_mod_info_t	mod_t;
-
-	load_ps2dev9();
-	if(!loaded){
-		if(smod_get_mod_by_name( "atad", &mod_t )==0)
-			SifExecModuleBuffer(&ps2atad_irx, size_ps2atad_irx, 0, NULL, &ret);
-		if(smod_get_mod_by_name( "hdd", &mod_t )==0)
-			SifExecModuleBuffer(&ps2hdd_irx, size_ps2hdd_irx, sizeof(hddarg), hddarg, &ret);
-		if(smod_get_mod_by_name( "pfs_driver", &mod_t )==0)
-			SifExecModuleBuffer(&ps2fs_irx, size_ps2fs_irx, sizeof(pfsarg), pfsarg, &ret);
-		loaded=TRUE;
-	}
-}
-
-//--------------------------------------------------------------
 void	load_ps2ftpd(void)
 {
-	int 	ret;
-	int		arglen;
-	char* arg_p;
+	int ret;
 	static int loaded=FALSE;
+//	smod_mod_info_t	mod_t;
+	int arglen;
+	char* arg_p;
 
 	arg_p = "-anonymous";
 	arglen = strlen(arg_p);
 
-	load_ps2ip();
 	if(!loaded){
-		//if( IOPModulePresent( "???" )==0 )
+		//if( smod_get_mod_by_name( "???" )==0 )
 			SifExecModuleBuffer(&ps2ftpd_irx, size_ps2ftpd_irx, arglen, arg_p, &ret);
 		loaded=TRUE;
 	}
 }
 
 //--------------------------------------------------------------
-void	load_ps2netfs(void)
+void	load_poweroff(void)
 {
-	static int loaded=FALSE;
 	int ret;
+	static int loaded=FALSE;
 	smod_mod_info_t	mod_t;
 
-	load_ps2ip();
 	if(!loaded){
-		if(smod_get_mod_by_name( "PS2_TcpFileDriver", &mod_t )==0)
-			SifExecModuleBuffer(&ps2netfs_irx, size_ps2netfs_irx, 0, NULL, &ret);
+		if(smod_get_mod_by_name( "Poweroff_Handler", &mod_t )==0)
+			SifExecModuleBuffer(&poweroff_irx, size_poweroff_irx, 0, NULL, &ret);
+		loaded=TRUE;
+	}
+}
+
+/*
+//--------------------------------------------------------------
+void poweroffHandler(void *arg)
+{
+	hddPowerOff();
+}
+*/
+
+//--------------------------------------------------------------
+void PowerOff(void)
+{
+	load_poweroff();
+	load_iomanx();
+	load_filexio();
+	hddPreparePoweroff();
+//	hddSetUserPoweroffCallback((void *)poweroffHandler, NULL);
+	hddPowerOff();
+}
+
+//--------------------------------------------------------------
+//loadHddModules
+void loadHddModules(void)
+{
+	static int loaded=FALSE;
+	
+	if(!loaded){
+		drawMsg(lang->main_loadhddmod);
+//		load_poweroff();
+		load_iomanx();
+		load_filexio();
+		load_ps2dev9();
+		load_ps2atad();
+		load_ps2hdd();
+		load_ps2fs();
+//		hddPreparePoweroff();
+//		hddSetUserPoweroffCallback((void *)poweroffHandler, NULL);
 		loaded=TRUE;
 	}
 }
 
 //--------------------------------------------------------------
+//FTPD
+void loadFtpdModules(void)
+{
+	static int loaded=FALSE;
+
+	if(!loaded){
+		loadHddModules();
+		loadUsbModules();
+		drawMsg(lang->main_loadftpmod);
+//		load_iomanx();
+//		load_ps2dev9();
+		load_ps2ip();
+		load_ps2smap();
+		load_ps2ftpd();
+		loaded=TRUE;
+	}
+	strcpy(mainMsg, netConfig);
+}
+
+//--------------------------------------------------------------
+//loadUsbModules
+void loadUsbModules(void)
+{
+	static int loaded=FALSE;
+	int ret;
+
+	if(!loaded){
+		//usbd.irx
+		SifExecModuleBuffer(&usbd_irx, size_usbd_irx, 0, NULL, &ret);
+		//usbhdfsd.irx
+		ret = load_irxfile("USB_MASS.IRX", 0, NULL);
+		usbmass=ret;
+		if(ret<0)
+			SifExecModuleBuffer(&usbhdfsd_irx, size_usbhdfsd_irx, 0, NULL, &ret);
+		delay(3);
+		loaded=TRUE;
+	}
+}
+
+//--------------------------------------------------------------
+//loadCdModules
+void loadCdModules(void)
+{
+	static int loaded=FALSE;
+	int ret;
+	
+	if(!loaded){
+		initsbv_patches();
+		SifExecModuleBuffer(&cdvd_irx, size_cdvd_irx, 0, NULL, &ret);
+		cdInit(CDVD_INIT_INIT);
+		CDVD_Init();
+		loaded=TRUE;
+	}
+}
+
+//--------------------------------------------------------------
+//loadModules
 void loadModules(void)
 {
 	smod_mod_info_t	mod_t;
@@ -413,132 +594,6 @@ void loadModules(void)
 }
 
 //--------------------------------------------------------------
-void loadCdModules(void)
-{
-	static int loaded=FALSE;
-	int ret;
-	
-	if(!loaded){
-		initsbv_patches();
-		SifExecModuleBuffer(&cdvd_irx, size_cdvd_irx, 0, NULL, &ret);
-		cdInit(CDVD_INIT_INIT);
-		CDVD_Init();
-		loaded=TRUE;
-	}
-}
-
-//--------------------------------------------------------------
-//
-int load_irxfile(char *filename)
-{
-	int fd, size;
-	char path[MAX_PATH];
-	int ret=-1;
-
-	if(boot == HOST_BOOT) goto mc;
-	if(boot == MASS_BOOT) goto mc;
-
-	sprintf(path, "%s%s", LaunchElfDir, filename);
-	fd = fioOpen(path, O_RDONLY);
-	if(fd>=0){
-		size = fioLseek(fd, 0, SEEK_END);
-		fioClose(fd);
-		if(size>=0){
-			ret = SifLoadModule(path, 0, NULL);
-			if(ret>=0) return 1;
-		}
-	}
-
-mc:
-	sprintf(path, "mc0:/SYS-CONF/%s", filename);
-	fd = fioOpen(path, O_RDONLY);
-	if(fd>=0){
-		size = fioLseek(fd, 0, SEEK_END);
-		fioClose(fd);
-		if(size>=0){
-			ret = SifLoadModule(path, 0, NULL);
-			if(ret>=0) return 2;
-		}
-	}
-
-	sprintf(path, "mc1:/SYS-CONF/%s", filename);
-	fd = fioOpen(path, O_RDONLY);
-	if(fd>=0){
-		size = fioLseek(fd, 0, SEEK_END);
-		fioClose(fd);
-		if(size>=0){
-			ret = SifLoadModule(path, 0, NULL);
-			if(ret>=0) return 3;
-		}
-	}
-	return -1;
-}
-
-//--------------------------------------------------------------
-void loadUsbModules(void)
-{
-	static int loaded=FALSE;
-	int ret;
-
-	if(!loaded){
-		//usbd.irx
-		SifExecModuleBuffer(&usbd_irx, size_usbd_irx, 0, NULL, &ret);
-		//usbhdfsd.irx
-		ret = load_irxfile("USB_MASS.IRX");
-		usbmass=ret;
-		if(ret<0)
-			SifExecModuleBuffer(&usbhdfsd_irx, size_usbhdfsd_irx, 0, NULL, &ret);
-		delay(3);
-		loaded=TRUE;
-	}
-}
-
-//--------------------------------------------------------------
-void poweroffHandler(int i)
-{
-	hddPowerOff();
-}
-
-//--------------------------------------------------------------
-void loadHddModules(void)
-{
-	static int loaded=FALSE;
-	int ret;
-	int i=0;
-	smod_mod_info_t	mod_t;
-	
-	if(!loaded){
-		drawMsg(lang->main_loadhddmod);
-		hddPreparePoweroff();
-		hddSetUserPoweroffCallback((void *)poweroffHandler,(void *)i);
-		if(smod_get_mod_by_name( "Poweroff_Handler", &mod_t )==0)
-			SifExecModuleBuffer(&poweroff_irx, size_poweroff_irx, 0, NULL, &ret);
-
-		load_iomanx();
-		load_filexio();
-		load_ps2dev9();
-		load_ps2atad(); //also loads ps2hdd & ps2fs
-		loaded=TRUE;
-	}
-}
-
-//--------------------------------------------------------------
-void loadNetModules(void)
-{
-	static int loaded=FALSE;
-
-	if(!loaded){
-		loadHddModules();
-		loadUsbModules();
-		drawMsg(lang->main_loadftpmod);
-		load_ps2netfs();
-		load_ps2ftpd();
-		loaded=TRUE;
-	}
-	strcpy(mainMsg, netConfig);
-}
-
-//--------------------------------------------------------------
 void showinfo(void)
 {
 	char msg0[MAX_PATH], msg1[MAX_PATH];
@@ -548,7 +603,7 @@ void showinfo(void)
 	int x, y, y0, y1;
 	int i;
 
-	char info[4][1024];
+	char info[5][1024];
 	char bootdevice[256];
 	int fd;
 	char romver[16];
@@ -722,8 +777,6 @@ int ReadCNF(char *direlf)
 // ELFのテストと実行
 void RunElf(const char *path)
 {
-	char *extension;
-	int ret;
 	char tmp[MAX_PATH];
 	static char fullpath[MAX_PATH];
 	static char party[40];
@@ -731,6 +784,9 @@ void RunElf(const char *path)
 	
 	if(path[0]==0) return;
 
+#ifdef ENABLE_PSB
+	char *extension;
+	int ret;
 	//psb実行
 	extension = getExtension(path);
 	if(extension!=NULL){
@@ -749,15 +805,15 @@ void RunElf(const char *path)
 			return;
 		}
 	}
-
+#endif
 	//ELF実行
 	if(!strncmp(path, "mc", 2)){
 		if(path[2]==':'){
 			strcpy(fullpath, "mc0:");
 			strcat(fullpath, path+3);
-			if(checkELFheader(fullpath)<0){
+			if(checkELFheader(fullpath)!=1){
 				fullpath[2]='1';
-				if(checkELFheader(fullpath)<0){
+				if(checkELFheader(fullpath)!=1){
 					sprintf(mainMsg, "%s%s", path, lang->main_notfound);
 					return;
 				}
@@ -765,7 +821,7 @@ void RunElf(const char *path)
 		}
 		else{
 			strcpy(fullpath, path);
-			if(checkELFheader(fullpath)<0){
+			if(checkELFheader(fullpath)!=1){
 				sprintf(mainMsg, "%s%s", path, lang->main_notfound);
 				return;
 			}
@@ -789,7 +845,7 @@ void RunElf(const char *path)
 		party[0] = 0;
 		strcpy(fullpath, "mass:");
 		strcat(fullpath, path+6);
-		if(checkELFheader(fullpath)<0){
+		if(checkELFheader(fullpath)!=1){
 			sprintf(mainMsg, "%s%s", path, lang->main_notfound);
 			return;
 		}
@@ -815,10 +871,14 @@ void RunElf(const char *path)
 			if(!ReadCNF(fullpath)) return;
 			//strcpy(mainMsg, "Succece!"); return;
 		}
-		else if(!stricmp(path, "MISC/PS2Net")){	//PS2Net uLaunchELF3.60
+		else if(!stricmp(path, "MISC/PS2Ftpd")){
 			getIpConfig();	//リロード
 			mainMsg[0] = 0;
-			loadNetModules();
+			loadFtpdModules();
+			return;
+		}
+		else if(!stricmp(path, "MISC/PowerOff")){
+			PowerOff();
 			return;
 		}
 		else if(!stricmp(path, "MISC/INFO")){
@@ -829,6 +889,9 @@ void RunElf(const char *path)
 			config(mainMsg);
 			if(setting->discControl)
 				loadCdModules();
+			return;
+		}
+		else{
 			return;
 		}
 	}
@@ -851,7 +914,7 @@ void RunElf(const char *path)
 
 //--------------------------------------------------------------
 // reboot IOP (original source by Hermes in BOOT.c - cogswaploader)
-// uLaunchELF3.60
+// uLaunchELF
 void Reset()
 {
 	reset=TRUE;
@@ -863,7 +926,6 @@ void Reset()
 	SifLoadFileExit();
 	SifExitRpc();
 	SifExitCmd();
-
 	SifInitRpc(0);
 	FlushCache(0);
 	FlushCache(2);
@@ -968,15 +1030,16 @@ void LaunchMain(void)
 			}
 		}
 		else{	//mode==DPAD_MISC
-			nList=6;
+			nList=7;
 			for(i=0; i<nList; i++){
 				strcpy(tmp, "         ");
 				if(i==0) strcpy(dummyElf, "MISC/FileBrowser");
 				if(i==1) strcpy(dummyElf, "MISC/PS2Browser");
 				if(i==2) strcpy(dummyElf, "MISC/PS2Disc");
-				if(i==3) strcpy(dummyElf, "MISC/PS2Net");
-				if(i==4) strcpy(dummyElf, "MISC/INFO");
-				if(i==5) strcpy(dummyElf, "MISC/CONFIG");
+				if(i==3) strcpy(dummyElf, "MISC/PS2Ftpd");
+				if(i==4) strcpy(dummyElf, "MISC/PowerOff");
+				if(i==5) strcpy(dummyElf, "MISC/INFO");
+				if(i==6) strcpy(dummyElf, "MISC/CONFIG");
 				//ELFのパスのリスト
 				strcpy(elfpath[i], dummyElf);
 				//表示するファイル名
@@ -1061,8 +1124,10 @@ void LaunchMain(void)
 				else if(new_pad & PAD_CIRCLE){
 					RunElf(elfpath[sel]);	//ランチャー
 				}
-/*				else if(new_pad & PAD_R1){	//デバッグ
-				}*/
+/*
+				else if(new_pad & PAD_R1){	//デバッグ
+				}
+*/
 			}
 			else if(mode==DPAD_MISC){
 				if(new_pad & PAD_UP){

@@ -188,6 +188,7 @@ int cnf_setstr(const char* key, char *str)
 	return 1;
 }
 
+/*
 //-------------------------------------------------
 int cnf_debug(int id, char *data)
 {
@@ -199,3 +200,4 @@ int cnf_debug(int id, char *data)
 	}
 	return cnf_lines;
 }
+*/

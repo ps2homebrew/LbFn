@@ -1,6 +1,6 @@
 #include "launchelf.h"
 
-//PS2TIME LaunchELF 3.80
+//PS2TIME uLaunchELF
 typedef struct
 {
 	unsigned char unknown;
@@ -107,9 +107,11 @@ char clipPath[MAX_PATH], LastDir[MAX_NAME], marks[MAX_ENTRY];
 FILEINFO clipFiles[MAX_ENTRY];
 int fileMode =  FIO_S_IRUSR | FIO_S_IWUSR | FIO_S_IXUSR | FIO_S_IRGRP | FIO_S_IWGRP | FIO_S_IXGRP | FIO_S_IROTH | FIO_S_IWOTH | FIO_S_IXOTH;
 
+#ifdef ENABLE_PSB
 #define MAX_ARGC 3
 int psb_argc;
 char psb_argv[MAX_ARGC][MAX_PATH+2];
+#endif
 
 //-------------------------------------------------
 //拡張子を取得
@@ -744,26 +746,14 @@ int menu(const char *path, const char *file)
 				return -1;
 			else if(new_pad & PAD_CIRCLE)
 				break;
-			else if(new_pad & PAD_SQUARE){
-				if(enable[COPY]){
-					sel=COPY;
-					break;
-				}
-			}
-			else if(new_pad & PAD_TRIANGLE){
-				if(enable[PASTE]){
-					sel=PASTE;
-					break;
-				}
-			}
 		}
 		
 		// 描画開始
 		drawDialogTmp(menu_x, menu_y, menu_x+menu_w, menu_y+menu_h, setting->color[0], setting->color[1]);
 		for(i=0,y=74; i<NUM_MENU; i++){
-			if(i==COPY)          sprintf(tmp, "%s(□)", lang->filer_menu_copy);
+			if(i==COPY)          strcpy(tmp, lang->filer_menu_copy);
 			else if(i==CUT)     strcpy(tmp, lang->filer_menu_cut);
-			else if(i==PASTE)   sprintf(tmp, "%s(△)", lang->filer_menu_paste);
+			else if(i==PASTE)   strcpy(tmp, lang->filer_menu_paste);
 			else if(i==DELETE)  strcpy(tmp, lang->filer_menu_delete);
 			else if(i==RENAME)  strcpy(tmp, lang->filer_menu_rename);
 			else if(i==NEWDIR)  strcpy(tmp, lang->filer_menu_newdir);
@@ -1169,6 +1159,7 @@ int paste(const char *path)
 	return ret;
 }
 
+#ifdef ENABLE_PSB
 //-------------------------------------------------
 //psbCommand psbコマンド実行
 int psbCommand(void)
@@ -1557,6 +1548,7 @@ psberror:
 	fioClose(fd);
 	return ret;
 }
+#endif
 
 //-------------------------------------------------
 //ゲームタイトルをファイル名に変換
@@ -2585,7 +2577,7 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 	// ファイルリスト設定
 	if(path[0]==0){
 		for(i=0;i<5;i++){
-			memset(&files[i].modifyTime,0,sizeof(PS2TIME));
+			memset(&files[i].modifyTime, 0, sizeof(PS2TIME));
 			files[i].fileSizeByte = 0;
 			files[i].attr = FIO_S_IFDIR;
 			if(i==0) strcpy(files[i].name, "mc0:");
@@ -2598,7 +2590,7 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 		}
 		nfiles = 5;
 		if(cnfmode==ELF_FILE){
-			memset(&files[5].modifyTime,0,sizeof(PS2TIME));
+			memset(&files[5].modifyTime, 0, sizeof(PS2TIME));
 			files[5].fileSizeByte = 0;
 			files[5].attr = FIO_S_IFDIR;
 			strcpy(files[5].name, "MISC");
@@ -2608,8 +2600,8 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 		}
 	}
 	else if(!strcmp(path, "MISC/")){
-		for(i=0;i<7;i++){
-			memset(&files[i].modifyTime,0,sizeof(PS2TIME));
+		for(i=0;i<8;i++){
+			memset(&files[i].modifyTime, 0, sizeof(PS2TIME));
 			files[i].fileSizeByte = 0;
 			if(i==0)
 				files[i].attr = FIO_S_IFDIR;
@@ -2619,13 +2611,14 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 			if(i==1) strcpy(files[i].name, "FileBrowser");
 			if(i==2) strcpy(files[i].name, "PS2Browser");
 			if(i==3) strcpy(files[i].name, "PS2Disc");
-			if(i==4) strcpy(files[i].name, "PS2Net");	//PS2Net uLaunchELF3.60
-			if(i==5) strcpy(files[i].name, "INFO");
-			if(i==6) strcpy(files[i].name, "CONFIG");
+			if(i==4) strcpy(files[i].name, "PS2Ftpd");
+			if(i==5) strcpy(files[i].name, "PowerOff");
+			if(i==6) strcpy(files[i].name, "INFO");
+			if(i==7) strcpy(files[i].name, "CONFIG");
 			files[i].title[0] = 0;
 			files[i].type = TYPE_OTHER;
 		}
-		nfiles = 7;
+		nfiles = 8;
 	}
 	else{
 		//files[0]を初期化
@@ -2685,19 +2678,20 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 				sprintf(fullpath, "%s%s", path, files[i].name);
 				//ELFヘッダを調べる
 				if(!strncmp(path, "mc", 2) || !strncmp(path, "mass", 4)){
-					checkELFret = checkELFheader(fullpath); 	//checkELFheader
-					if(checkELFret<0)
-						files[i].type=TYPE_FILE;
-					else
+					checkELFret = checkELFheader(fullpath);
+					mountedParty[0][0]=0;
+					if(checkELFret==1)
 						files[i].type=TYPE_ELF;
+					else
+						files[i].type=TYPE_FILE;
 				}
 				else if( !strncmp(path, "hdd", 3)&&strcmp(path, "hdd0:/") ){
-					checkELFret = checkELFheader(fullpath); 	//checkELFheader
+					checkELFret = checkELFheader(fullpath);
 					mountedParty[0][0]=0;
-					if(checkELFret<0)
-						files[i].type=TYPE_FILE;
-					else
+					if(checkELFret==1)
 						files[i].type=TYPE_ELF;
+					else
+						files[i].type=TYPE_FILE;
 					//HDDのとき再マウント
 					strcpy(file.name, files[i].name);
 					strcpy(file.title, files[i].title);
@@ -2709,11 +2703,11 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 				}
 				else if( !strncmp(path, "cdfs", 4)){
 					if(setting->discELFCheck){
-						checkELFret = checkELFheader(fullpath); 	//checkELFheader
-						if(checkELFret<0)
-							files[i].type=TYPE_FILE;
-						else
+						checkELFret = checkELFheader(fullpath);
+						if(checkELFret==1)
 							files[i].type=TYPE_ELF;
+						else
+							files[i].type=TYPE_FILE;
 					}
 					else{
 						files[i].type=TYPE_FILE;
@@ -2845,33 +2839,38 @@ void getFilePath(char *out, int cnfmode)
 			if(cnfmode==ELF_FILE){
 				if(new_pad & PAD_CIRCLE) {	//ファイルを決定
 					if(files[sel].attr & FIO_S_IFREG){
+						char fullpath[MAX_PATH];
 						int ret;
-						sprintf(out, "%s%s", path, files[sel].name);
-						ret = checkELFheader(out);	//ヘッダチェック
-						mountedParty[0][0]=0;
-						if(ret==1){
-							//ELFファイル選択
+						sprintf(fullpath, "%s%s", path, files[sel].name);
+						if(!strncmp(path, "MISC/", 5)){
+							strcpy(out, fullpath);
 							strcpy(LastDir, path);
 							break;
 						}
-						if(!strncmp(path, "MISC/",5)){
+						ret = checkELFheader(fullpath);
+						mountedParty[0][0]=0;
+						if(ret==1){
+							//ELFファイル選択
+							strcpy(out, fullpath);
 							strcpy(LastDir, path);
 							break;
 						}
 						else{
 							//ELFファイルではないとき
+							pushed=FALSE;
+							sprintf(msg0, lang->filer_not_elf);
+#ifdef ENABLE_PSB
 							char *extension;
 							extension = getExtension(files[sel].name);
 							if(extension!=NULL){
 								if(!stricmp(extension, ".psb")){
+									strcpy(out, fullpath);
 									strcpy(LastDir, path);
 									break;
 								}
 							}
+#endif
 						}
-						pushed=FALSE;
-						sprintf(msg0, lang->filer_not_elf);
-						out[0] = 0;
 					}
 				}
 				else if(new_pad & PAD_SQUARE) {	// ファイルマスク切り替え
@@ -2939,9 +2938,10 @@ void getFilePath(char *out, int cnfmode)
 						}
 						else{
 							//ELFファイルではないとき
-							char *extension;
 							pushed=FALSE;
 							sprintf(msg0, lang->filer_not_elf);
+#ifdef ENABLE_PSB
+							char *extension;
 							extension = getExtension(fullpath);
 							if(extension!=NULL){
 								if(!stricmp(extension, ".psb")){	//psbファイルを実行
@@ -2963,6 +2963,7 @@ void getFilePath(char *out, int cnfmode)
 									}
 								}
 							}
+#endif
 						}
 					}
 				}

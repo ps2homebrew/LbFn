@@ -37,7 +37,9 @@ typedef struct
 	char filer_menu_importpsu[MAX_LANGUAGE_STR];
 	char filer_overwrite[MAX_LANGUAGE_STR];
 	char filer_not_elf[MAX_LANGUAGE_STR];
+#ifdef ENABLE_PSB
 	char filer_execute_psb[MAX_LANGUAGE_STR];
+#endif
 	char filer_not_fnt[MAX_LANGUAGE_STR];
 	char filer_copy_to_clip[MAX_LANGUAGE_STR];
 	char filer_delete[MAX_LANGUAGE_STR];

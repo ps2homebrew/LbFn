@@ -25,12 +25,15 @@
 #include <cdvd_rpc.h>
 #include <smod.h>
 
+//psbファイル実行機能の有無
+//#define ENABLE_PSB
+
 #include "cd.h"
 #include "language.h"
 #include "cnf.h"
 
 // バージョン
-#define LBF_VER "LbF v0.56"
+#define LBF_VER "LbF v0.57"
 
 // 垂直スキャンレート
 #define SCANRATE (ITO_VMODE_AUTO==ITO_VMODE_NTSC ? 60:50)
@@ -47,7 +50,6 @@
 enum
 {
 	SCREEN_WIDTH = 640,
-	LINE_THICKNESS = 2,
 	
 	MAX_NAME = 256,
 	MAX_PATH = 1025,
@@ -95,14 +97,14 @@ int checkELFheader(const char *filename);
 void RunLoaderElf(char *filename, char *);
 
 /* draw.c */
-//setupito
-enum{
+
+enum	//setupito
+{
 	ITO_INIT_ENABLE,
 	ITO_INIT_DISABLE
 };
 
-//SetFontMargin GetFontMargin
-enum
+enum	//SetFontMargin GetFontMargin
 {
 	CHAR_MARGIN = 0,
 	LINE_MARGIN,
@@ -112,15 +114,13 @@ enum
 	KANJI_FONT_MARGIN_LEFT
 };
 
-//GetCurrentPos
-enum
+enum	//GetCurrentPos
 {
 	CURRENTPOS_X = 0,
 	CURRENTPOS_Y
 };
 
-//GetFontSize
-enum
+enum	//GetFontSize
 {
 	ASCII_FONT_WIDTH = 0,
 	ASCII_FONT_HEIGHT,

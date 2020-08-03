@@ -2,20 +2,17 @@
 LIBITO=$(PS2DEV)\libito
 PS2ETH=$(PS2DEV)\ps2eth
 
-#EE_BIN = LaunchELF.ELF
 EE_BIN = LbF.ELF
 
 EE_OBJS = main.o pad.o config.o elf.o draw.o loader.o  filer.o cd.o language.o cnf.o\
-	poweroff.o iomanx.o filexio.o ps2atad.o ps2dev9.o ps2hdd.o ps2fs.o ps2netfs.o\
-	usbd.o usbhdfsd.o cdvd.o ps2ip.o ps2smap.o ps2ftpd.o
+	poweroff.o iomanx.o filexio.o ps2atad.o ps2dev9.o ps2hdd.o ps2fs.o\
+	usbd.o usbhdfsd.o cdvd.o ps2ip.o ps2smap.o ps2ftpd.o fakehost.o
 
-EE_INCS := -I$(LIBITO)/include -I$(PS2DK)/sbv/include\
-	-I$(PS2DEV)/libcdvd/ee
+EE_INCS := -I$(LIBITO)/include -I$(PS2DEV)/libcdvd/ee
 
-EE_LDFLAGS := -L$(LIBITO)/lib -L$(PS2SDK)/sbv/lib\
-	-L$(PS2DEV)/libcdvd/lib -s
+EE_LDFLAGS := -L$(LIBITO)/lib -L$(PS2DEV)/libcdvd/lib -s
 
-EE_LIBS = -lpad -lito -lmc -lhdd -lcdvdfs -lfileXio -lpatches -lpoweroff
+EE_LIBS = -lpad -lito -lmc -lhdd -lcdvd -lcdvdfs -lfileXio -lpatches -lpoweroff -ldebug\
 
 #------------------------------------
 all: $(EE_BIN)
@@ -51,11 +48,8 @@ ps2hdd.s:
 ps2fs.s:
 	bin2s $(PS2SDK)/iop/irx/ps2fs.irx ps2fs.s ps2fs_irx
 
-ps2netfs.s:
-	bin2s $(PS2SDK)/iop/irx/ps2netfs.irx ps2netfs.s ps2netfs_irx
-
-loader.s:
-	bin2s loader/loader.elf loader.s loader_elf
+fakehost.s:
+	bin2s $(PS2SDK)/iop/irx/fakehost.irx fakehost.s fakehost_irx
 
 ps2smap.s:
 	bin2s $(PS2ETH)/smap/ps2smap.irx ps2smap.s ps2smap_irx
@@ -66,6 +60,10 @@ ps2ip.s:
 #ps2ftpd.irx uLaunchELF 4.01
 ps2ftpd.s:
 	bin2s modules/ps2ftpd.irx ps2ftpd.s ps2ftpd_irx
+
+#loader.elf uLaunchELF 4.12
+loader.s:
+	bin2s loader/loader.elf loader.s loader_elf
 
 #------------------------------------
 clean:

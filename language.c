@@ -54,7 +54,9 @@ void SetLanguage(const int langID)
 		strcpy(lang->filer_menu_importpsu, "Import psu");
 		strcpy(lang->filer_overwrite, "Overwrite?");
 		strcpy(lang->filer_not_elf, "This file isn't ELF.");
+#ifdef ENABLE_PSB
 		strcpy(lang->filer_execute_psb, "Execute?");
+#endif
 		strcpy(lang->filer_not_fnt, "This file isn't FNT.");
 		strcpy(lang->filer_copy_to_clip, "Copied to the Clipboard");
 		strcpy(lang->filer_delete, "Delete?");
@@ -190,7 +192,9 @@ void SetLanguage(const int langID)
 		strcpy(lang->filer_menu_importpsu, "インポート");
 		strcpy(lang->filer_overwrite, "上書きしますか?");
 		strcpy(lang->filer_not_elf, "ELFファイルではありません");
+#ifdef ENABLE_PSB
 		strcpy(lang->filer_execute_psb, "実行しますか?");
+#endif
 		strcpy(lang->filer_not_fnt, "FNTファイルではありません");
 		strcpy(lang->filer_copy_to_clip, "クリップボードへコピーしました");
 		strcpy(lang->filer_delete, "削除しますか?");
