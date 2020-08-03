@@ -1,4 +1,5 @@
-EE_INCS := $(EE_INCS) -I$(PS2DEV)/sbv-1.0-lite/include
+#EE_INCS := $(EE_INCS) -I$(PS2DEV)/sbv-1.0-lite/include
+EE_INCS := $(EE_INCS) -I$(PS2DK)/sbv/include
 
 EE_CFLAGS  := -mips3 -ffreestanding -fno-builtin -G0 \
 		-fshort-double -mlong64 -mhard-float -mno-abicalls -O2 -EL -Wall \
@@ -25,7 +26,8 @@ EE_BIN = loader.elf
 
 EE_OBJS = loader.o fakehost.o poweroff.o
 
-EE_LIBS = -lfileXio -lsbv_patches -lpoweroff -ldebug -lc
+#EE_LIBS = -lfileXio -lsbv_patches -lpoweroff -ldebug -lc
+EE_LIBS = -lfileXio -lpatches -lpoweroff -ldebug -lc
 
 all: $(EE_BIN)
 

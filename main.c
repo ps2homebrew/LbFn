@@ -56,6 +56,7 @@ int timeout=0;
 int mode=BUTTON;
 char LaunchElfDir[MAX_PATH], mainMsg[MAX_PATH];
 
+//-----------------------------------
 //PS2Net uLaunchELF3.60
 #define IPCONF_MAX_LEN  (3*16)
 char if_conf[IPCONF_MAX_LEN];
@@ -367,6 +368,33 @@ void loadCdModules(void)
 	}
 }
 
+void load_usbd(void)
+{
+	static int loaded=FALSE;
+	int fd,ret;
+	char path[MAX_PATH];
+
+	if(!loaded){
+		ret=-1;
+		// MC起動時のみ、LbFと同じフォルダにUSBD.IRXがあるか調べる
+		if(!strncmp(LaunchElfDir, "mc", 2)){
+			sprintf(path, "%s%s", LaunchElfDir, "USBD.IRX");
+			fd = fioOpen(path, O_RDONLY);
+			if(fd>=0){
+				fioClose(fd);
+				//LbFと同じフォルダのUSBD.IRXをロード
+				ret = SifLoadModule(path, 0, NULL);
+			}
+		}
+		//mcエラーとcdfsとhddのとき
+		if (ret<0){
+			//LbF.ELFのUSBD.IRXをロード
+			SifExecModuleBuffer(&usbd_irx, size_usbd_irx, 0, NULL, &ret);
+		}
+		loaded=TRUE;
+	}
+}
+
 void loadUsbModules(void)
 {
 	static int loaded=FALSE;
@@ -374,7 +402,7 @@ void loadUsbModules(void)
 	
 	if(!loaded){
 		initsbv_patches();
-		SifExecModuleBuffer(&usbd_irx, size_usbd_irx, 0, NULL, &ret);
+		load_usbd();
 		SifExecModuleBuffer(&usb_mass_irx, size_usb_mass_irx, 0, NULL, &ret);
 		delay(3);
 		ret = usb_mass_bindRpc();
@@ -711,14 +739,17 @@ int main(int argc, char *argv[])
 					selected--;
 					if(selected<0)
 						selected=nElfs-1;
-				}else if(new_pad & PAD_DOWN){
+				}
+				else if(new_pad & PAD_DOWN){
 					selected++;
 					if(selected>=nElfs)
 						selected=0;
-				}else if(new_pad & PAD_CROSS){
+				}
+				else if(new_pad & PAD_CROSS){
 					mode=BUTTON;
 					timeout = (setting->timeout+1)*SCANRATE;
-				}else if(new_pad & PAD_CIRCLE){
+				}
+				else if(new_pad & PAD_CIRCLE){
 					if(selected==nElfs-1){
 						mode=BUTTON;
 						config(mainMsg);

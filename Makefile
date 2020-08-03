@@ -4,12 +4,12 @@ EE_OBJS = main.o pad.o config.o elf.o draw.o loader.o  filer.o mass_rpc.o cd.o\
 	poweroff.o iomanx.o filexio.o ps2atad.o ps2dev9.o ps2hdd.o ps2fs.o ps2netfs.o\
 	usbd.o usb_mass.o cdvd.o ps2ip.o ps2smap.o ps2ftpd.o
 
-EE_INCS := -I$(LIBITO)/include -I$(PS2DEV)/sbv-1.0-lite/include\
+EE_INCS := -I$(LIBITO)/include -I$(PS2DK)/sbv/include\
 	-I$(PS2DEV)/libcdvd/ee
 
-EE_LDFLAGS := -L$(LIBITO)/lib -L$(PS2DEV)/sbv-1.0-lite/lib\
+EE_LDFLAGS := -L$(LIBITO)/lib -L$(PS2SDK)/sbv/lib\
 	-L$(PS2DEV)/libcdvd/lib -s
-EE_LIBS = -lpad -lito -lmc -lhdd -lcdvdfs -lfileXio -lsbv_patches -lpoweroff  -ldebug -lc
+EE_LIBS = -lpad -lito -lmc -lhdd -lcdvdfs -lfileXio -lpatches -lpoweroff  -ldebug -lc
 
 all: $(EE_BIN)
 

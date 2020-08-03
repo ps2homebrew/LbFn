@@ -152,12 +152,10 @@ int ynDialog(const char *message)
 		itoSprite(setting->color[0],
 			0, SCREEN_MARGIN+FONT_HEIGHT,
 			SCREEN_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*2, 0);
-		//ダイアログの背景
-		itoSprite(setting->color[0],
-			dx-2, (dy-2),
-			dx+dw+2, (dy+dh+4), 0);
-		//枠
-		drawFrame(dx, dy, dx+dw, (dy+dh), setting->color[1]);
+		//背景
+		drawDialogTmp(dx-2, dy-2,
+			dx+dw+2, dy+dh+4,
+			setting->color[0], setting->color[1]);
 		for(i=len=0; i<n; i++){
 			printXY(&msg[len], dx+2+a,(dy+a+2+i*16), setting->color[3],TRUE);
 			len=strlen(&msg[len])+1;
@@ -772,7 +770,7 @@ int copy(const char *outPath, const char *inPath, FILEINFO file, int n)
 	sprintf(out, "%s%s", outPath, file.name);
 	sprintf(in, "%s%s", inPath, file.name);
 	
-	// 入出力パスの設定とパーティションのマウント。
+	// 入力パスの設定とパーティションのマウント。
 	if(!strncmp(inPath, "hdd", 3)){
 		hddin = TRUE;
 		getHddParty(inPath, &file, inParty, in);
@@ -783,6 +781,7 @@ int copy(const char *outPath, const char *inPath, FILEINFO file, int n)
 		else
 			pfsin=-1;
 	}
+	// 出力パスの設定とパーティションのマウント。
 	if(!strncmp(outPath, "hdd", 3)){
 		hddout = TRUE;
 		getHddParty(outPath, &file, outParty, out);
@@ -793,6 +792,7 @@ int copy(const char *outPath, const char *inPath, FILEINFO file, int n)
 		else
 			pfsout=-1;
 	}
+	//入力パスがHDDのときマウント
 	if(hddin){
 		if(pfsin<0){
 			if(pfsout==0) pfsin=1;
@@ -807,6 +807,7 @@ int copy(const char *outPath, const char *inPath, FILEINFO file, int n)
 		in[3]=pfsin+'0';
 	}else
 		sprintf(in, "%s%s", inPath, file.name);
+	//入力パスがHDDのときマウント
 	if(hddout){
 		if(pfsout<0){
 			if(pfsin==0) pfsout=1;
@@ -847,7 +848,7 @@ int copy(const char *outPath, const char *inPath, FILEINFO file, int n)
 		return 0;
 	}
 
-	// ファイルサイズ取得
+	// 入力ファイルオープンとファイルサイズ取得
 	if(hddin){
 		in_fd = fileXioOpen(in, O_RDONLY, fileMode);
 		if(in_fd<0) goto error;
@@ -859,6 +860,17 @@ int copy(const char *outPath, const char *inPath, FILEINFO file, int n)
 		size = fioLseek(in_fd,0,SEEK_END);
 		fioLseek(in_fd,0,SEEK_SET);
 	}
+	// 出力ファイルオープン
+	if(hddout){
+		// O_TRUNC が利かないため、オープン前にファイル削除
+		fileXioRemove(out);
+		out_fd = fileXioOpen(out,O_WRONLY|O_TRUNC|O_CREAT,fileMode);
+		if(out_fd<0) goto error;
+	}else{
+		out_fd=fioOpen(out, O_WRONLY | O_TRUNC | O_CREAT);
+		if(out_fd<0) goto error;
+	}
+
 	// メモリに一度で読み込めるファイルサイズだった場合
 	buff = (char*)malloc(size);
 	if(buff==NULL){
@@ -866,19 +878,13 @@ int copy(const char *outPath, const char *inPath, FILEINFO file, int n)
 		buffSize = 32768;
 	}else
 		buffSize = size;
+
 	while(size>0){
 		// 入力
 		if(hddin) buffSize = fileXioRead(in_fd, buff, buffSize);
 		else	  buffSize = fioRead(in_fd, buff, buffSize);
 		// 出力
 		if(hddout){
-			if(out_fd<0){
-				// O_TRUNC が利かないため、オープン前にファイル削除
-				fileXioRemove(out);
-				
-				out_fd = fileXioOpen(out,O_WRONLY|O_TRUNC|O_CREAT,fileMode);
-				if(out_fd<0) goto error;
-			}
 			outsize = fileXioWrite(out_fd,buff,buffSize);
 			if(buffSize!=outsize){
 				fileXioClose(out_fd); out_fd=-1;
@@ -886,10 +892,6 @@ int copy(const char *outPath, const char *inPath, FILEINFO file, int n)
 				goto error;
 			}
 		}else{
-			if(out_fd<0){
-				out_fd=fioOpen(out, O_WRONLY | O_TRUNC | O_CREAT);
-				if(out_fd<0) goto error;
-			}
 			outsize = fioWrite(out_fd,buff,buffSize);
 			if(buffSize!=outsize){
 				fioClose(out_fd); out_fd=-1;

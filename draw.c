@@ -1,5 +1,6 @@
 #include "launchelf.h"
-//#include "font5200.c"
+
+#define LBF_VER "LbF v0.42"
 
 itoGsEnv screen_env;
 
@@ -134,8 +135,7 @@ void drawDialogTmp(int x1, int y1, int x2, int y2, uint64 color1, uint64 color2)
 void setScrTmp(const char *msg0, const char *msg1)
 {
 	// バージョン表記
-	printXY("■ LbF v0.40 ■",
-		FONT_WIDTH*47, SCREEN_MARGIN, setting->color[3], TRUE);
+	printXY(LBF_VER, FONT_WIDTH*53, SCREEN_MARGIN, setting->color[3], TRUE);
 	
 	// メッセージ
 	printXY(msg0, FONT_WIDTH*2, SCREEN_MARGIN+FONT_HEIGHT*1, setting->color[3], TRUE);
@@ -234,8 +234,8 @@ void drawFrame(int x1, int y1, int x2, int y2, uint64 color)
 	uint64 color2;	//アルファ付き
 
 	color = color&0x00FFFFFF;	//透明度を除外
-	color2 = color|0x30000000;	//半透明
 	color = color|0x80000000;	//不透明
+	color2 = color|0x10000000;	//半透明
 
 	//FLICKER CONTROL: ON
 	if(setting->flickerControl){
@@ -275,8 +275,8 @@ void drawChar(unsigned char c, int x, int y, uint64 color)
 	if(c==' ') return;
 
 	color = color&0x00FFFFFF;	//透明度を除外
-	color2 = color|0x30000000;	//半透明
 	color = color|0x80000000;	//不透明
+	color2 = color|0x10000000;	//半透明
 
 	pc = &biosfont[104670+(c-33)*15];
 	cc = *pc;
@@ -324,8 +324,8 @@ void drawChar_SJIS(unsigned int c, int x, int y, uint64 color)
 	if (ret==-1) return;
 
 	color = color&0x00FFFFFF;	//透明度を除外
-	color2 = color|0x30000000;	//半透明
 	color = color|0x80000000;	//不透明
+	color2 = color|0x10000000;	//半透明
 
 	//アドレス算出
 	sum = 0;

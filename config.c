@@ -115,8 +115,8 @@ void saveConfig(char *mainMsg)
 	
 	// 設定をメモリに格納
 	strcpy(tmp[0], "CNF_VERSION_1");
-	for(i=1; i<13; i++)
-		strcpy(tmp[i], setting->dirElf[i]);
+	for(i=0; i<12; i++)
+		strcpy(tmp[i+1], setting->dirElf[i]);
 	sprintf(tmp[13], "%d", setting->timeout);
 	sprintf(tmp[14], "%d", setting->filename);
 	for(i=0; i<8; i++)
@@ -244,8 +244,8 @@ void loadConfig(char *mainMsg)
 		strcpy(cnf_version, tmp[0]);
 		if(!strcmp(cnf_version, "CNF_VERSION_1")){
 			// ボタンセッティング
-			for(i=1; i<13; i++)
-				strcpy(setting->dirElf[i], tmp[i]);
+			for(i=0; i<12; i++)
+				strcpy(setting->dirElf[i], tmp[i+1]);
 			// TIMEOUT値の設定
 			if(tmp[13][0]){
 				setting->timeout = 0;
@@ -446,7 +446,7 @@ void config(char *mainMsg)
 					if(s<12)
 					setting->dirElf[s][0]=0;
 				}
-				if(page==SCREENSETTING){
+				else if(page==SCREENSETTING){
 					if(s<8){
 						r = setting->color[s] & 0xFF;
 						g = setting->color[s] >> 8 & 0xFF;
@@ -463,14 +463,14 @@ void config(char *mainMsg)
 						setting->color[s] = ITO_RGBA(r, g, b, 0);
 						if(s == 0) itoSetBgColor(setting->color[0]);
 					}
-					if(s==SCREEN_X){	//SCREEN X
+					else if(s==SCREEN_X){	//SCREEN X
 						if(setting->screen_x > 0){
 							setting->screen_x--;
 							screen_env.screen.x = setting->screen_x;
 							itoSetScreenPos(setting->screen_x, setting->screen_y);
 						}
 					}
-					if(s==SCREEN_Y){	//SCREEN Y
+					else if(s==SCREEN_Y){	//SCREEN Y
 						if(setting->screen_y > 0){
 							setting->screen_y--;
 							screen_env.screen.y = setting->screen_y;
@@ -478,7 +478,7 @@ void config(char *mainMsg)
 						}
 					}
 				}
-				if(page==MISC){
+				else if(page==MISC){
 					if(s==TIMEOUT){
 						if(setting->timeout > 0) setting->timeout--;
 					}
@@ -498,7 +498,7 @@ void config(char *mainMsg)
 						strcpy(setting->dirElf[1], "MISC/FileBrowser");
 					}
 				}
-				if(page==SCREENSETTING){
+				else if(page==SCREENSETTING){
 					if(s<8){
 						r = setting->color[s] & 0xFF;
 						g = setting->color[s] >> 8 & 0xFF;
@@ -506,10 +506,10 @@ void config(char *mainMsg)
 						if(s_x==0){
 							if(r<255) r++;
 						}
-						if(s_x==1){
+						else if(s_x==1){
 							if(g<255) g++;
 						}
-						if(s_x==2){
+						else if(s_x==2){
 							if(b<255) b++;
 						}
 						setting->color[s] = ITO_RGBA(r, g, b, 0);
@@ -525,9 +525,8 @@ void config(char *mainMsg)
 						screen_env.screen.y = setting->screen_y;
 						itoSetScreenPos(setting->screen_x, setting->screen_y);
 					}
-					else if(s==FLICKERCONTROL){	//フリッカーコントロール
+					else if(s==FLICKERCONTROL)	//フリッカーコントロール
 						setting->flickerControl = !setting->flickerControl;
-					}
 					else if(s==COLORINIT){	//COLOR SETTING INIT
 						setting->color[0] = DEF_COLOR1;
 						setting->color[1] = DEF_COLOR2;
@@ -556,7 +555,7 @@ void config(char *mainMsg)
 							0x80);				 // Fixed Value
 					}
 				}
-				if(page==NETWORK){
+				else if(page==NETWORK){
 					if(s==IPADDRESS){
 						drawDark();
 						itoSwitchFrameBuffers();
@@ -594,7 +593,7 @@ void config(char *mainMsg)
 						strcpy(gw, "192.168.0.1");
 					}
 				}
-				if(page==MISC){
+				else if(page==MISC){
 					if(s==TIMEOUT)
 						setting->timeout++;
 					else if(s==FILENAME)
@@ -616,6 +615,7 @@ void config(char *mainMsg)
 						setting->discELFCheck = DEF_DISCELFCHECK;
 					}
 				}
+				//
 				if(s==OK){
 					free(tmpsetting);
 					saveConfig(mainMsg);
