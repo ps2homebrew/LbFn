@@ -367,9 +367,6 @@ int InitFontAscii(const char *path)
 		else
 			strcpy(fullpath, path);
 
-		//mass
-		if(!strncmp(fullpath, "mass:", 5)) loadUsbModules();
-
 		//フォントファイルオープン
 		fd = fioOpen(fullpath, O_RDONLY);
 		if(fd<0) return -1;
@@ -487,9 +484,6 @@ int InitFontKnaji(const char *path)
 		}
 		else
 			strcpy(fullpath, path);
-
-		//mass
-		if(!strncmp(fullpath, "mass:", 5)) loadUsbModules();
 
 		//フォントファイルオープン
 		fd = fioOpen(fullpath, O_RDONLY);

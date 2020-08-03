@@ -264,35 +264,7 @@ void loadCdModules(void)
 		loaded=TRUE;
 	}
 }
-/*
-//--------------------------------------------------------------
-void load_usbd(void)
-{
-	static int loaded=FALSE;
-	int fd, ret;
-	char path[MAX_PATH];
 
-	if(!loaded){
-		ret=-1;
-		// MC起動時のみ、LbFと同じフォルダにUSBD.IRXがあるか調べる
-		if(!strncmp(LaunchElfDir, "mc", 2)){
-			sprintf(path, "%s%s", LaunchElfDir, "USBD.IRX");
-			fd = fioOpen(path, O_RDONLY);
-			if(fd>=0){
-				fioClose(fd);
-				//LbFと同じフォルダのUSBD.IRXをロード
-				ret = SifLoadModule(path, 0, NULL);
-			}
-		}
-		//mcエラーとmassとcdfsとhddのとき
-		if (ret<0){
-			//LbF.ELFのUSBD.IRXをロード
-			SifExecModuleBuffer(&usbd_irx, size_usbd_irx, 0, NULL, &ret);
-		}
-		loaded=TRUE;
-	}
-}
-*/
 //--------------------------------------------------------------
 //
 int load_irxfile(char *filename)
@@ -303,9 +275,6 @@ int load_irxfile(char *filename)
 
 	if(!strncmp(LaunchElfDir, "host", 4)){
 		//hostから起動したときHOSTからIRXをロードしない
-	}
-	if(!strncmp(LaunchElfDir, "mass", 4)){
-		//massから起動したときmassからIRXをロードしない
 	}
 	else{
 		sprintf(path, "%s%s", LaunchElfDir, filename);
@@ -352,12 +321,21 @@ void loadUsbModules(void)
 
 	if(!loaded){
 		initsbv_patches();
-		//USBD.IRX
-		ret = load_irxfile("USBD.IRX");
-		if (ret<0) SifExecModuleBuffer(&usbd_irx, size_usbd_irx, 0, NULL, &ret);
-		//USB_MASS.IRX
-		ret = load_irxfile("USB_MASS.IRX");
-		if (ret<0) SifExecModuleBuffer(&usb_mass_irx, size_usb_mass_irx, 0, NULL, &ret);
+		if(!strncmp(LaunchElfDir, "mass", 4)){
+			//massから起動したときLbFに組み込んだIRXをロードする
+			//USBD.IRX
+			SifExecModuleBuffer(&usbd_irx, size_usbd_irx, 0, NULL, &ret);
+			//USB_MASS.IRX
+			SifExecModuleBuffer(&usb_mass_irx, size_usb_mass_irx, 0, NULL, &ret);
+		}
+		else{
+			//USBD.IRX
+			ret = load_irxfile("USBD.IRX");
+			if (ret<0) SifExecModuleBuffer(&usbd_irx, size_usbd_irx, 0, NULL, &ret);
+			//USB_MASS.IRX
+			ret = load_irxfile("USB_MASS.IRX");
+			if (ret<0) SifExecModuleBuffer(&usb_mass_irx, size_usb_mass_irx, 0, NULL, &ret);
+		}
 
 		delay(3);
 		ret = usb_mass_bindRpc();
@@ -765,13 +743,6 @@ int main(int argc, char *argv[])
 		*(p+1)=0;
 
 	SifInitRpc(0);
-	loadModules();
-
-	//CNFファイルを読み込む前に初期化
-	InitLanguage();
-
-	//設定をロード
-	loadConfig(mainMsg);
 
 	//RESET IOP
 	if(!strncmp(LaunchElfDir, "host", 4)){
@@ -780,13 +751,22 @@ int main(int argc, char *argv[])
 	else{
 		//host以外から起動したときリセット
 		Reset();
-		loadModules();
 	}
 
 	//
+	loadModules();
 	mcInit(MC_TYPE_MC);
 	setupPad();
 	initsbv_patches();
+	//mass
+	if(!strncmp(LaunchElfDir, "mass:", 5)) loadUsbModules();
+
+
+	//CNFファイルを読み込む前に初期化
+	InitLanguage();
+
+	//設定をロード
+	loadConfig(mainMsg);
 
 	//discControl
 	if(setting->discControl)
@@ -952,26 +932,22 @@ int main(int argc, char *argv[])
 						mode=BUTTON;
 					}
 					else if(new_pad & PAD_CIRCLE){
-						if(selected==nElfs-1){		//CONFIG
+						switch(selected){
+						case 0:
+							RunElf("MISC/FileBrowser");
+							break;
+						case 1:
+							RunElf("MISC/PS2Browser");
+							break;
+						case 2:
+							RunElf("MISC/PS2Disc");
+							break;
+						case 3:
+							RunElf("MISC/PS2Net");
+							break;
+						case 4:
 							config(mainMsg);
-							if(setting->discControl)
-								loadCdModules();
-						}
-						else{
-							switch(selected){
-							case 0:
-								RunElf("MISC/FileBrowser");
-								break;
-							case 1:
-								RunElf("MISC/PS2Browser");
-								break;
-							case 2:
-								RunElf("MISC/PS2Disc");
-								break;
-							case 3:
-								RunElf("MISC/PS2Net");
-								break;
-							}
+							if(setting->discControl) loadCdModules();
 						}
 					}
 					break;

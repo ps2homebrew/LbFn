@@ -109,6 +109,8 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_elffile, "ELF FILE      ");
 		strcpy(lang->conf_interlace, "INTERLACE");
 		strcpy(lang->conf_ffmode, "FFMODE");
+		strcpy(lang->conf_ffmode_field, "FIELD");
+		strcpy(lang->conf_ffmode_frame, "FRAME");
 		strcpy(lang->conf_screen_x, "SCREEN X");
 		strcpy(lang->conf_screen_y, "SCREEN Y");
 		strcpy(lang->conf_flickercontrol, "FLICKER CONTROL");
@@ -154,6 +156,7 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_add, "Add");
 		strcpy(lang->conf_away, "Away");
 		strcpy(lang->conf_change, "Change");
+		strcpy(lang->conf_up, "Up");
 		}
 	}
 	if(l==LANG_JAPANESE){
@@ -242,6 +245,8 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_screen_y, "画面位置 Y");
 		strcpy(lang->conf_interlace, "インターレース");
 		strcpy(lang->conf_ffmode, "FFMODE");
+		strcpy(lang->conf_ffmode_field, "FIELD");
+		strcpy(lang->conf_ffmode_frame, "FRAME");
 		strcpy(lang->conf_flickercontrol, "フリッカー調整");
 		strcpy(lang->conf_screensettinginit, "「画面設定」を初期化する");
 		//network
@@ -285,6 +290,7 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_add, "増やす");
 		strcpy(lang->conf_away, "減らす");
 		strcpy(lang->conf_change, "変更");
+		strcpy(lang->conf_up, "上へ");
 		}
 	}
 }

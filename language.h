@@ -94,6 +94,8 @@ typedef struct
 	char conf_screen_y[MAX_LANGUAGE_STR];
 	char conf_interlace[MAX_LANGUAGE_STR];
 	char conf_ffmode[MAX_LANGUAGE_STR];
+	char conf_ffmode_field[MAX_LANGUAGE_STR];
+	char conf_ffmode_frame[MAX_LANGUAGE_STR];
 	char conf_flickercontrol[MAX_LANGUAGE_STR];
 	char conf_screensettinginit[MAX_LANGUAGE_STR];
 	//network
@@ -137,6 +139,7 @@ typedef struct
 	char conf_add[MAX_LANGUAGE_STR];
 	char conf_away[MAX_LANGUAGE_STR];
 	char conf_change[MAX_LANGUAGE_STR];
+	char conf_up[MAX_LANGUAGE_STR];
 
 } LANGUAGE;
 

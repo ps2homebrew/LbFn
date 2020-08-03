@@ -68,8 +68,8 @@ enum
 	DEF_SCREEN_X = 160,
 	DEF_SCREEN_Y = 55,
 	DEF_FLICKERCONTROL = TRUE,
-	DEF_INTERLACE = TRUE,
-	DEF_FFMODE = FALSE,
+	DEF_INTERLACE = TRUE,	//FALSE=ITO_NON_INTERLACE TRUE=ITO_INTERLACE
+	DEF_FFMODE = FALSE,	//FALSE=ITO_FIELD TRUE=ITO_FRAME
 
 	DEF_CHAR_MARGIN = 2,
 	DEF_LINE_MARGIN = 5,
@@ -587,8 +587,8 @@ void config_button(SETTING *setting)
 				}
 				else if(sel==BUTTONINIT){
 					InitButtonSetting(setting);
-					sprintf(msg0, "%s", "Initialize Button Setting");
-					pushed = FALSE;
+					//sprintf(msg0, "%s", "Initialize Button Setting");
+					//pushed = FALSE;
 				}
 			}
 			else if(new_pad & PAD_CROSS){	//~
@@ -660,11 +660,11 @@ void config_button(SETTING *setting)
 		if(pushed) sprintf(msg0, "CONFIG/%s", lang->conf_setting_button);
 		// ‘€ìà–¾
 		if(sel==0)
-			sprintf(msg1, "›:%s", lang->gen_ok);
+			sprintf(msg1, "›:%s ¢:%s", lang->gen_ok, lang->conf_up);
 		else if (sel>=DEFAULT && sel<=LAUNCHER11)
-			sprintf(msg1, "›:%s ~:%s", lang->conf_edit, lang->conf_clear);
+			sprintf(msg1, "›:%s ~:%s ¢:%s", lang->conf_edit, lang->conf_clear, lang->conf_up);
 		else if(sel==BUTTONINIT)
-			sprintf(msg1, "›:%s", lang->gen_ok);
+			sprintf(msg1, "›:%s ¢:%s", lang->gen_ok, lang->conf_up);
 		setScrTmp(msg0, msg1);
 		drawScr();
 	}
@@ -778,8 +778,8 @@ void config_screen(SETTING *setting)
 						ITO_ALPHA_COLOR_DST, // C = COLOR DEST
 						0x80);				 // Fixed Value
 					SetHeight();
-					sprintf(msg0, "%s", "Initialize Screen Setting");
-					pushed = FALSE;
+					//sprintf(msg0, "%s", "Initialize Screen Setting");
+					//pushed = FALSE;
 				}
 			}
 			else if(new_pad & PAD_CROSS){	//~
@@ -832,9 +832,9 @@ void config_screen(SETTING *setting)
 		//FFMODE
 		sprintf(config[10],"%s: ", lang->conf_ffmode);
 		if(setting->ffmode)
-			strcat(config[10], lang->conf_on);
+			strcat(config[10], lang->conf_ffmode_frame);
 		else
-			strcat(config[10], lang->conf_off);
+			strcat(config[10], lang->conf_ffmode_field);
 		//SCREEN X
 		sprintf(config[11],"%s: %3d", lang->conf_screen_x, setting->screen_x);
 		//SCREEN Y
@@ -907,17 +907,17 @@ void config_screen(SETTING *setting)
 		if(pushed) sprintf(msg0, "CONFIG/%s", lang->conf_setting_screen);
 		// ‘€ìà–¾
 		if(sel==0)
-			sprintf(msg1, "›:%s", lang->gen_ok);
+			sprintf(msg1, "›:%s ¢:%s", lang->gen_ok, lang->conf_up);
 		else if(sel>=COLOR1 && sel<=COLOR8)
-			sprintf(msg1, "›:%s ~:%s", lang->conf_add, lang->conf_away);
+			sprintf(msg1, "›:%s ~:%s ¢:%s", lang->conf_add, lang->conf_away, lang->conf_up);
 		else if(sel==INTERLACE)
-			sprintf(msg1, "›:%s", lang->conf_change);
+			sprintf(msg1, "›:%s ¢:%s", lang->conf_change, lang->conf_up);
 		else if(sel==FFMODE)
-			sprintf(msg1, "›:%s", lang->conf_change);
+			sprintf(msg1, "›:%s ¢:%s", lang->conf_change, lang->conf_up);
 		else if(sel==FLICKERCONTROL)
-			sprintf(msg1, "›:%s", lang->conf_change);
+			sprintf(msg1, "›:%s ¢:%s", lang->conf_change, lang->conf_up);
 		else if(sel==SCREENINIT)
-			sprintf(msg1, "›:%s", lang->gen_ok);
+			sprintf(msg1, "›:%s ¢:%s", lang->gen_ok, lang->conf_up);
 		setScrTmp(msg0, msg1);
 		drawScr();
 	}
@@ -1003,8 +1003,8 @@ void config_network(SETTING *setting)
 					strcpy(ip, "192.168.0.10");
 					strcpy(netmask, "255.255.255.0");
 					strcpy(gw, "192.168.0.1");
-					sprintf(msg0, "%s", "Initialize Network Setting");
-					pushed = FALSE;
+					//sprintf(msg0, "%s", "Initialize Network Setting");
+					//pushed = FALSE;
 				}
 			}
 			else if(new_pad & PAD_CROSS){	//~
@@ -1070,11 +1070,11 @@ void config_network(SETTING *setting)
 		if(pushed) sprintf(msg0, "CONFIG/%s", lang->conf_setting_network);
 		// ‘€ìà–¾
 		if(sel==0)
-			sprintf(msg1, "›:%s", lang->gen_ok);
+			sprintf(msg1, "›:%s ¢:%s", lang->gen_ok, lang->conf_up);
 		else if(sel>=IPADDRESS && sel<=GATEWAY)
-			sprintf(msg1, "›:%s", lang->conf_edit);
+			sprintf(msg1, "›:%s ¢:%s", lang->conf_edit, lang->conf_up);
 		else if(sel==NETWORKINIT)
-			sprintf(msg1, "›:%s", lang->gen_ok);
+			sprintf(msg1, "›:%s ¢:%s", lang->gen_ok, lang->conf_up);
 		setScrTmp(msg0, msg1);
 		drawScr();
 	}
@@ -1172,6 +1172,8 @@ void config_font(SETTING *setting)
 					SetFontMargin(ASCII_FONT_MARGIN_LEFT, setting->AsciiMarginLeft);
 					SetFontMargin(KANJI_FONT_MARGIN_TOP, setting->KanjiMarginTop);
 					SetFontMargin(KANJI_FONT_MARGIN_LEFT, setting->KanjiMarginLeft);
+					//sprintf(msg0, "%s", "Initialize Font Setting");
+					//pushed = FALSE;
 				}
 			}
 			else if(new_pad & PAD_CROSS){	//~
@@ -1188,7 +1190,7 @@ void config_font(SETTING *setting)
 					SetFontMargin(CHAR_MARGIN, setting->CharMargin);
 				}
 				else if(sel==LINEMARGIN){
-					setting->LineMargin--;
+					if(FONT_HEIGHT>1) setting->LineMargin--;
 					SetFontMargin(LINE_MARGIN, setting->LineMargin);
 				}
 				else if(sel==ASCIIMARGINTOP){
@@ -1283,29 +1285,29 @@ void config_font(SETTING *setting)
 		if(pushed) sprintf(msg0, "CONFIG/%s", lang->conf_setting_font);
 		// ‘€ìà–¾
 		if(sel==ASCIIFONT)
-			sprintf(msg1, "›:%s ~:%s", lang->conf_edit, lang->conf_clear);
+			sprintf(msg1, "›:%s ~:%s ¢:%s", lang->conf_edit, lang->conf_clear, lang->conf_up);
 		else if(sel==KANJIFONT)
-			sprintf(msg1, "›:%s ~:%s", lang->conf_edit, lang->conf_clear);
+			sprintf(msg1, "›:%s ~:%s ¢:%s", lang->conf_edit, lang->conf_clear, lang->conf_up);
 		else if(sel==CHARMARGIN)
-			sprintf(msg1, "›:%s ~:%s", lang->conf_add, lang->conf_away);
+			sprintf(msg1, "›:%s ~:%s ¢:%s", lang->conf_add, lang->conf_away, lang->conf_up);
 		else if(sel==LINEMARGIN)
-			sprintf(msg1, "›:%s ~:%s", lang->conf_add, lang->conf_away);
+			sprintf(msg1, "›:%s ~:%s ¢:%s", lang->conf_add, lang->conf_away, lang->conf_up);
 		else if(sel==FONTBOLD)
-			sprintf(msg1, "›:%s", lang->conf_change);
+			sprintf(msg1, "›:%s ¢:%s", lang->conf_change, lang->conf_up);
 		else if(sel==ASCIIMARGINTOP)
-			sprintf(msg1, "›:%s ~:%s", lang->conf_add, lang->conf_away);
+			sprintf(msg1, "›:%s ~:%s ¢:%s", lang->conf_add, lang->conf_away, lang->conf_up);
 		else if(sel==ASCIIMARGINLEFT)
-			sprintf(msg1, "›:%s ~:%s", lang->conf_add, lang->conf_away);
+			sprintf(msg1, "›:%s ~:%s ¢:%s", lang->conf_add, lang->conf_away, lang->conf_up);
 		else if(sel==KANJIMARGINTOP)
-			sprintf(msg1, "›:%s ~:%s", lang->conf_add, lang->conf_away);
+			sprintf(msg1, "›:%s ~:%s ¢:%s", lang->conf_add, lang->conf_away, lang->conf_up);
 		else if(sel==KANJIMARGINLEFT)
-			sprintf(msg1, "›:%s ~:%s", lang->conf_add, lang->conf_away);
+			sprintf(msg1, "›:%s ~:%s ¢:%s", lang->conf_add, lang->conf_away, lang->conf_up);
 		else if(sel==FONTINIT)
-			sprintf(msg1, "›:%s", lang->gen_ok);
+			sprintf(msg1, "›:%s ¢:%s", lang->gen_ok, lang->conf_up);
 		else if(sel==FONTINIT)
-			sprintf(msg1, "›:%s", lang->gen_ok);
+			sprintf(msg1, "›:%s ¢:%s", lang->gen_ok, lang->conf_up);
 		else if(sel==FONTINIT)
-			sprintf(msg1, "›:%s", lang->gen_ok);
+			sprintf(msg1, "›:%s ¢:%s", lang->gen_ok, lang->conf_up);
 		setScrTmp(msg0, msg1);
 		drawScr();
 	}
@@ -1363,8 +1365,8 @@ void config_misc(SETTING *setting)
 					//init
 					InitMiscSetting(setting);
 					SetLanguage(setting->language);
-					sprintf(msg0, "%s", "Initialize Misc Setting");
-					pushed = FALSE;
+					//sprintf(msg0, "%s", "Initialize Misc Setting");
+					//pushed = FALSE;
 				}
 			}
 			else if(new_pad & PAD_CROSS){	//~
@@ -1466,25 +1468,25 @@ void config_misc(SETTING *setting)
 		if(pushed) sprintf(msg0, "CONFIG/%s", lang->conf_setting_misc);
 		// ‘€ìà–¾
 		if(sel==0)
-			sprintf(msg1, "›:%s", lang->gen_ok);
+			sprintf(msg1, "›:%s ¢:%s", lang->gen_ok, lang->conf_up);
 		else if(sel==LANG)
-			sprintf(msg1, "›:%s", lang->conf_change);
+			sprintf(msg1, "›:%s ¢:%s", lang->conf_change, lang->conf_up);
 		else if(sel==TIMEOUT)
-			sprintf(msg1, "›:%s ~:%s", lang->conf_add, lang->conf_away);
+			sprintf(msg1, "›:%s ~:%s ¢:%s", lang->conf_add, lang->conf_away, lang->conf_up);
 		else if(sel==DISCCONTROL)
-			sprintf(msg1, "›:%s", lang->conf_change);
+			sprintf(msg1, "›:%s ¢:%s", lang->conf_change, lang->conf_up);
 		else if(sel==FILENAME)
-			sprintf(msg1, "›:%s", lang->conf_change);
+			sprintf(msg1, "›:%s ¢:%s", lang->conf_change, lang->conf_up);
 		else if(sel==FILEICON)
-			sprintf(msg1, "›:%s", lang->conf_change);
+			sprintf(msg1, "›:%s ¢:%s", lang->conf_change, lang->conf_up);
 		else if(sel==PS2SAVECHECK)
-			sprintf(msg1, "›:%s", lang->conf_change);
+			sprintf(msg1, "›:%s ¢:%s", lang->conf_change, lang->conf_up);
 		else if(sel==ELFCHECK)
-			sprintf(msg1, "›:%s", lang->conf_change);
+			sprintf(msg1, "›:%s ¢:%s", lang->conf_change, lang->conf_up);
 		else if(sel==EXPORTDIR)
-			sprintf(msg1, "›:%s ~:%s", lang->conf_edit, lang->conf_clear);
+			sprintf(msg1, "›:%s ~:%s ¢:%s", lang->conf_edit, lang->conf_clear, lang->conf_up);
 		else if(sel==MISCINIT)
-			sprintf(msg1, "›:%s", lang->gen_ok);
+			sprintf(msg1, "›:%s ¢:%s", lang->gen_ok, lang->conf_up);
 		setScrTmp(msg0, msg1);
 		drawScr();
 	}

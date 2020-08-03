@@ -31,7 +31,7 @@
 #include "cnf.h"
 
 // バージョン
-#define LBF_VER "LbF v0.47"
+#define LBF_VER "LbF v0.48"
 
 // 垂直スキャンレート
 #define SCANRATE (ITO_VMODE_AUTO==ITO_VMODE_NTSC ? 60:50)
