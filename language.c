@@ -29,6 +29,8 @@ void SetLanguage(const int langID)
 		//general
 		strcpy(lang->gen_ok, "OK");
 		strcpy(lang->gen_cancel, "CANCEL");
+		strcpy(lang->gen_yes, "YES");
+		strcpy(lang->gen_no, "NO");
 		//main
 		{
 		strcpy(lang->main_launch_hint, "PUSH ANY BUTTON or D-PAD!");
@@ -70,8 +72,14 @@ void SetLanguage(const int langID)
 		strcpy(lang->filer_newdirfailed, "NewDir Failed");
 		strcpy(lang->filer_checkingsize, "Checking Size...");
 		strcpy(lang->filer_getsizefailed, "Get Size Failed");
+		strcpy(lang->filer_export, "Export?");
+		strcpy(lang->filer_exportmarkfiles, "Mark Files Export?");
+		strcpy(lang->filer_exporting, "Exporting...");
 		strcpy(lang->filer_exportfailed, "Export psu Failed");
 		strcpy(lang->filer_exportto, "Export to");
+		strcpy(lang->filer_import, "Import?");
+		strcpy(lang->filer_importmarkfiles, "Mark Files Import?");
+		strcpy(lang->filer_importing, "Importing...");
 		strcpy(lang->filer_importfailed, "Import psu Failed");
 		strcpy(lang->filer_importto, "Import to");
 		strcpy(lang->filer_keyboard_hint, "○:OK ×:Back L1:Left R1:Right START:Enter");
@@ -82,10 +90,6 @@ void SetLanguage(const int langID)
 		strcpy(lang->filer_fntfile_hint1, "○:OK ×:Cancel △:Up □:*->FNT");
 		strcpy(lang->filer_fntfile_hint2, "○:OK ×:Cancel △:Up □:FNT->*");
 		strcpy(lang->filer_dir_hint, "○:OK ×:Cancel △:Up Start:Choose");
-		strcpy(lang->filer_export_files, "files");
-		strcpy(lang->filer_export_header, " num: attr:     size: filename");
-		strcpy(lang->filer_import_files, "files");
-		strcpy(lang->filer_import_header, " num: attr:     size: filename");
 		strcpy(lang->filer_l2popup_detail, "Detail Mode");
 		strcpy(lang->filer_l2popup_dirsize, "Get DirSize");
 		strcpy(lang->filer_l2popup_icon, "Icon");
@@ -180,6 +184,8 @@ void SetLanguage(const int langID)
 		//general
 		strcpy(lang->gen_ok, "決定");
 		strcpy(lang->gen_cancel, "キャンセル");
+		strcpy(lang->gen_yes, "はい");
+		strcpy(lang->gen_no, "いいえ");
 		//main
 		{
 		strcpy(lang->main_launch_hint, "ボタンで起動 or 十\字キーで選択");
@@ -221,8 +227,14 @@ void SetLanguage(const int langID)
 		strcpy(lang->filer_newdirfailed, "フォルダ作成を失敗しました");
 		strcpy(lang->filer_checkingsize, "サイズを計算しています");
 		strcpy(lang->filer_getsizefailed, "サイズ取得失敗しました");
+		strcpy(lang->filer_export, "エクスポートしますか?");
+		strcpy(lang->filer_exportmarkfiles, "マークしたファイルをエクスポートしますか?");
+		strcpy(lang->filer_exporting, "エクスポートしています");
 		strcpy(lang->filer_exportfailed, "エクスポート失敗しました");
 		strcpy(lang->filer_exportto, "エクスポートした場所");
+		strcpy(lang->filer_import, "インポートしますか?");
+		strcpy(lang->filer_importmarkfiles, "マークしたファイルをインポートしますか?");
+		strcpy(lang->filer_importing, "インポートしています");
 		strcpy(lang->filer_importfailed, "インポート失敗しました");
 		strcpy(lang->filer_importto, "インポートした場所");
 		strcpy(lang->filer_keyboard_hint, "○:決定 ×:削除 L1:左へ R1:右へ");
@@ -233,10 +245,6 @@ void SetLanguage(const int langID)
 		strcpy(lang->filer_fntfile_hint1, "○:決定 ×:キャンセル △:上へ □:*->FNT");
 		strcpy(lang->filer_fntfile_hint2, "○:決定 ×:キャンセル △:上へ □:FNT->*");
 		strcpy(lang->filer_dir_hint, "○:決定 ×:キャンセル △:上へ Start:フォルダ選択");
-		strcpy(lang->filer_export_files, "個のファイル");
-		strcpy(lang->filer_export_header, "番号: 属性:   サイズ: ファイルの名前");
-		strcpy(lang->filer_import_files, "個のファイル");
-		strcpy(lang->filer_import_header, "番号: 属性:   サイズ: ファイルの名前");
 		strcpy(lang->filer_l2popup_detail, "詳細表\示 切り替え");
 		strcpy(lang->filer_l2popup_dirsize, "フォルダサイズ表\示");
 		strcpy(lang->filer_l2popup_icon, "アイコン表\示");

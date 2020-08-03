@@ -30,7 +30,7 @@
 #include "cnf.h"
 
 // バージョン
-#define LBF_VER "LbF v0.68"
+#define LBF_VER "LbF v0.69"
 
 // 垂直スキャンレート
 #define SCANRATE (ITO_VMODE_AUTO==ITO_VMODE_NTSC ? 60:50)
@@ -195,9 +195,27 @@ enum	//getFilePath
 	DIR,
 	FNT_FILE
 };
+/* MessageBox */
+#define MB_OK           0x00000000
+#define MB_OKCANCEL     0x00000001
+#define MB_YESNOCANCEL  0x00000003
+#define MB_YESNO        0x00000004
+#define MB_MC0MC1CANCEL 0x0000000F
+#define MB_DEFBUTTON1   0x00000000
+#define MB_DEFBUTTON2   0x00000100
+#define MB_DEFBUTTON3   0x00000200
+#define MB_USETRIANGLE  0x00100000
+#define MB_USESQUARE    0x00200000
+#define IDOK         0x0001
+#define IDCANCEL     0x0002
+#define IDYES        0x0006
+#define IDNO         0x0007
+#define IDMC0        0x0010
+#define IDMC1        0x0011
+#define IDTRIANGLE   0x0100
+#define IDSQUARE     0x0200
+int MessageBox(const char *Text, const char *Caption, int type);
 char* getExtension(const char *path);
-int ynDialog(const char *message, int defaultsel);
-void MessageDialog(const char *message);
 int newdir(const char *path, const char *name);
 #ifdef ENABLE_PSB
 int psb(const char *psbpath);

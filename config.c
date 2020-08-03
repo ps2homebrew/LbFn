@@ -1328,7 +1328,7 @@ void config_network(SETTING *setting)
 					itoGsFinish();
 					itoSwitchFrameBuffers();
 					drawDark();
-					MessageDialog(tmp);
+					MessageBox(tmp, LBF_VER, MB_OK);
 				}
 				else if(sel==NETWORKINIT){
 					//init

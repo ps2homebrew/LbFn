@@ -81,6 +81,7 @@ void PS2Browser(void)
 void FormatMemoryCard(void)
 {
 	char tmp[2048];
+	int ret;
 	int type;
 	char dir[MAX_PATH];
 	char path[MAX_PATH];
@@ -103,11 +104,15 @@ void FormatMemoryCard(void)
 	drawScr();
 
 	sprintf(tmp, "format mc0:/ OK?       ");
-	if(ynDialog(tmp,1)<0){	//キャンセル
+	ret = MessageBox(tmp, "FormatMemoryCard", MB_YESNO|MB_DEFBUTTON2);
+	if(ret!=IDYES){
+		//キャンセル
 		return;
 	}
 	sprintf(tmp, "format mc0:/ OK Really?");
-	if(ynDialog(tmp,1)<0){	//キャンセル
+	ret = MessageBox(tmp, "FormatMemoryCard", MB_YESNO|MB_DEFBUTTON2);
+	if(ret!=IDYES){
+		//キャンセル
 		return;
 	}
 
@@ -244,7 +249,7 @@ void FormatMemoryCard(void)
 	for(i=0;i<n;i++)
 		printXY(log[i], FONT_WIDTH*2, SCREEN_MARGIN+i*FONT_HEIGHT, setting->color[COLOR_TEXT], TRUE);
 	drawScr();
-	MessageDialog("formated mc0:/");
+	MessageBox("formated mc0:/", "FormatMemoryCard", MB_OK);
 	return;
 }
 
@@ -850,11 +855,11 @@ void RunElf(const char *path)
 			ret = psb(path);
 			if(ret<0){
 				strcpy(msgtmp, "psb open error");
-				MessageDialog(msgtmp);
+				MessageBox(msgtmp, LBF_VER, MB_OK);
 			}
 			if(ret>0){
 				sprintf(msgtmp, "error line no = %d", ret);
-				MessageDialog(msgtmp);
+				MessageBox(msgtmp, LBF_VER, MB_OK);
 			}
 			return;
 		}
@@ -1433,7 +1438,7 @@ int main(int argc, char *argv[])
 		drawScr();
 		clrScr(setting->color[COLOR_BACKGROUND]);
 		drawScr();
-		MessageDialog("Screen Setting Initialize");
+		MessageBox("Screen Setting Initialize", LBF_VER, MB_OK);
 	}
 
 	//ランチャーメイン

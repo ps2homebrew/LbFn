@@ -1,7 +1,7 @@
 #------------------------------------
 LIBITO=$(PS2DEV)\libito
 PS2ETH=$(PS2DEV)\ps2eth
-
+PS2_IP=192.168.11.10
 
 #------------------------------------
 #psbファイル実行機能の有無
@@ -42,6 +42,12 @@ all: $(EE_BIN)
 
 clean:
 	rm -f $(EE_BIN) *.o *.s
+
+test: all
+	ps2client -h $(PS2_IP) -t 1 execee host:$(EE_BIN)
+
+reset: clean
+	ps2client -h $(PS2_IP) reset
 
 
 #------------------------------------

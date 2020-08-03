@@ -15,6 +15,8 @@ typedef struct
 	//general
 	char gen_ok[MAX_LANGUAGE_STR];
 	char gen_cancel[MAX_LANGUAGE_STR];
+	char gen_yes[MAX_LANGUAGE_STR];
+	char gen_no[MAX_LANGUAGE_STR];
 	//main
 	char main_launch_hint[MAX_LANGUAGE_STR];
 	char main_loadhddmod[MAX_LANGUAGE_STR];
@@ -53,8 +55,14 @@ typedef struct
 	char filer_newdirfailed[MAX_LANGUAGE_STR];
 	char filer_checkingsize[MAX_LANGUAGE_STR];
 	char filer_getsizefailed[MAX_LANGUAGE_STR];
+	char filer_export[MAX_LANGUAGE_STR];
+	char filer_exportmarkfiles[MAX_LANGUAGE_STR];
+	char filer_exporting[MAX_LANGUAGE_STR];
 	char filer_exportfailed[MAX_LANGUAGE_STR];
 	char filer_exportto[MAX_LANGUAGE_STR];
+	char filer_import[MAX_LANGUAGE_STR];
+	char filer_importmarkfiles[MAX_LANGUAGE_STR];
+	char filer_importing[MAX_LANGUAGE_STR];
 	char filer_importfailed[MAX_LANGUAGE_STR];
 	char filer_importto[MAX_LANGUAGE_STR];
 	char filer_keyboard_hint[MAX_LANGUAGE_STR];
@@ -65,10 +73,10 @@ typedef struct
 	char filer_fntfile_hint1[MAX_LANGUAGE_STR];
 	char filer_fntfile_hint2[MAX_LANGUAGE_STR];
 	char filer_dir_hint[MAX_LANGUAGE_STR];
-	char filer_export_files[MAX_LANGUAGE_STR];
-	char filer_export_header[MAX_LANGUAGE_STR];
-	char filer_import_files[MAX_LANGUAGE_STR];
-	char filer_import_header[MAX_LANGUAGE_STR];
+//	char filer_export_files[MAX_LANGUAGE_STR];
+//	char filer_export_header[MAX_LANGUAGE_STR];
+//	char filer_import_files[MAX_LANGUAGE_STR];
+//	char filer_import_header[MAX_LANGUAGE_STR];
 	char filer_l2popup_detail[MAX_LANGUAGE_STR];
 	char filer_l2popup_dirsize[MAX_LANGUAGE_STR];
 	char filer_l2popup_icon[MAX_LANGUAGE_STR];
