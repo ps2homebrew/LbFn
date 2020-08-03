@@ -256,15 +256,15 @@ void setScrTmp(const char *msg0, const char *msg1)
 	uint64 color;
 	uint64 color2;	//アルファ付き
 
-	color = setting->color[1]&0x00FFFFFF;	//透明度を除外
+	color = setting->color[COLOR_FRAME]&0x00FFFFFF;	//透明度を除外
 	color = color|0x80000000;	//不透明
 	color2 = color|0x10000000;	//半透明
 
 	// バージョン表記
-	printXY(LBF_VER, FONT_WIDTH*2, SCREEN_MARGIN, setting->color[3], TRUE);
+	printXY(LBF_VER, FONT_WIDTH*2, SCREEN_MARGIN, setting->color[COLOR_TEXT], TRUE);
 
 	// メッセージ
-	printXY(msg0, FONT_WIDTH*2, SCREEN_MARGIN+FONT_HEIGHT, setting->color[3], TRUE);
+	printXY(msg0, FONT_WIDTH*2, SCREEN_MARGIN+FONT_HEIGHT, setting->color[COLOR_TEXT], TRUE);
 
 	//上の横線
 	itoLine(color, 0, SCREEN_MARGIN+FONT_HEIGHT*2.5, 0,
@@ -288,18 +288,18 @@ void setScrTmp(const char *msg0, const char *msg1)
 	}
 
 	// 操作説明
-	printXY(msg1, FONT_WIDTH*1, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+4), setting->color[3], TRUE);
+	printXY(msg1, FONT_WIDTH*1, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+4), setting->color[COLOR_TEXT], TRUE);
 }
 
 //-------------------------------------------------
 // メッセージ描画
 void drawMsg(const char *msg)
 {
-	itoSprite(setting->color[0], 0, SCREEN_MARGIN+FONT_HEIGHT,
+	itoSprite(setting->color[COLOR_BACKGROUND], 0, SCREEN_MARGIN+FONT_HEIGHT,
 		SCREEN_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*2, 0);
 	//メッセージ
 	printXY(msg, FONT_WIDTH*2, SCREEN_MARGIN+FONT_HEIGHT,
-		setting->color[3], TRUE);
+		setting->color[COLOR_TEXT], TRUE);
 	drawScr();
 }
 
@@ -314,21 +314,6 @@ void clrScr(uint64 color)
 // 画面の描画
 void drawScr(void)
 {
-/*
-	int x,y;
-
-	itoPrimAlphaBlending(TRUE);
-	for(x=0;x<SCREEN_WIDTH;x+=FONT_WIDTH)
-		itoLine(
-			ITO_RGBA(0xFF,0x00,0x00,0x10), x, 0, 0,
-			ITO_RGBA(0xFF,0x00,0x00,0x10), x, SCREEN_HEIGHT, 0);	
-	for(y=SCREEN_MARGIN;y<SCREEN_HEIGHT;y+=FONT_HEIGHT)
-		itoLine(
-			ITO_RGBA(0xFF,0x00,0x00,0x10), 0, y, 0,
-			ITO_RGBA(0xFF,0x00,0x00,0x10), SCREEN_WIDTH, y, 0);	
-	itoPrimAlphaBlending(FALSE);
-*/
-
 	itoGsFinish();
 	itoVSync();
 	itoSwitchFrameBuffers();

@@ -91,14 +91,15 @@ typedef struct
 	//screen
 	char conf_background[MAX_LANGUAGE_STR];
 	char conf_frame[MAX_LANGUAGE_STR];
-	char conf_highlighttext[MAX_LANGUAGE_STR];
 	char conf_normaltext[MAX_LANGUAGE_STR];
+	char conf_highlighttext[MAX_LANGUAGE_STR];
+	char conf_disabletext[MAX_LANGUAGE_STR];
 	char conf_folder[MAX_LANGUAGE_STR];
 	char conf_file[MAX_LANGUAGE_STR];
 	char conf_ps2save[MAX_LANGUAGE_STR];
-	char conf_elffile[MAX_LANGUAGE_STR];
 	char conf_ps1save[MAX_LANGUAGE_STR];
-	char conf_disabletext[MAX_LANGUAGE_STR];
+	char conf_elffile[MAX_LANGUAGE_STR];
+	char conf_psufile[MAX_LANGUAGE_STR];
 	char conf_screen_x[MAX_LANGUAGE_STR];
 	char conf_screen_y[MAX_LANGUAGE_STR];
 	char conf_tvmode[MAX_LANGUAGE_STR];
@@ -138,7 +139,11 @@ typedef struct
 	char conf_disc_ps2save_check[MAX_LANGUAGE_STR];
 	char conf_disc_elf_check[MAX_LANGUAGE_STR];
 	char conf_export_dir[MAX_LANGUAGE_STR];
-//	char conf_mass_filesize_check[MAX_LANGUAGE_STR];
+	char conf_defaulttitle[MAX_LANGUAGE_STR];
+	char conf_defaultdetail[MAX_LANGUAGE_STR];
+	char conf_defaultdetail_none[MAX_LANGUAGE_STR];
+	char conf_defaultdetail_size[MAX_LANGUAGE_STR];
+	char conf_defaultdetail_modifytime[MAX_LANGUAGE_STR];
 	char conf_miscsettinginit[MAX_LANGUAGE_STR];
 
 	char conf_ok[MAX_LANGUAGE_STR];

@@ -49,6 +49,7 @@ enum
 	TYPE_DIR,
 	TYPE_PS2SAVE,
 	TYPE_PS1SAVE,
+	TYPE_PSU,
 	TYPE_OTHER=15,
 };
 
@@ -120,6 +121,9 @@ int psb_argc;
 char psb_argv[MAX_ARGC][MAX_PATH+2];
 #endif
 
+//プロトタイプ宣言
+void sjis2ascii(const unsigned char *in, unsigned char *out);
+
 //-------------------------------------------------
 //拡張子を取得
 char* getExtension(const char *path)
@@ -138,7 +142,7 @@ int getHddParty(const char *path, const FILEINFO *file, char *party, char *dir)
 	//fullpathを作成
 	strcpy(fullpath, path);
 	if(file!=NULL){
-		strcat(fullpath, file->name);	//
+		strcat(fullpath, file->name);
 		if(file->attr & MC_ATTR_SUBDIR)	//フォルダのときスラッシュつける
 			strcat(fullpath,"/");
 	}
@@ -182,7 +186,7 @@ int ynDialog(const char *message, int defaultsel)
 {
 	char msg[2048];
 	int dh, dw, dx, dy;
-	int sel=0, n, tw;//, a=6, b=4, c=2;
+	int sel=0, n, tw;
 	int i, x, len, ret;
 	int x_margin;
 	int y_margin;
@@ -238,34 +242,34 @@ int ynDialog(const char *message, int defaultsel)
 		}
 		//描画開始
 		//メッセージ消す
-		itoSprite(setting->color[0],
+		itoSprite(setting->color[COLOR_BACKGROUND],
 			0, SCREEN_MARGIN+FONT_HEIGHT,
 			SCREEN_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*2, 0);
 		//背景
 		drawDialogTmp(dx, dy,
 			dx+dw, dy+dh,
-			setting->color[0], setting->color[1]);
+			setting->color[COLOR_BACKGROUND], setting->color[COLOR_FRAME]);
 		//メッセージ
 		for(i=len=0; i<n; i++){
-			printXY(&msg[len], dx+x_margin, (dy+y_margin+i*FONT_HEIGHT), setting->color[3],TRUE);
+			printXY(&msg[len], dx+x_margin, (dy+y_margin+i*FONT_HEIGHT), setting->color[COLOR_TEXT],TRUE);
 			len=strlen(&msg[len])+1;
 		}
 		//OKとCANCEL
 		x=(tw-FONT_WIDTH*22)/2;
 		sprintf(tmp, " %-10s %-10s", lang->gen_ok, lang->gen_cancel);
-		printXY(tmp, dx+x_margin+x, (dy+y_margin+(n+1)*FONT_HEIGHT), setting->color[3],TRUE);
+		printXY(tmp, dx+x_margin+x, (dy+y_margin+(n+1)*FONT_HEIGHT), setting->color[COLOR_TEXT],TRUE);
 		//カーソル
 		if(sel==0)
-			printXY(">", dx+x_margin+x, (dy+y_margin+(n+1)*FONT_HEIGHT), setting->color[3], TRUE);
+			printXY(">", dx+x_margin+x, (dy+y_margin+(n+1)*FONT_HEIGHT), setting->color[COLOR_TEXT], TRUE);
 		else
-			printXY(">",dx+x_margin+x+FONT_WIDTH*11, (dy+y_margin+(n+1)*FONT_HEIGHT), setting->color[3], TRUE);
+			printXY(">",dx+x_margin+x+FONT_WIDTH*11, (dy+y_margin+(n+1)*FONT_HEIGHT), setting->color[COLOR_TEXT], TRUE);
 		drawScr();
 	}
 /*
 	//
 	x=(tw-FONT_WIDTH*12)/2;
-	drawChar(' ', dx+x_margin+x, (dy+y_margin+(n+1)*FONT_HEIGHT), setting->color[3]);
-	drawChar(' ',dx+x_margin+x+FONT_WIDTH*11, (dy+y_margin+(n+1)*FONT_HEIGHT), setting->color[3]);
+	drawChar(' ', dx+x_margin+x, (dy+y_margin+(n+1)*FONT_HEIGHT), setting->color[COLOR_TEXT]);
+	drawChar(' ',dx+x_margin+x+FONT_WIDTH*11, (dy+y_margin+(n+1)*FONT_HEIGHT), setting->color[COLOR_TEXT]);
 */
 	return ret;
 }
@@ -318,16 +322,16 @@ void MessageDialog(const char *message)
 		//背景
 		drawDialogTmp(dx, dy,
 			dx+dw, dy+dh,
-			setting->color[0], setting->color[1]);
+			setting->color[COLOR_BACKGROUND], setting->color[COLOR_FRAME]);
 		//メッセージ
 		for(i=len=0; i<n; i++){
-			printXY(&msg[len], dx+x_margin, (dy+y_margin+i*FONT_HEIGHT), setting->color[3],TRUE);
+			printXY(&msg[len], dx+x_margin, (dy+y_margin+i*FONT_HEIGHT), setting->color[COLOR_TEXT],TRUE);
 			len=strlen(&msg[len])+1;
 		}
 		x=(tw-FONT_WIDTH*10)/2;
 		//OK
 		sprintf(tmp, "○: %s", lang->gen_ok);
-		printXY(tmp, dx+x_margin+x, (dy+y_margin+(n+1)*FONT_HEIGHT), setting->color[3],TRUE);
+		printXY(tmp, dx+x_margin+x, (dy+y_margin+(n+1)*FONT_HEIGHT), setting->color[COLOR_TEXT],TRUE);
 		drawScr();
 	}
 	return;
@@ -615,15 +619,144 @@ int getDir(const char *path, FILEINFO *info)
 }
 
 //-------------------------------------------------
-// セーブデータタイトルの取得
-int getGameTitle(const char *path, const FILEINFO *file, char *out)
+//psuファイルからゲームタイトル取得
+//戻り値
+//0以下:失敗
+//    0:成功
+int getGameTitlePsu(const char *path, const FILEINFO *file, char *out)
 {
-	iox_dirent_t dirEnt;
 	char party[MAX_NAME], dir[MAX_PATH];
-	int fd=-1, hddin=FALSE, ret, dirfd=-1;//, size
+	int hddin=FALSE;
+	int fd;
+	int ret;
+	int psuSize;
+	PSU_HEADER psu_header_dir, psu_header;
+	int n,i;
+	int seek;
+	char tmp[65];
+	int fileSize;
 
 	//ルートかパーティションリスト
 	if(path[0]==0 || !strcmp(path, "hdd0:/")) return -1;
+
+	//フルパス
+	if(!strncmp(path, "hdd", 3)){
+		getHddParty(path, file, party, dir);
+		ret = mountParty(party);
+		if(ret<0) return -1;
+		dir[3]=ret+'0';
+		hddin=TRUE;
+	}
+	else{
+		sprintf(dir, "%s%s", path, file->name);
+		if(file->attr & MC_ATTR_SUBDIR) strcat(dir, "/");
+	}
+
+	//psuファイルオープンとサイズ取得
+	if(!strncmp(path, "hdd", 3)){
+		hddin=TRUE;
+		fd = fileXioOpen(dir, O_RDONLY, fileMode);
+		if(fd<0){
+			ret=-1;
+			goto error;
+		}
+		psuSize = fileXioLseek(fd, 0, SEEK_END);
+		fileXioLseek(fd, 0, SEEK_SET);
+	}
+	else{
+		fd = fioOpen(dir, O_RDONLY);
+		if(fd<0){
+			ret=-1;
+			goto error;
+		}
+		psuSize = fioLseek(fd, 0, SEEK_END);
+		fioLseek(fd, 0, SEEK_SET);
+	}
+
+	//psuヘッダ読み込む
+	if(psuSize<sizeof(PSU_HEADER)){
+		ret=-2;
+		goto error;
+	}
+	memset(&psu_header_dir, 0, sizeof(PSU_HEADER));
+	if(hddin)
+		fileXioRead(fd, (char*)&psu_header_dir, sizeof(PSU_HEADER));
+	else
+		fioRead(fd, &psu_header_dir, sizeof(PSU_HEADER));
+	n = psu_header_dir.size;	//ファイル数
+	seek = sizeof(PSU_HEADER);	//ファイルのシーク
+
+	ret=-3;
+	//psu_header[0]から読み込む
+	for(i=0;i<n;i++){
+		//ファイルヘッダ読み込む
+		if(psuSize<seek+sizeof(PSU_HEADER)){
+			ret=-4;
+			goto error;
+		}
+		memset(&psu_header, 0, sizeof(PSU_HEADER));
+		if(hddin)
+			fileXioRead(fd, (char*)&psu_header, sizeof(PSU_HEADER));
+		else
+			fioRead(fd, &psu_header, sizeof(PSU_HEADER));
+		seek += sizeof(PSU_HEADER);
+		//ゲームタイトル
+		if(!strcmp(psu_header.name, "icon.sys")){
+			if(hddin){
+				fileXioLseek(fd, seek+0xC0, SEEK_SET);
+				fileXioRead(fd, tmp, 64);
+				out[64]=0;
+				fileXioLseek(fd, seek, SEEK_SET);
+			}
+			else{
+				fioLseek(fd, seek+0xC0, SEEK_SET);
+				fioRead(fd, tmp, 64);
+				out[64]=0;
+				fioLseek(fd, seek, SEEK_SET);
+			}
+			sjis2ascii(tmp, out);
+			ret=0;	//成功
+			break;
+		}
+		//次のファイルヘッダの位置にシーク
+		if(psu_header.size>0){
+			fileSize = (((psu_header.size-1)/0x400)+1)*0x400;
+			if(psuSize<seek + fileSize){
+				ret=-4;
+				goto error;
+			}
+			seek += fileSize;
+			if(hddin)
+				fileXioLseek(fd, seek, SEEK_SET);
+			else
+				fioLseek(fd, seek, SEEK_SET);
+		}
+	}
+error:
+	//psuファイルクローズ
+	if(hddin)
+		fileXioClose(fd);
+	else
+		fioClose(fd);
+
+	return ret;
+}
+
+//-------------------------------------------------
+// セーブデータタイトルの取得
+//戻り値
+//0以下:失敗
+//    0:PS2のセーブデータタイトル取得成功
+//    1:PS1のセーブデータタイトル取得成功
+int getGameTitle(const char *path, const FILEINFO *file, char *out)
+{
+	char party[MAX_NAME], dir[MAX_PATH];
+	int fd=-1, hddin=FALSE, ret;
+	char *ext;
+
+	//ルートかパーティションリスト
+	if(path[0]==0 || !strcmp(path, "hdd0:/")) return -1;
+
 	//フルパス
 	if(!strncmp(path, "hdd", 3)){
 		getHddParty(path, file, party, dir);
@@ -638,88 +771,82 @@ int getGameTitle(const char *path, const FILEINFO *file, char *out)
 	}
 
 	ret = -1;
-	if(!(file->attr & MC_ATTR_SUBDIR)){
-		//ファイルのときPS1のゲームタイトル取得してみる
+	if(file->attr & MC_ATTR_SUBDIR){	//フォルダのとき
 		if(hddin){
-			if((fd=fileXioOpen(dir, O_RDONLY, fileMode)) < 0) goto error;
-			if(fileXioLseek(fd, 0, SEEK_END) < 0x2000) goto error;
-			fileXioLseek(fd, 0, SEEK_SET);
-			fileXioRead(fd, out, 2);
-			if(strncmp(out, "SC", 2)) goto error;
-			fileXioLseek(fd, 4, SEEK_SET);
-			fileXioRead(fd, out, 16*4);
-			out[16*4] = 0;
-			fileXioClose(fd); fd=-1;
-			ret=1;
-		}
-		else{
-			if((fd=fioOpen(dir, O_RDONLY)) < 0) goto error;
-			if(fioLseek(fd, 0, SEEK_END) < 0x2000) goto error;
-			fioLseek(fd, 0, SEEK_SET);
-			fioRead(fd, out, 2);
-			if(strncmp(out, "SC", 2)) goto error;
-			fioLseek(fd, 4, SEEK_SET);
-			fioRead(fd, out, 16*4);
-			out[16*4] = 0;
-			fioClose(fd); fd=-1;
-			ret=1;
-		}
-	}
-	else{
-		//フォルダのときicon.sysからゲームタイトル取得
-		if(hddin){
-			if((dirfd=fileXioDopen(dir)) < 0)
-				goto error;
-			while(fileXioDread(dirfd, &dirEnt)){
-				if(dirEnt.stat.mode & FIO_S_IFREG){
-					if(!strcmp(dirEnt.name, "icon.sys")){
-						strcat(dir, "icon.sys");
-						if((fd=fileXioOpen(dir, O_RDONLY, fileMode)) < 0)
-							goto error;
-						if(fileXioLseek(fd,0,SEEK_END) <= 0x100)
-							goto error;
-						fileXioLseek(fd, 0xC0, SEEK_SET);
-						fileXioRead(fd, out, 16*4);
-						out[16*4] = 0;
-						fileXioClose(fd); fd=-1;
-						ret=0;
-					}
-					else if(!strcmp(dirEnt.name, file->name)){	//PS1
-						char dirps1[MAX_PATH];
-						FILEINFO fi;
-						sprintf(dirps1, "%s%s/", path, file->name);
-						strcpy(fi.name, file->name);
-						fi.attr = 0;
-						if(getGameTitle(dirps1, &fi, out)>=0)
-							ret=1;
-						else
-							out[0]=0;
-					}
-				}
-			}
-			fileXioDclose(dirfd); dirfd=-1;
-		}
-		else{
+			//HDD
 			strcat(dir, "icon.sys");
-			if((fd=fioOpen(dir, O_RDONLY)) < 0){
-				//icon.sysがないとき
-				char dirps1[MAX_PATH];
-				FILEINFO fi;
-				sprintf(dirps1, "%s%s/", path, file->name);
-				strcpy(fi.name, file->name);
-				fi.attr = 0;
-				if(getGameTitle(dirps1, &fi, out)>=0)
-					ret=1;
-				else
-					out[0]=0;
+			if((fd=fileXioOpen(dir, O_RDONLY, fileMode)) >= 0){
+				//icon.sysから取得
+				if(fileXioLseek(fd,0,SEEK_END) <= 0x100)
+					goto error;
+				fileXioLseek(fd, 0xC0, SEEK_SET);
+				fileXioRead(fd, out, 16*4);
+				out[16*4] = 0;
+				fileXioClose(fd); fd=-1;
+				ret = 0;	//PS2
 			}
-			else{
-				if(fioLseek(fd,0,SEEK_END) <= 0x100) goto error;
+		}
+		else{
+			//HDD以外
+			strcat(dir, "icon.sys");
+			if((fd=fioOpen(dir, O_RDONLY)) >= 0){
+				//icon.sysから取得
+				if(fioLseek(fd,0,SEEK_END) <= 0x100)
+					goto error;
 				fioLseek(fd, 0xC0, SEEK_SET);
 				fioRead(fd, out, 16*4);
 				out[16*4] = 0;
 				fioClose(fd); fd=-1;
-				ret=0;
+				ret = 0;	//PS2
+			}
+		}
+		//icon.sysがないときPS1取得してみる
+		if(ret!=0){
+			char ps1dir[MAX_PATH];
+			FILEINFO fi;
+			sprintf(ps1dir, "%s%s/", path, file->name);
+			strcpy(fi.name, file->name);
+			fi.attr = 0;	//属性はファイル
+			if(getGameTitle(ps1dir, &fi, out)>=0)
+				ret = 1;	//PS1
+			else
+				out[0]=0;
+		}
+	}
+	else{	//ファイルのとき
+		ext = getExtension(file->name);
+		if(ext!=NULL&&!stricmp(ext, ".psu")){
+			//psuファイルのとき
+			if(getGameTitlePsu(path, file, out)>=0)
+				ret = 0;	//PS2
+			else
+				out[0]=0;
+		}
+		else{
+			//psuファイルじゃないときPS1のゲームタイトル取得してみる
+			if(hddin){
+				if((fd=fileXioOpen(dir, O_RDONLY, fileMode)) < 0) goto error;
+				if(fileXioLseek(fd, 0, SEEK_END) < 0x2000) goto error;
+				fileXioLseek(fd, 0, SEEK_SET);
+				fileXioRead(fd, out, 2);
+				if(strncmp(out, "SC", 2)) goto error;
+				fileXioLseek(fd, 4, SEEK_SET);
+				fileXioRead(fd, out, 16*4);
+				out[16*4] = 0;
+				fileXioClose(fd); fd=-1;
+				ret=1;	//PS1
+			}
+			else{
+				if((fd=fioOpen(dir, O_RDONLY)) < 0) goto error;
+				if(fioLseek(fd, 0, SEEK_END) < 0x2000) goto error;
+				fioLseek(fd, 0, SEEK_SET);
+				fioRead(fd, out, 2);
+				if(strncmp(out, "SC", 2)) goto error;
+				fioLseek(fd, 4, SEEK_SET);
+				fioRead(fd, out, 16*4);
+				out[16*4] = 0;
+				fioClose(fd); fd=-1;
+				ret=1;	//PS1
 			}
 		}
 	}
@@ -730,7 +857,6 @@ error:
 		else
 			fioClose(fd);
 	}
-	if(dirfd>=0) fileXioDclose(dirfd);
 	return ret;
 }
 
@@ -829,7 +955,7 @@ int menu(const char *path, const char *file)
 		}
 
 		// 描画開始
-		drawDialogTmp(menu_x, menu_y, menu_x+menu_w, menu_y+menu_h, setting->color[0], setting->color[1]);
+		drawDialogTmp(menu_x, menu_y, menu_x+menu_w, menu_y+menu_h, setting->color[COLOR_BACKGROUND], setting->color[COLOR_FRAME]);
 		for(i=0,y=74; i<NUM_MENU; i++){
 			if(i==COPY) strcpy(tmp, lang->filer_menu_copy);
 			else if(i==CUT) strcpy(tmp, lang->filer_menu_cut);
@@ -843,27 +969,27 @@ int menu(const char *path, const char *file)
 
 			if(enable[i]){
 				if(sel==i)
-					color = setting->color[2];	//強調
+					color = setting->color[COLOR_HIGHLIGHTTEXT];	//強調
 				else
-					color = setting->color[3];	//ノーマル
+					color = setting->color[COLOR_TEXT];	//ノーマル
 			}
 			else
-				color = setting->color[9];	//無効
+				color = setting->color[COLOR_GRAYTEXT];	//無効
 
 			printXY(tmp, menu_x+FONT_WIDTH*2, menu_y+FONT_HEIGHT/2+i*FONT_HEIGHT, color, TRUE);
 			y+=FONT_HEIGHT;
 		}
 		if(sel<NUM_MENU)
-			printXY(">", menu_x+FONT_WIDTH, menu_y+FONT_HEIGHT/2+sel*FONT_HEIGHT, setting->color[2], TRUE);	//強調
+			printXY(">", menu_x+FONT_WIDTH, menu_y+FONT_HEIGHT/2+sel*FONT_HEIGHT, setting->color[COLOR_HIGHLIGHTTEXT], TRUE);	//強調
 
 		// 操作説明
 		x = FONT_WIDTH*1;
 		y = SCREEN_MARGIN+(MAX_ROWS+4)*FONT_HEIGHT;
-		itoSprite(setting->color[0],
+		itoSprite(setting->color[COLOR_BACKGROUND],
 			0, y,
 			SCREEN_WIDTH, y+FONT_HEIGHT, 0);
 		sprintf(tmp,"○:%s ×:%s", lang->gen_ok, lang->gen_cancel);
-		printXY(tmp, x, y, setting->color[3], TRUE);
+		printXY(tmp, x, y, setting->color[COLOR_TEXT], TRUE);
 		drawScr();
 	}
 
@@ -1743,11 +1869,11 @@ void sjis2ascii(const unsigned char *in, unsigned char *out)
 }
 
 //-------------------------------------------------
-// psuファイルからインポート
-// 戻り値
-// 0以下 :失敗
-// 0     :mc0にインポート
-// 1     :mc1にインポート
+//psuファイルからインポート
+//戻り値
+//0以下:失敗
+//    0:mc0にインポート
+//    1:mc1にインポート
 int psuImport(const char *path, const FILEINFO *file)
 {
 	//
@@ -1824,7 +1950,7 @@ int psuImport(const char *path, const FILEINFO *file)
 			ret=-4;
 			goto error;
 		}
-		//psuヘッダを読み込むのにpsu_header_dirをに使う
+		//psuヘッダを読み込む
 		memset(&psu_header_dir, 0, sizeof(PSU_HEADER));
 		if(hddin) fileXioRead(in_fd, (char*)&psu_header_dir, sizeof(PSU_HEADER));
 		else fioRead(in_fd, &psu_header_dir, sizeof(PSU_HEADER));
@@ -1833,7 +1959,6 @@ int psuImport(const char *path, const FILEINFO *file)
 
 		//psu_header[0]から読み込む
 		for(i=0;i<n;i++){
-			//ファイルヘッダ読み込む
 			if(psuSize<seek+sizeof(PSU_HEADER)){
 				ret=-5;
 				goto error;
@@ -1858,7 +1983,7 @@ int psuImport(const char *path, const FILEINFO *file)
 				}
 				sjis2ascii(tmp, title);
 			}
-			//
+			//次のファイルヘッダの位置にシーク
 			if(psu_header[i].size>0){
 				fileSize = (((psu_header[i].size-1)/0x400)+1)*0x400;
 				if(psuSize<seek + fileSize){
@@ -1933,9 +2058,9 @@ int psuImport(const char *path, const FILEINFO *file)
 			// 描画開始
 			drawDialogTmp(dialog_x, dialog_y,
 				dialog_x+dialog_width, dialog_y+dialog_height,
-				setting->color[0], setting->color[1]);
+				setting->color[COLOR_BACKGROUND], setting->color[COLOR_FRAME]);
 			drawFrame(dialog_x+FONT_WIDTH, dialog_y+FONT_HEIGHT*4,
-				dialog_x+dialog_width-FONT_WIDTH, dialog_y+FONT_HEIGHT*14, setting->color[1]);
+				dialog_x+dialog_width-FONT_WIDTH, dialog_y+FONT_HEIGHT*14, setting->color[COLOR_FRAME]);
 			// psuファイルの情報を表示
 			x = dialog_x+FONT_WIDTH*1;
 			y = dialog_y+FONT_HEIGHT*0.5;
@@ -1944,20 +2069,19 @@ int psuImport(const char *path, const FILEINFO *file)
 				tmp[42]=0;
 				strcat(tmp,"...");
 			}
-			printXY(tmp, x, y, setting->color[3], TRUE);
+			printXY(tmp, x, y, setting->color[COLOR_TEXT], TRUE);
 			y +=FONT_HEIGHT;
 			strcpy(tmp, title);
 			if(strlen(tmp)>46){	//titleが長いときに短くする
 				tmp[42] = 0;
 				strcat(tmp,"...");
-
 			}
-			printXY(tmp, x, y, setting->color[3], TRUE);
+			printXY(tmp, x, y, setting->color[COLOR_TEXT], TRUE);
 			y +=FONT_HEIGHT;
 			sprintf(tmp, "%2d %s", n, lang->filer_import_files);
-			printXY(tmp, x, y, setting->color[3], TRUE);
+			printXY(tmp, x, y, setting->color[COLOR_TEXT], TRUE);
 			y +=FONT_HEIGHT*2;
-			printXY(lang->filer_import_header, x, y, setting->color[3], TRUE);
+			printXY(lang->filer_import_header, x, y, setting->color[COLOR_TEXT], TRUE);
 			y +=FONT_HEIGHT;
 			for(i=0;i<8;i++){
 				sprintf(tmp, "%4d:", i+scroll);
@@ -1967,21 +2091,21 @@ int psuImport(const char *path, const FILEINFO *file)
 						tmp[42]=0;
 						strcat(tmp,"...");
 					}
-				printXY(tmp, x, y, setting->color[3], TRUE);
+				printXY(tmp, x, y, setting->color[COLOR_TEXT], TRUE);
 				y +=FONT_HEIGHT;
 			}
 			y += FONT_HEIGHT;
 			sprintf(tmp,"   mc0:/    mc1:/    %s", lang->gen_cancel);
-			printXY(tmp, x, y, setting->color[3], TRUE);
-			printXY(">", x+FONT_WIDTH+FONT_WIDTH*9*outmc, y, setting->color[3], TRUE);
+			printXY(tmp, x, y, setting->color[COLOR_TEXT], TRUE);
+			printXY(">", x+FONT_WIDTH+FONT_WIDTH*9*outmc, y, setting->color[COLOR_TEXT], TRUE);
 			// 操作説明
 			x = FONT_WIDTH*1;
 			y = SCREEN_MARGIN+(MAX_ROWS+4)*FONT_HEIGHT;
-			itoSprite(setting->color[0],
+			itoSprite(setting->color[COLOR_TEXT],
 				0, y,
 				SCREEN_WIDTH, y+FONT_HEIGHT, 0);
 			sprintf(tmp,"○:%s ×:%s", lang->gen_ok, lang->gen_cancel);
-			printXY(tmp, x, y, setting->color[3], TRUE);
+			printXY(tmp, x, y, setting->color[COLOR_TEXT], TRUE);
 			drawScr();
 		}
 	}
@@ -1997,7 +2121,6 @@ int psuImport(const char *path, const FILEINFO *file)
 		char party[MAX_NAME];
 		int r;
 		mcTable mcDir __attribute__((aligned(64)));	//mcSetFileInfo()用
-
 
 		//セーブデータのフォルダを出力するフォルダのフルパス
 		if(!outmc)
@@ -2070,13 +2193,13 @@ int psuImport(const char *path, const FILEINFO *file)
 			// プログレスバー
 			drawDialogTmp(dialog_x, dialog_y,
 				dialog_x+dialog_width, dialog_y+dialog_height,
-				setting->color[0], setting->color[1]);
-			itoSprite(setting->color[1],
+				setting->color[COLOR_TEXT], setting->color[COLOR_FRAME]);
+			itoSprite(setting->color[COLOR_FRAME],
 				dialog_x+FONT_HEIGHT/2, dialog_y+FONT_WIDTH/2,
 				dialog_x+FONT_HEIGHT/2+(dialog_width-FONT_WIDTH)*(i*100/n)/100, dialog_y+dialog_height-FONT_WIDTH/2, 0);
 			//
 			sprintf(tmp, "%2d / %2d", i, n);
-			printXY(tmp, dialog_x+120, dialog_y+FONT_HEIGHT/2, setting->color[3], TRUE);
+			printXY(tmp, dialog_x+120, dialog_y+FONT_HEIGHT/2, setting->color[COLOR_TEXT], TRUE);
 			drawScr();
 			//
 			seek += sizeof(PSU_HEADER);
@@ -2185,7 +2308,7 @@ int psuExport(const char *path, const FILEINFO *file)
 	int mcret;
 	int r;
 
-	int sjisout = FALSE;		//psuファイルをsjisで出力
+	int sjisout = FALSE;		//psuファイル名をsjisで出力
 	char outpath[MAX_PATH];	//出力するpsuファイル名
 	char *buff=NULL;
 	int out_fd = -1;
@@ -2263,9 +2386,9 @@ int psuExport(const char *path, const FILEINFO *file)
 			// 描画開始
 			drawDialogTmp(dialog_x, dialog_y,
 				dialog_x+dialog_width, dialog_y+dialog_height,
-				setting->color[0], setting->color[1]);
+				setting->color[COLOR_TEXT], setting->color[COLOR_FRAME]);
 			drawFrame(dialog_x+FONT_WIDTH, dialog_y+FONT_HEIGHT*4,
-				dialog_x+dialog_width-FONT_WIDTH, dialog_y+FONT_HEIGHT*14, setting->color[1]);
+				dialog_x+dialog_width-FONT_WIDTH, dialog_y+FONT_HEIGHT*14, setting->color[COLOR_FRAME]);
 			//
 			x = dialog_x+FONT_WIDTH*1;
 			y = dialog_y+FONT_HEIGHT*0.5;
@@ -2274,19 +2397,19 @@ int psuExport(const char *path, const FILEINFO *file)
 				tmp[42]=0;
 				strcat(tmp,"...");
 			}
-			printXY(tmp, x, y, setting->color[3], TRUE);
+			printXY(tmp, x, y, setting->color[COLOR_TEXT], TRUE);
 			y += FONT_HEIGHT;
 			sprintf(tmp, "%s", file->title);
 			if(strlen(tmp)>46){	//titleが長いときに短くする
 				tmp[42] = 0;
 				strcat(tmp,"...");
 			}
-			printXY(tmp, x, y, setting->color[3], TRUE);
+			printXY(tmp, x, y, setting->color[COLOR_TEXT], TRUE);
 			y += FONT_HEIGHT;
 			sprintf(tmp, "%d %s", n, lang->filer_export_files);
-			printXY(tmp, x, y, setting->color[3], TRUE);
+			printXY(tmp, x, y, setting->color[COLOR_TEXT], TRUE);
 			y += FONT_HEIGHT*2;
-			printXY(lang->filer_export_header, x, y, setting->color[3], TRUE);
+			printXY(lang->filer_export_header, x, y, setting->color[COLOR_TEXT], TRUE);
 			y += FONT_HEIGHT;
 			for(i=0;i<8;i++){
 				sprintf(tmp, "%4d:", i+scroll);
@@ -2296,20 +2419,20 @@ int psuExport(const char *path, const FILEINFO *file)
 					tmp[42]=0;
 					strcat(tmp,"...");
 				}
-				printXY(tmp, x, y, setting->color[3], TRUE);
+				printXY(tmp, x, y, setting->color[COLOR_TEXT], TRUE);
 				y += FONT_HEIGHT;
 			}
 			y += FONT_HEIGHT;
 			sprintf(tmp,"○:%s ×:%s", lang->gen_ok, lang->gen_cancel);
-			printXY(tmp, x, y, setting->color[3], TRUE);
+			printXY(tmp, x, y, setting->color[COLOR_TEXT], TRUE);
 			// 操作説明
 			x = FONT_WIDTH*1;
 			y = SCREEN_MARGIN+(MAX_ROWS+4)*FONT_HEIGHT;
-			itoSprite(setting->color[0],
+			itoSprite(setting->color[COLOR_TEXT],
 				0, y,
 				SCREEN_WIDTH, y+FONT_HEIGHT, 0);
 			sprintf(tmp,"○:%s ×:%s", lang->gen_ok, lang->gen_cancel);
-			printXY(tmp, x, y, setting->color[3], TRUE);
+			printXY(tmp, x, y, setting->color[COLOR_TEXT], TRUE);
 
 			drawScr();
 		}
@@ -2353,7 +2476,7 @@ int psuExport(const char *path, const FILEINFO *file)
 			if(strlen(tmp)>28){	//ファイル名が長いときに短くする
 				tmp[28] = 0;
 				code=tmp[27];
-				//2byte文字の1byte目だったら消す
+				//sjisの1byte目だったら消す
 				if( (code>=0x81)&&(code<=0x9F) ) tmp[27] = 0;
 				if( (code>=0xE0)&&(code<=0xFF) ) tmp[27] = 0;
 			}
@@ -2449,13 +2572,13 @@ int psuExport(const char *path, const FILEINFO *file)
 			// 描画開始
 			drawDialogTmp(dialog_x, dialog_y,
 				dialog_x+dialog_width, dialog_y+dialog_height,
-				setting->color[0], setting->color[1]);
+				setting->color[COLOR_TEXT], setting->color[COLOR_FRAME]);
 			// プログレスバー
-			itoSprite(setting->color[1],
+			itoSprite(setting->color[COLOR_FRAME],
 				dialog_x+FONT_HEIGHT/2, dialog_y+FONT_WIDTH/2,
 				dialog_x+FONT_HEIGHT/2+(dialog_width-FONT_WIDTH)*(i*100/n)/100, dialog_y+dialog_height-FONT_WIDTH/2, 0);
 			sprintf(tmp, "%2d / %2d", i, n);
-			printXY(tmp, dialog_x+120, dialog_y+FONT_HEIGHT/2, setting->color[3], TRUE);
+			printXY(tmp, dialog_x+120, dialog_y+FONT_HEIGHT/2, setting->color[COLOR_TEXT], TRUE);
 			drawScr();
 			//ファイルヘッダを作成
 			memset(&psu_header, 0, sizeof(PSU_HEADER));
@@ -2666,21 +2789,21 @@ int keyboard(char *out, int max)
 			}
 		}
 		// 描画開始
-		drawDialogTmp(KEY_X, KEY_Y, KEY_X+KEY_W, KEY_Y+KEY_H, setting->color[0], setting->color[1]);
+		drawDialogTmp(KEY_X, KEY_Y, KEY_X+KEY_W, KEY_Y+KEY_H, setting->color[COLOR_BACKGROUND], setting->color[COLOR_FRAME]);
 		//キーボード内側の枠
 		drawFrame(KEY_X+FONT_WIDTH, KEY_Y+FONT_HEIGHT*1.5,
-			KEY_X+KEY_W-FONT_WIDTH, KEY_Y+FONT_HEIGHT*9.5, setting->color[1]);
+			KEY_X+KEY_W-FONT_WIDTH, KEY_Y+FONT_HEIGHT*9.5, setting->color[COLOR_FRAME]);
 		//入力中の文字列の表示
 		printXY(out,
 			KEY_X+FONT_WIDTH*2, KEY_Y+FONT_HEIGHT*0.5,
-			setting->color[3], TRUE);
+			setting->color[COLOR_TEXT], TRUE);
 		t++;
 		//キャレット
 		if(t<SCANRATE/2){
 			printXY("|",
 				KEY_X+FONT_WIDTH*0.5+(cur+1)*FONT_WIDTH,
 				KEY_Y+FONT_HEIGHT*0.5,
-				setting->color[3], TRUE);
+				setting->color[COLOR_TEXT], TRUE);
 		}
 		else{
 			if(t==SCANRATE) t=0;
@@ -2692,10 +2815,10 @@ int keyboard(char *out, int max)
 		if(sel<WFONTS*HFONTS){	//OKとCANCEL以外
 			x = KEY_X+FONT_WIDTH*2 + (sel%WFONTS)*FONT_WIDTH*3;
 			y = KEY_Y+FONT_HEIGHT*2 + (sel/WFONTS)*FONT_HEIGHT;
-			itoSprite(setting->color[2]|0x10000000,
+			itoSprite(setting->color[COLOR_HIGHLIGHTTEXT]|0x10000000,
 				x, y-2,
 				x+FONT_WIDTH*3, y+GetFontSize(ASCII_FONT_HEIGHT)+2, 0);
-			drawFrame(x, y-2, x+FONT_WIDTH*3, y+GetFontSize(ASCII_FONT_HEIGHT)+2, setting->color[2]);
+			drawFrame(x, y-2, x+FONT_WIDTH*3, y+GetFontSize(ASCII_FONT_HEIGHT)+2, setting->color[COLOR_HIGHLIGHTTEXT]);
 		}
 		else{
 			if(sel==WFONTS*HFONTS)
@@ -2703,10 +2826,10 @@ int keyboard(char *out, int max)
 			else
 				x = KEY_X+KEY_W/2;	//CANCEL
 			y = KEY_Y+FONT_HEIGHT*10;
-			itoSprite(setting->color[2]|0x10000000,
+			itoSprite(setting->color[COLOR_HIGHLIGHTTEXT]|0x10000000,
 				x, y-2,
 				x+KEY_W/4, y+GetFontSize(ASCII_FONT_HEIGHT)+2, 0);
-			drawFrame(x, y-2, x+KEY_W/4, y+GetFontSize(ASCII_FONT_HEIGHT)+2, setting->color[2]);
+			drawFrame(x, y-2, x+KEY_W/4, y+GetFontSize(ASCII_FONT_HEIGHT)+2, setting->color[COLOR_HIGHLIGHTTEXT]);
 		}
 		//アルファブレンド無効
 		itoPrimAlphaBlending(FALSE);
@@ -2717,23 +2840,23 @@ int keyboard(char *out, int max)
 			printXY(tmp,
 				KEY_X+FONT_WIDTH*3 + (i%WFONTS)*FONT_WIDTH*3,
 				KEY_Y+FONT_HEIGHT*2 + (i/WFONTS)*FONT_HEIGHT,
-				setting->color[3], TRUE);
+				setting->color[COLOR_TEXT], TRUE);
 		}
 		//OK表示
 		x=((KEY_W/4)-FONT_WIDTH*strlen(lang->gen_ok))/2;
 		sprintf(tmp, "%s",lang->gen_ok);
-		printXY(tmp, KEY_X+KEY_W/4+x, KEY_Y+FONT_HEIGHT*10, setting->color[3], TRUE);
+		printXY(tmp, KEY_X+KEY_W/4+x, KEY_Y+FONT_HEIGHT*10, setting->color[COLOR_TEXT], TRUE);
 		//CANCEL表示
 		x=((KEY_W/4)-FONT_WIDTH*strlen(lang->gen_cancel))/2;
 		sprintf(tmp, "%s",lang->gen_cancel);
-		printXY(tmp, KEY_X+KEY_W/2+x, KEY_Y+FONT_HEIGHT*10, setting->color[3], TRUE);
+		printXY(tmp, KEY_X+KEY_W/2+x, KEY_Y+FONT_HEIGHT*10, setting->color[COLOR_TEXT], TRUE);
 		// 操作説明
 		x = FONT_WIDTH*1;
 		y = SCREEN_MARGIN+(MAX_ROWS+4)*FONT_HEIGHT;
-		itoSprite(setting->color[0],
+		itoSprite(setting->color[COLOR_BACKGROUND],
 			0, y,
 			SCREEN_WIDTH, y+FONT_HEIGHT, 0);
-		printXY(lang->filer_keyboard_hint, x, y, setting->color[3], TRUE);
+		printXY(lang->filer_keyboard_hint, x, y, setting->color[COLOR_TEXT], TRUE);
 		drawScr();
 	}
 	return 0;
@@ -2844,8 +2967,9 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 
 		//ゲームタイトルとファイルタイプを取得
 		for(i=1; i<nfiles; i++){
+			memset(tmp, 0, 65);
 			//ゲームタイトル取得
-			if( !strncmp(path, "cdfs", 4)){
+			if(!strncmp(path, "cdfs", 4)){
 				//cdfs
 				if(setting->discPs2saveCheck){
 					ret = getGameTitle(path, &files[i], tmp);
@@ -2878,26 +3002,7 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 			else if(!(files[i].attr & MC_ATTR_SUBDIR)){	//ファイル
 				sprintf(fullpath, "%s%s", path, files[i].name);
 				//ELFヘッダを調べる
-				if(!strncmp(path, "mc", 2) || !strncmp(path, "mass", 4)){
-					checkELFret = checkELFheader(fullpath);
-					//mountedParty[0][0]=0;
-					if(checkELFret==1)
-						files[i].type=TYPE_ELF;
-					else
-						files[i].type=TYPE_FILE;
-				}
-				else if( !strncmp(path, "hdd", 3)&&strcmp(path, "hdd0:/") ){
-					checkELFret = checkELFheader(fullpath);
-					mountedParty[0][0]=0;
-					if(checkELFret==1)
-						files[i].type=TYPE_ELF;
-					else
-						files[i].type=TYPE_FILE;
-					//HDDのとき再マウント
-					getHddParty(path, NULL, party, NULL);
-					mountParty(party);
-				}
-				else if( !strncmp(path, "cdfs", 4)){
+				if(!strncmp(path, "cdfs", 4)){
 					if(setting->discELFCheck){
 						checkELFret = checkELFheader(fullpath);
 						//mountedParty[0][0]=0;
@@ -2909,6 +3014,27 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 					else{
 						files[i].type=TYPE_FILE;
 					}
+				}
+				else{
+					checkELFret = checkELFheader(fullpath);
+					//mountedParty[0][0]=0;
+					if(checkELFret==1)
+						files[i].type=TYPE_ELF;
+					else
+						files[i].type=TYPE_FILE;
+					if(!strncmp(path, "hdd", 3)){
+						//HDDのとき再マウント
+						mountedParty[0][0]=0;
+						getHddParty(path, NULL, party, NULL);
+						mountParty(party);
+					}
+				}
+				//psuファイルか調べる
+				if(files[i].type==TYPE_FILE){
+					char *ext;
+					ext = getExtension(files[i].name);
+					if(ext!=NULL&&!stricmp(ext, ".psu"))
+						files[i].type=TYPE_PSU;
 				}
 			}
 		}
@@ -2939,7 +3065,7 @@ void getFilePath(char *out, int cnfmode)
 	size_t freeSpace=0;
 	int mcfreeSpace=0;
 	int vfreeSpace=FALSE;	//空き容量表示フラグ
-	int l2key=FALSE;
+	int l2button=FALSE;
 	int showdirsize=FALSE;	//フォルダサイズ表示フラグ
 
 	if(cnfmode==ANY_FILE)
@@ -2959,6 +3085,8 @@ void getFilePath(char *out, int cnfmode)
 	cut = 0;
 	title=FALSE;
 
+	title = setting->defaulttitle;
+	detail = setting->defaultdetail;
 #ifdef ENABLE_ICON
 	loadIcon();
 #endif
@@ -2966,9 +3094,9 @@ void getFilePath(char *out, int cnfmode)
 	while(1){
 		waitPadReady(0, 0);
 		if(readpad()){
-			l2key=FALSE;
-			if(paddata&PAD_L2) l2key=TRUE;
-			if(l2key){
+			l2button=FALSE;
+			if(paddata&PAD_L2) l2button=TRUE;
+			if(l2button){
 				if(new_pad & PAD_CIRCLE){
 					detail++;
 					if(detail==3) detail=0;
@@ -3031,8 +3159,8 @@ void getFilePath(char *out, int cnfmode)
 					else{
 						if(nfiles>1){
 							sort(&files[1], 0, nfiles-2);
-							sel=0;
-							top=0;
+							//sel=0;
+							//top=0;
 							nmarks = 0;
 							memset(marks, 0, MAX_ENTRY);
 						}
@@ -3101,17 +3229,19 @@ void getFilePath(char *out, int cnfmode)
 								//ELFファイルではないとき
 								pushed=FALSE;
 								sprintf(msg0, lang->filer_not_elf);
-	#ifdef ENABLE_PSB
-								char *extension;
-								extension = getExtension(files[sel].name);
-								if(extension!=NULL){
-									if(!stricmp(extension, ".psb")){
-										strcpy(out, fullpath);
-										strcpy(LastDir, path);
-										break;
+#ifdef ENABLE_PSB
+								{
+									char *extension;
+									extension = getExtension(files[sel].name);
+									if(extension!=NULL){
+										if(!stricmp(extension, ".psb")){
+											strcpy(out, fullpath);
+											strcpy(LastDir, path);
+											break;
+										}
 									}
 								}
-	#endif
+#endif
 							}
 						}
 					}
@@ -3183,24 +3313,26 @@ void getFilePath(char *out, int cnfmode)
 								pushed=FALSE;
 								sprintf(msg0, lang->filer_not_elf);
 #ifdef ENABLE_PSB
-								char *extension;
-								extension = getExtension(fullpath);
-								if(extension!=NULL){
-									if(!stricmp(extension, ".psb")){	//psbファイルを実行
-										int ynret;
-										int psbret;
-										ynret = ynDialog(lang->filer_execute_psb, 0);
-										if(ynret>0){
-											psbret = psb(fullpath);
-											if(psbret==0){
-												pushed=TRUE;
-												cd=TRUE;	//空きスペース再計算
-											}
-											else if(psbret>0){
-												sprintf(msg0, "error line no = %d", psbret);
-											}
-											else if(psbret<0){
-												strcpy(msg0, "psb open error");
+								{
+									char *extension;
+									extension = getExtension(fullpath);
+									if(extension!=NULL){
+										if(!stricmp(extension, ".psb")){	//psbファイルを実行
+											int ynret;
+											int psbret;
+											ynret = ynDialog(lang->filer_execute_psb, 0);
+											if(ynret>0){
+												psbret = psb(fullpath);
+												if(psbret==0){
+													pushed=TRUE;
+													cd=TRUE;	//空きスペース再計算
+												}
+												else if(psbret>0){
+													sprintf(msg0, "error line no = %d", psbret);
+												}
+												else if(psbret<0){
+													strcpy(msg0, "psb open error");
+												}
 											}
 										}
 									}
@@ -3508,7 +3640,7 @@ void getFilePath(char *out, int cnfmode)
 		if(sel < top)			top=sel;
 
 		// 画面描画開始
-		clrScr(setting->color[0]);
+		clrScr(setting->color[COLOR_BACKGROUND]);
 		// ファイルリスト
 		x = FONT_WIDTH*3;
 		y = SCREEN_MARGIN+FONT_HEIGHT*3;
@@ -3517,14 +3649,14 @@ void getFilePath(char *out, int cnfmode)
 				break;
 			//色とカーソル表示
 			if(top+i == sel){
-				color = setting->color[2];
+				color = setting->color[COLOR_HIGHLIGHTTEXT];
 				printXY(">", x, y, color, TRUE);
 			}
 			else
-				color = setting->color[3];
+				color = setting->color[COLOR_TEXT];
 			//マーク表示
 			if(marks[top+i]){
-				printXY("*", x+FONT_WIDTH, y, setting->color[3], TRUE);
+				printXY("*", x+FONT_WIDTH, y, setting->color[COLOR_TEXT], TRUE);
 			}
 			//ファイルリスト表示
 			if(title){
@@ -3559,19 +3691,21 @@ void getFilePath(char *out, int cnfmode)
 						files[top+i].type);
 				}
 #else
-				if(files[top+i].type>=TYPE_FILE && files[top+i].type<=TYPE_PS1SAVE){
+				if(files[top+i].type>=TYPE_FILE && files[top+i].type<TYPE_OTHER){
 					uint64 iconcolor=0;
 					//アイコンの色
 					if(files[top+i].type==TYPE_FILE)
-						iconcolor=setting->color[5];
+						iconcolor=setting->color[COLOR_FILE];
 					else if(files[top+i].type==TYPE_ELF)
-						iconcolor=setting->color[7];
+						iconcolor=setting->color[COLOR_ELF];
 					else if(files[top+i].type==TYPE_DIR)
-						iconcolor=setting->color[4];
+						iconcolor=setting->color[COLOR_DIR];
 					else if(files[top+i].type==TYPE_PS2SAVE)
-						iconcolor=setting->color[6];
+						iconcolor=setting->color[COLOR_PS2SAVE];
 					else if(files[top+i].type==TYPE_PS1SAVE)
-						iconcolor=setting->color[8];
+						iconcolor=setting->color[COLOR_PS1SAVE];
+					else if(files[top+i].type==TYPE_PSU)
+						iconcolor=setting->color[COLOR_PSU];
 					//アイコンを表示
 					itoSprite(iconcolor,
 						x+FONT_WIDTH*2, y,
@@ -3606,11 +3740,11 @@ void getFilePath(char *out, int cnfmode)
 					}
 					len=strlen(tmp);
 					if(strcmp(files[top+i].name,"..")){
-						itoSprite(setting->color[0],
+						itoSprite(setting->color[COLOR_BACKGROUND],
 							(MAX_ROWS_X-3)*FONT_WIDTH, y,
 							(MAX_ROWS_X+8)*FONT_WIDTH, y+FONT_HEIGHT, 0);
-						itoLine(setting->color[1], (MAX_ROWS_X-2.5)*FONT_WIDTH, y, 0,
-							setting->color[1], (MAX_ROWS_X-2.5)*FONT_WIDTH, y+FONT_HEIGHT, 0);	
+						itoLine(setting->color[COLOR_FRAME], (MAX_ROWS_X-2.5)*FONT_WIDTH, y, 0,
+							setting->color[COLOR_FRAME], (MAX_ROWS_X-2.5)*FONT_WIDTH, y+FONT_HEIGHT, 0);	
 						printXY(tmp, FONT_WIDTH*(MAX_ROWS_X+7-len), y, color, TRUE);
 					}
 				}
@@ -3631,11 +3765,11 @@ void getFilePath(char *out, int cnfmode)
 					}
 					len=strlen(tmp);
 					if(strcmp(files[top+i].name,"..")){
-						itoSprite(setting->color[0],
+						itoSprite(setting->color[COLOR_BACKGROUND],
 							(MAX_ROWS_X-13)*FONT_WIDTH, y,
 							(MAX_ROWS_X+8)*FONT_WIDTH, y+FONT_HEIGHT, 0);
-						itoLine(setting->color[1], (MAX_ROWS_X-12.5)*FONT_WIDTH, y, 0,
-							setting->color[1], (MAX_ROWS_X-12.5)*FONT_WIDTH, y+FONT_HEIGHT, 0);	
+						itoLine(setting->color[COLOR_FRAME], (MAX_ROWS_X-12.5)*FONT_WIDTH, y, 0,
+							setting->color[COLOR_FRAME], (MAX_ROWS_X-12.5)*FONT_WIDTH, y+FONT_HEIGHT, 0);	
 						printXY(tmp, FONT_WIDTH*(MAX_ROWS_X+7-len), y, color, TRUE);
 					}
 				}
@@ -3645,10 +3779,10 @@ void getFilePath(char *out, int cnfmode)
 		// スクロールバー
 		if(nfiles > MAX_ROWS){
 			drawFrame((MAX_ROWS_X+8)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3,
-				(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[1]);
+				(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[COLOR_FRAME]);
 			y0=FONT_HEIGHT*MAX_ROWS*((double)top/nfiles);
 			y1=FONT_HEIGHT*MAX_ROWS*((double)(top+MAX_ROWS)/nfiles);
-			itoSprite(setting->color[1],
+			itoSprite(setting->color[COLOR_FRAME],
 				(MAX_ROWS_X+8)*FONT_WIDTH,
 				SCREEN_MARGIN+FONT_HEIGHT*3+y0,
 				(MAX_ROWS_X+9)*FONT_WIDTH,
@@ -3656,7 +3790,7 @@ void getFilePath(char *out, int cnfmode)
 				0);
 		}
 		//
-		if(l2key){
+		if(l2button){
 			//
 			int dialog_x;		//ダイアログx位置
 			int dialog_y;		//ダイアログy位置
@@ -3671,29 +3805,29 @@ void getFilePath(char *out, int cnfmode)
 			drawDark();
 			drawDialogTmp(dialog_x, dialog_y,
 				dialog_x+dialog_width, dialog_y+dialog_height,
-				setting->color[0], setting->color[1]);
+				setting->color[COLOR_BACKGROUND], setting->color[COLOR_FRAME]);
 			//
 			x = dialog_x+FONT_WIDTH*1;
 			y = dialog_y+FONT_HEIGHT*0.5;
 			//
 			sprintf(tmp, "○:%s", lang->filer_l2popup_detail);
-			printXY(tmp, x, y, setting->color[3], TRUE); y+=FONT_HEIGHT;
+			printXY(tmp, x, y, setting->color[COLOR_TEXT], TRUE); y+=FONT_HEIGHT;
 			sprintf(tmp, "△:%s", lang->filer_l2popup_icon);
-			printXY(tmp, x, y, setting->color[3], TRUE); y+=FONT_HEIGHT;
+			printXY(tmp, x, y, setting->color[COLOR_TEXT], TRUE); y+=FONT_HEIGHT;
 			sprintf(tmp, "×:%s", lang->filer_l2popup_flicker);
-			printXY(tmp, x, y, setting->color[3], TRUE); y+=FONT_HEIGHT;
+			printXY(tmp, x, y, setting->color[COLOR_TEXT], TRUE); y+=FONT_HEIGHT;
 			sprintf(tmp, "□:%s", lang->filer_l2popup_dirsize);
 			if(!strncmp(path, "mc", 2)){
-				printXY(tmp, x, y, setting->color[3], TRUE); y+=FONT_HEIGHT;
+				printXY(tmp, x, y, setting->color[COLOR_TEXT], TRUE); y+=FONT_HEIGHT;
 			}
 			else{
-				printXY(tmp, x, y, setting->color[9], TRUE); y+=FONT_HEIGHT;
+				printXY(tmp, x, y, setting->color[COLOR_GRAYTEXT], TRUE); y+=FONT_HEIGHT;
 			}
 		}
 		// メッセージ
 		if(pushed) sprintf(msg0, "Path: %s", path);
 		// 操作説明
-		if(l2key){
+		if(l2button){
 			//sprintf(msg1, "");
 			msg1[0]='\0';
 		}
@@ -3734,7 +3868,7 @@ void getFilePath(char *out, int cnfmode)
 			//
 			printXY(tmp,
 				(MAX_ROWS_X+10-ret)*FONT_WIDTH, SCREEN_MARGIN,
-				setting->color[3], TRUE);
+				setting->color[COLOR_TEXT], TRUE);
 		}
 		drawScr();
 	}

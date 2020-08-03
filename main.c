@@ -97,9 +97,9 @@ void FormatMemoryCard(void)
 
 	y=SCREEN_MARGIN;
 	n=0;
-	clrScr(setting->color[0]);
+	clrScr(setting->color[COLOR_BACKGROUND]);
 	drawScr();
-	clrScr(setting->color[0]);
+	clrScr(setting->color[COLOR_BACKGROUND]);
 	drawScr();
 
 	sprintf(tmp, "format mc0:/ OK?       ");
@@ -132,9 +132,9 @@ void FormatMemoryCard(void)
 	strcpy(log[n], "format start"); n++;
 
 	//ログ表示
-	clrScr(setting->color[0]);
+	clrScr(setting->color[COLOR_BACKGROUND]);
 	for(i=0;i<n;i++)
-		printXY(log[i], FONT_WIDTH*2, SCREEN_MARGIN+i*FONT_HEIGHT, setting->color[3], TRUE);
+		printXY(log[i], FONT_WIDTH*2, SCREEN_MARGIN+i*FONT_HEIGHT, setting->color[COLOR_TEXT], TRUE);
 	drawScr();
 
 	//バックアップ
@@ -184,9 +184,9 @@ void FormatMemoryCard(void)
 
 	//ログ表示
 	strcpy(log[n], "Initialize..."); n++;
-	clrScr(setting->color[0]);
+	clrScr(setting->color[COLOR_BACKGROUND]);
 	for(i=0;i<n;i++)
-		printXY(log[i], FONT_WIDTH*2, SCREEN_MARGIN+i*FONT_HEIGHT, setting->color[3], TRUE);
+		printXY(log[i], FONT_WIDTH*2, SCREEN_MARGIN+i*FONT_HEIGHT, setting->color[COLOR_TEXT], TRUE);
 	drawScr();
 
 	//未フォーマットにする
@@ -197,9 +197,9 @@ void FormatMemoryCard(void)
 
 	//ログ表示
 	strcpy(log[n], "format..."); n++;
-	clrScr(setting->color[0]);
+	clrScr(setting->color[COLOR_BACKGROUND]);
 	for(i=0;i<n;i++)
-		printXY(log[i], FONT_WIDTH*2, SCREEN_MARGIN+i*FONT_HEIGHT, setting->color[3], TRUE);
+		printXY(log[i], FONT_WIDTH*2, SCREEN_MARGIN+i*FONT_HEIGHT, setting->color[COLOR_TEXT], TRUE);
 	drawScr();
 
 	//フォーマット開始
@@ -236,13 +236,13 @@ void FormatMemoryCard(void)
 
 	//ログ表示
 	strcpy(log[n], "format end"); n++;
-	clrScr(setting->color[0]);
+	clrScr(setting->color[COLOR_BACKGROUND]);
 	for(i=0;i<n;i++)
-		printXY(log[i], FONT_WIDTH*2, SCREEN_MARGIN+i*FONT_HEIGHT, setting->color[3], TRUE);
+		printXY(log[i], FONT_WIDTH*2, SCREEN_MARGIN+i*FONT_HEIGHT, setting->color[COLOR_TEXT], TRUE);
 	drawScr();
-	clrScr(setting->color[0]);
+	clrScr(setting->color[COLOR_BACKGROUND]);
 	for(i=0;i<n;i++)
-		printXY(log[i], FONT_WIDTH*2, SCREEN_MARGIN+i*FONT_HEIGHT, setting->color[3], TRUE);
+		printXY(log[i], FONT_WIDTH*2, SCREEN_MARGIN+i*FONT_HEIGHT, setting->color[COLOR_TEXT], TRUE);
 	drawScr();
 	MessageDialog("formated mc0:/");
 	return;
@@ -659,7 +659,7 @@ void showinfo(void)
 	fd = fioOpen("rom0:ROMVER", O_RDONLY);
 	fioRead(fd, romver, sizeof(romver));
 	fioClose(fd);
-	romver[15] = 0;
+	romver[14] = 0;
 	sprintf(info[nList], "ROM VERSION : %s", romver);
 	nList++;
 	//LaunchElfDir
@@ -736,7 +736,7 @@ void showinfo(void)
 		if(sel < top)			top=sel;
 
 		// 画面描画開始
-		clrScr(setting->color[0]);
+		clrScr(setting->color[COLOR_BACKGROUND]);
 		// リスト
 		x = FONT_WIDTH*3;
 		y = SCREEN_MARGIN+FONT_HEIGHT*3;
@@ -744,9 +744,9 @@ void showinfo(void)
 			if(top+i >= nList) break;
 			//色
 			if(top+i == sel)
-				color = setting->color[2];
+				color = setting->color[COLOR_HIGHLIGHTTEXT];
 			else
-				color = setting->color[3];
+				color = setting->color[COLOR_TEXT];
 			//カーソル表示
 			if(top+i == sel)
 				printXY(">", x, y, color, TRUE);
@@ -758,10 +758,10 @@ void showinfo(void)
 		// スクロールバー
 		if(nList > MAX_ROWS){
 			drawFrame((MAX_ROWS_X+8)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3,
-				(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[1]);
+				(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[COLOR_FRAME]);
 			y0=FONT_HEIGHT*MAX_ROWS*((double)top/nList);
 			y1=FONT_HEIGHT*MAX_ROWS*((double)(top+MAX_ROWS)/nList);
-			itoSprite(setting->color[1],
+			itoSprite(setting->color[COLOR_FRAME],
 				(MAX_ROWS_X+8)*FONT_WIDTH,
 				SCREEN_MARGIN+FONT_HEIGHT*3+y0,
 				(MAX_ROWS_X+9)*FONT_WIDTH,
@@ -1224,7 +1224,20 @@ void LaunchMain(void)
 
 		//画面描画開始
 		if(!mode_changed){
-			clrScr(setting->color[0]);
+			clrScr(setting->color[COLOR_BACKGROUND]);
+
+/*
+			//モード表示
+			if(mode==BUTTON)
+				strcpy(tmp, "MODE:BUTTON");
+			else if(mode==DPAD)
+				strcpy(tmp, "MODE:DPAD  ");
+			else if(mode==DPAD_MISC)
+				strcpy(tmp, "MODE:MISC  ");
+			printXY(tmp,
+				(MAX_ROWS_X-1)*FONT_WIDTH, SCREEN_MARGIN,
+				setting->color[COLOR_TEXT], TRUE);
+*/
 
 			// リスト表示用変数の正規化
 			if(top > nList-MAX_ROWS) top=nList-MAX_ROWS;
@@ -1241,11 +1254,11 @@ void LaunchMain(void)
 				if(top+i >= nList) break;
 				//色
 				if(top+i == sel)
-					color = setting->color[2];
+					color = setting->color[COLOR_HIGHLIGHTTEXT];
 				else
-					color = setting->color[3];
+					color = setting->color[COLOR_TEXT];
 				if(mode==BUTTON)
-					color = setting->color[3];
+					color = setting->color[COLOR_TEXT];
 				//リスト表示
 				printXY(list[top+i], x+FONT_WIDTH*2, y, color, TRUE);
 				y += FONT_HEIGHT;
@@ -1253,10 +1266,10 @@ void LaunchMain(void)
 			// スクロールバー
 			if(nList > MAX_ROWS){
 				drawFrame((MAX_ROWS_X+8)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3,
-					(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[1]);
+					(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[COLOR_FRAME]);
 				y0=FONT_HEIGHT*MAX_ROWS*((double)top/nList);
 				y1=FONT_HEIGHT*MAX_ROWS*((double)(top+MAX_ROWS)/nList);
-				itoSprite(setting->color[1],
+				itoSprite(setting->color[COLOR_FRAME],
 					(MAX_ROWS_X+8)*FONT_WIDTH,
 					SCREEN_MARGIN+FONT_HEIGHT*3+y0,
 					(MAX_ROWS_X+9)*FONT_WIDTH,
@@ -1416,9 +1429,9 @@ int main(int argc, char *argv[])
 		InitScreenSetting();
 		SetHeight();
 		setupito(setting->tvmode);
-		clrScr(setting->color[0]);
+		clrScr(setting->color[COLOR_BACKGROUND]);
 		drawScr();
-		clrScr(setting->color[0]);
+		clrScr(setting->color[COLOR_BACKGROUND]);
 		drawScr();
 		MessageDialog("Screen Setting Initialize");
 	}

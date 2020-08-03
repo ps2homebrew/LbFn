@@ -111,14 +111,15 @@ void SetLanguage(const int langID)
 		//screen
 		strcpy(lang->conf_background, "BACK GROUND   ");
 		strcpy(lang->conf_frame, "FRAME         ");
-		strcpy(lang->conf_highlighttext, "HIGHLIGHT TEXT");
 		strcpy(lang->conf_normaltext, "NORMAL TEXT   ");
+		strcpy(lang->conf_highlighttext, "HIGHLIGHT TEXT");
+		strcpy(lang->conf_disabletext, "GRAY TEXT     ");
 		strcpy(lang->conf_folder, "FOLDER        ");
 		strcpy(lang->conf_file, "FILE          ");
 		strcpy(lang->conf_ps2save, "PS2 SAVE      ");
-		strcpy(lang->conf_elffile, "ELF FILE      ");
 		strcpy(lang->conf_ps1save, "PS1 SAVE      ");
-		strcpy(lang->conf_disabletext, "DISABLE TEXT  ");
+		strcpy(lang->conf_elffile, "ELF FILE      ");
+		strcpy(lang->conf_psufile, "PSU FILE      ");
 		strcpy(lang->conf_tvmode, "TV MODE");
 		strcpy(lang->conf_interlace, "INTERLACE");
 		strcpy(lang->conf_ffmode, "FFMODE");
@@ -158,6 +159,11 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_disc_ps2save_check, "DISC PS2SAVE CHECK");
 		strcpy(lang->conf_disc_elf_check, "DISC ELF CHECK");
 		strcpy(lang->conf_export_dir, "EXPORT DIR");
+		strcpy(lang->conf_defaulttitle, "DEFAULT SHOW TITLE");
+		strcpy(lang->conf_defaultdetail, "DEFAULT SHOW DETAIL");
+		strcpy(lang->conf_defaultdetail_none, "NONE");
+		strcpy(lang->conf_defaultdetail_size, "SIZE");
+		strcpy(lang->conf_defaultdetail_modifytime, "MODIFYTIME");
 		strcpy(lang->conf_miscsettinginit, "MISC SETTING INIT");
 
 		strcpy(lang->conf_on, "ON");
@@ -255,15 +261,16 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_buttonsettinginit, "「ランチャー設定」を初期化する");
 		//screen
 		strcpy(lang->conf_background, "背景の色      ");
-		strcpy(lang->conf_frame, "枠の色        ");
-		strcpy(lang->conf_highlighttext, "強調文字      ");
-		strcpy(lang->conf_normaltext, "文字          ");
+		strcpy(lang->conf_frame, "フレームの色  ");
+		strcpy(lang->conf_normaltext, "テキスト      ");
+		strcpy(lang->conf_highlighttext, "テキスト強調  ");
+		strcpy(lang->conf_disabletext, "テキスト無効  ");
 		strcpy(lang->conf_folder, "フォルダ      ");
 		strcpy(lang->conf_file, "ファイル      ");
 		strcpy(lang->conf_ps2save, "PS2 セーブ    ");
-		strcpy(lang->conf_elffile, "ELF ファイル  ");
 		strcpy(lang->conf_ps1save, "PS1 セーブ    ");
-		strcpy(lang->conf_disabletext, "無効文字      ");
+		strcpy(lang->conf_elffile, "ELF ファイル  ");
+		strcpy(lang->conf_psufile, "PSU ファイル  ");
 		strcpy(lang->conf_screen_x, "画面位置 X");
 		strcpy(lang->conf_screen_y, "画面位置 Y");
 		strcpy(lang->conf_tvmode, "TV MODE");
@@ -303,6 +310,11 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_disc_ps2save_check, "CD/DVDのときセーブデータか調べる");
 		strcpy(lang->conf_disc_elf_check, "CD/DVDのときELFか調べる");
 		strcpy(lang->conf_export_dir, "エクスポートフォルダ");
+		strcpy(lang->conf_defaulttitle, "ゲームタイトル表\示をデフォルトにする");
+		strcpy(lang->conf_defaultdetail, "詳細表\示のデフォルト");
+		strcpy(lang->conf_defaultdetail_none, "なし");
+		strcpy(lang->conf_defaultdetail_size, "サイズ");
+		strcpy(lang->conf_defaultdetail_modifytime, "更新日時");
 		strcpy(lang->conf_miscsettinginit, "「その他設定」を初期化する");
 
 		strcpy(lang->conf_on, "ON");

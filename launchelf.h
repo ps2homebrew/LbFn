@@ -30,7 +30,7 @@
 #include "cnf.h"
 
 // バージョン
-#define LBF_VER "LbF v0.66"
+#define LBF_VER "LbF v0.67"
 
 // 垂直スキャンレート
 #define SCANRATE (ITO_VMODE_AUTO==ITO_VMODE_NTSC ? 60:50)
@@ -52,12 +52,28 @@ enum
 	MAX_PARTITIONS=100
 };
 
+enum
+{
+	COLOR_BACKGROUND,
+	COLOR_FRAME,
+	COLOR_TEXT,
+	COLOR_HIGHLIGHTTEXT,
+	COLOR_GRAYTEXT,
+	COLOR_DIR,
+	COLOR_FILE,
+	COLOR_PS2SAVE,
+	COLOR_PS1SAVE,
+	COLOR_ELF,
+	COLOR_PSU,
+	NUM_COLOR
+};
+
 typedef struct
 {
 	char dirElf[13][MAX_PATH];
 	int timeout;
 	int filename;
-	uint64 color[10];
+	uint64 color[NUM_COLOR];
 	int screen_x;
 	int screen_y;
 	int discControl;
@@ -69,6 +85,8 @@ typedef struct
 	int discPs2saveCheck;
 	int discELFCheck;
 	char Exportdir[MAX_PATH];
+	int defaulttitle;
+	int defaultdetail;
 	int language;
 	char AsciiFont[MAX_PATH];
 	char KanjiFont[MAX_PATH];

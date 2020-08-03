@@ -15,12 +15,15 @@ enum
 	DEF_COLOR8 = ITO_RGBA(128,0,0,0),		//ELFファイル
 	DEF_COLOR9 = ITO_RGBA(0,128,255,0),		//PS1saveフォルダ
 	DEF_COLOR10 = ITO_RGBA(64,64,80,0),		//無効の文字色
+	DEF_COLOR11 = ITO_RGBA(192,96,0,0),		//psuファイル
 	DEF_SCREEN_X = 160,
 	DEF_SCREEN_Y = 55,
 	DEF_FLICKERCONTROL = TRUE,
 	DEF_TVMODE = 0,	//0=auto 1=ntsc 2=pal 3=480p 4=720p
 	DEF_INTERLACE = TRUE,	//FALSE=ITO_NON_INTERLACE TRUE=ITO_INTERLACE
 	DEF_FFMODE = FALSE,	//FALSE=ITO_FIELD TRUE=ITO_FRAME
+	DEF_DEFAULTTITLE = 0,
+	DEF_DEFAULTDETAIL = 0,
 
 	DEF_CHAR_MARGIN = 2,
 	DEF_LINE_MARGIN = 5,
@@ -81,6 +84,7 @@ enum
 	COLOR8,
 	COLOR9,
 	COLOR10,
+	COLOR11,
 	TVMODE,
 	INTERLACE,
 	FFMODE,
@@ -126,6 +130,8 @@ enum
 	PS2SAVECHECK,
 	ELFCHECK,
 	EXPORTDIR,
+	DEFAULTTITLE,
+	DEFAULTDETAIL,
 	MISCINIT,
 };
 
@@ -180,16 +186,17 @@ void InitButtonSetting(void)
 // SCREEN SETTINGを初期化
 void InitScreenSetting(void)
 {
-	setting->color[0] = DEF_COLOR1;
-	setting->color[1] = DEF_COLOR2;
-	setting->color[2] = DEF_COLOR3;
-	setting->color[3] = DEF_COLOR4;
-	setting->color[4] = DEF_COLOR5;
-	setting->color[5] = DEF_COLOR6;
-	setting->color[6] = DEF_COLOR7;
-	setting->color[7] = DEF_COLOR8;
-	setting->color[8] = DEF_COLOR9;
-	setting->color[9] = DEF_COLOR10;
+	setting->color[COLOR_BACKGROUND] = DEF_COLOR1;
+	setting->color[COLOR_FRAME] = DEF_COLOR2;
+	setting->color[COLOR_HIGHLIGHTTEXT] = DEF_COLOR3;
+	setting->color[COLOR_TEXT] = DEF_COLOR4;
+	setting->color[COLOR_DIR] = DEF_COLOR5;
+	setting->color[COLOR_FILE] = DEF_COLOR6;
+	setting->color[COLOR_PS2SAVE] = DEF_COLOR7;
+	setting->color[COLOR_ELF] = DEF_COLOR8;
+	setting->color[COLOR_PS1SAVE] = DEF_COLOR9;
+	setting->color[COLOR_GRAYTEXT] = DEF_COLOR10;
+	setting->color[COLOR_PSU] = DEF_COLOR11;
 	setting->screen_x = DEF_SCREEN_X;
 	setting->screen_y = DEF_SCREEN_Y;
 	setting->flickerControl = DEF_FLICKERCONTROL;
@@ -225,6 +232,8 @@ void InitMiscSetting(void)
 	setting->discELFCheck = DEF_DISCELFCHECK;
 	setting->Exportdir[0] = 0;
 	setting->language = DEF_LANGUAGE;
+	setting->defaulttitle = DEF_DEFAULTTITLE;
+	setting->defaultdetail = DEF_DEFAULTDETAIL;
 }
 
 //-------------------------------------------------
@@ -314,26 +323,28 @@ void saveConfig(char *mainMsg)
 	strcpy(tmp, setting->dirElf[12]);
 	if(cnf_setstr("SELECT", tmp)<0) goto error;
 	//color
-	sprintf(tmp, "%08lX", setting->color[0]);
+	sprintf(tmp, "%08lX", setting->color[COLOR_BACKGROUND]);
 	if(cnf_setstr("color_background", tmp)<0) goto error;
-	sprintf(tmp, "%08lX", setting->color[1]);
+	sprintf(tmp, "%08lX", setting->color[COLOR_FRAME]);
 	if(cnf_setstr("color_fream", tmp)<0) goto error;
-	sprintf(tmp, "%08lX", setting->color[2]);
+	sprintf(tmp, "%08lX", setting->color[COLOR_HIGHLIGHTTEXT]);
 	if(cnf_setstr("color_highlight_text", tmp)<0) goto error;
-	sprintf(tmp, "%08lX", setting->color[3]);
+	sprintf(tmp, "%08lX", setting->color[COLOR_TEXT]);
 	if(cnf_setstr("color_normal_text", tmp)<0) goto error;
-	sprintf(tmp, "%08lX", setting->color[4]);
+	sprintf(tmp, "%08lX", setting->color[COLOR_DIR]);
 	if(cnf_setstr("color_folder", tmp)<0) goto error;
-	sprintf(tmp, "%08lX", setting->color[5]);
+	sprintf(tmp, "%08lX", setting->color[COLOR_FILE]);
 	if(cnf_setstr("color_file", tmp)<0) goto error;
-	sprintf(tmp, "%08lX", setting->color[6]);
+	sprintf(tmp, "%08lX", setting->color[COLOR_PS2SAVE]);
 	if(cnf_setstr("color_ps2_save", tmp)<0) goto error;
-	sprintf(tmp, "%08lX", setting->color[7]);
+	sprintf(tmp, "%08lX", setting->color[COLOR_ELF]);
 	if(cnf_setstr("color_elf_file", tmp)<0) goto error;
-	sprintf(tmp, "%08lX", setting->color[8]);
+	sprintf(tmp, "%08lX", setting->color[COLOR_PS1SAVE]);
 	if(cnf_setstr("color_ps1_save", tmp)<0) goto error;
-	sprintf(tmp, "%08lX", setting->color[9]);
+	sprintf(tmp, "%08lX", setting->color[COLOR_GRAYTEXT]);
 	if(cnf_setstr("color_disable_text", tmp)<0) goto error;
+	sprintf(tmp, "%08lX", setting->color[COLOR_PSU]);
+	if(cnf_setstr("color_psu_file", tmp)<0) goto error;
 	//font
 	strcpy(tmp, setting->AsciiFont);
 	if(cnf_setstr("ascii_font", tmp)<0) goto error;
@@ -382,7 +393,10 @@ void saveConfig(char *mainMsg)
 	if(cnf_setstr("interlace", tmp)<0) goto error;
 	sprintf(tmp, "%d", setting->ffmode);
 	if(cnf_setstr("ffmode", tmp)<0) goto error;
-
+	sprintf(tmp, "%d", setting->defaulttitle);
+	if(cnf_setstr("default_title", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->defaultdetail);
+	if(cnf_setstr("default_detail", tmp)<0) goto error;
 	goto no_error;
 
 error:
@@ -535,25 +549,27 @@ void loadConfig(char *mainMsg)
 				strcpy(setting->dirElf[12], tmp);
 			//color
 			if(cnf_getstr("color_background", tmp, "")>=0)
-				setting->color[0] = strtoul(tmp, NULL, 16);
+				setting->color[COLOR_BACKGROUND] = strtoul(tmp, NULL, 16);
 			if(cnf_getstr("color_fream", tmp, "")>=0)
-				setting->color[1] = strtoul(tmp, NULL, 16);
+				setting->color[COLOR_FRAME] = strtoul(tmp, NULL, 16);
 			if(cnf_getstr("color_highlight_text", tmp, "")>=0)
-				setting->color[2] = strtoul(tmp, NULL, 16);
+				setting->color[COLOR_HIGHLIGHTTEXT] = strtoul(tmp, NULL, 16);
 			if(cnf_getstr("color_normal_text", tmp, "")>=0)
-				setting->color[3] = strtoul(tmp, NULL, 16);
+				setting->color[COLOR_TEXT] = strtoul(tmp, NULL, 16);
 			if(cnf_getstr("color_folder", tmp, "")>=0)
-				setting->color[4] = strtoul(tmp, NULL, 16);
+				setting->color[COLOR_DIR] = strtoul(tmp, NULL, 16);
 			if(cnf_getstr("color_file", tmp, "")>=0)
-				setting->color[5] = strtoul(tmp, NULL, 16);
+				setting->color[COLOR_FILE] = strtoul(tmp, NULL, 16);
 			if(cnf_getstr("color_ps2_save", tmp, "")>=0)
-				setting->color[6] = strtoul(tmp, NULL, 16);
+				setting->color[COLOR_PS2SAVE] = strtoul(tmp, NULL, 16);
 			if(cnf_getstr("color_elf_file", tmp, "")>=0)
-				setting->color[7] = strtoul(tmp, NULL, 16);
+				setting->color[COLOR_ELF] = strtoul(tmp, NULL, 16);
 			if(cnf_getstr("color_ps1_save", tmp, "")>=0)
-				setting->color[8] = strtoul(tmp, NULL, 16);
+				setting->color[COLOR_PS1SAVE] = strtoul(tmp, NULL, 16);
 			if(cnf_getstr("color_disable_text", tmp, "")>=0)
-				setting->color[9] = strtoul(tmp, NULL, 16);
+				setting->color[COLOR_GRAYTEXT] = strtoul(tmp, NULL, 16);
+			if(cnf_getstr("color_psu_file", tmp, "")>=0)
+				setting->color[COLOR_PSU] = strtoul(tmp, NULL, 16);
 			//font
 			if(cnf_getstr("ascii_font", tmp, "")>=0)
 				strcpy(setting->AsciiFont, tmp);
@@ -637,6 +653,16 @@ void loadConfig(char *mainMsg)
 				setting->ffmode = atoi(tmp);
 				if(setting->ffmode<0 || setting->ffmode>1)
 					setting->ffmode = DEF_FFMODE;
+			}
+			if(cnf_getstr("default_title", tmp, "")>=0){
+				setting->defaulttitle = atoi(tmp);
+				if(setting->defaulttitle<0 || setting->defaulttitle>1)
+					setting->defaulttitle = DEF_DEFAULTTITLE;
+			}
+			if(cnf_getstr("default_detail", tmp, "")>=0){
+				setting->defaultdetail = atoi(tmp);
+				if(setting->defaultdetail<0 || setting->defaultdetail>2)
+					setting->defaultdetail = DEF_DEFAULTDETAIL;
 			}
 		}
 	}
@@ -765,7 +791,7 @@ void config_button(SETTING *setting)
 		if(sel < top)			top=sel;
 
 		// 画面描画開始
-		clrScr(setting->color[0]);
+		clrScr(setting->color[COLOR_BACKGROUND]);
 
 		// リスト
 		x = FONT_WIDTH*3;
@@ -774,9 +800,9 @@ void config_button(SETTING *setting)
 			if(top+i >= nList) break;
 			//色
 			if(top+i == sel)
-				color = setting->color[2];
+				color = setting->color[COLOR_HIGHLIGHTTEXT];
 			else
-				color = setting->color[3];
+				color = setting->color[COLOR_TEXT];
 			//カーソル表示
 			if(top+i == sel)
 				printXY(">", x, y, color, TRUE);
@@ -788,10 +814,10 @@ void config_button(SETTING *setting)
 		// スクロールバー
 		if(nList > MAX_ROWS){
 			drawFrame((MAX_ROWS_X+8)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3,
-				(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[1]);
+				(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[COLOR_FRAME]);
 			y0=FONT_HEIGHT*MAX_ROWS*((double)top/nList);
 			y1=FONT_HEIGHT*MAX_ROWS*((double)(top+MAX_ROWS)/nList);
-			itoSprite(setting->color[1],
+			itoSprite(setting->color[COLOR_FRAME],
 				(MAX_ROWS_X+8)*FONT_WIDTH,
 				SCREEN_MARGIN+FONT_HEIGHT*3+y0,
 				(MAX_ROWS_X+9)*FONT_WIDTH,
@@ -831,6 +857,7 @@ void config_screen(SETTING *setting)
 	int i;
 	char config[32][MAX_PATH];
 	int r,g,b;
+	int colorid=0;
 
 	int font_h;
 
@@ -845,7 +872,7 @@ void config_screen(SETTING *setting)
 			else if(new_pad & PAD_DOWN)
 				sel++;
 			else if(new_pad & PAD_LEFT){
-				if(sel>=COLOR1 && sel<=COLOR10){
+				if(sel>=COLOR1 && sel<=COLOR11){
 					sel_x--;
 					if(sel_x<0){
 						sel_x=2;
@@ -858,7 +885,7 @@ void config_screen(SETTING *setting)
 					sel=0;
 			}
 			else if(new_pad & PAD_RIGHT){
-				if(sel>=COLOR1 && sel<=COLOR10){
+				if(sel>=COLOR1 && sel<=COLOR11){
 					sel_x++;
 					if(sel_x>2){
 						sel_x=0;
@@ -874,14 +901,27 @@ void config_screen(SETTING *setting)
 				break;
 			else if(new_pad & PAD_CIRCLE){
 				if(sel==0) break;
-				if(sel>=COLOR1 && sel<=COLOR10){
-					r = setting->color[sel-1] & 0xFF;
-					g = setting->color[sel-1] >> 8 & 0xFF;
-					b = setting->color[sel-1] >> 16 & 0xFF;
+				if(sel>=COLOR1 && sel<=COLOR11){
+					switch(sel){
+						case COLOR1: colorid=COLOR_BACKGROUND; break;
+						case COLOR2: colorid=COLOR_FRAME; break;
+						case COLOR3: colorid=COLOR_TEXT; break;
+						case COLOR4: colorid=COLOR_HIGHLIGHTTEXT; break;
+						case COLOR5: colorid=COLOR_GRAYTEXT; break;
+						case COLOR6: colorid=COLOR_DIR; break;
+						case COLOR7: colorid=COLOR_FILE; break;
+						case COLOR8: colorid=COLOR_PS2SAVE; break;
+						case COLOR9: colorid=COLOR_PS1SAVE; break;
+						case COLOR10: colorid=COLOR_ELF; break;
+						case COLOR11: colorid=COLOR_PSU; break;
+					}
+					r = setting->color[colorid] & 0xFF;
+					g = setting->color[colorid] >> 8 & 0xFF;
+					b = setting->color[colorid] >> 16 & 0xFF;
 					if(sel_x==0 && r<255) r++;
 					if(sel_x==1 && g<255) g++;
 					if(sel_x==2 && b<255) b++;
-					setting->color[sel-1] = ITO_RGBA(r, g, b, 0);
+					setting->color[colorid] = ITO_RGBA(r, g, b, 0);
 				}
 				else if(sel==TVMODE){	//TVMODE
 					//tvmode変更
@@ -955,14 +995,27 @@ void config_screen(SETTING *setting)
 				}
 			}
 			else if(new_pad & PAD_CROSS){	//×
-				if(sel>=COLOR1 && sel<=COLOR10){
-					r = setting->color[sel-1] & 0xFF;
-					g = setting->color[sel-1] >> 8 & 0xFF;
-					b = setting->color[sel-1] >> 16 & 0xFF;
+				if(sel>=COLOR1 && sel<=COLOR11){
+					switch(sel){
+						case COLOR1: colorid=COLOR_BACKGROUND; break;
+						case COLOR2: colorid=COLOR_FRAME; break;
+						case COLOR3: colorid=COLOR_TEXT; break;
+						case COLOR4: colorid=COLOR_HIGHLIGHTTEXT; break;
+						case COLOR5: colorid=COLOR_GRAYTEXT; break;
+						case COLOR6: colorid=COLOR_DIR; break;
+						case COLOR7: colorid=COLOR_FILE; break;
+						case COLOR8: colorid=COLOR_PS2SAVE; break;
+						case COLOR9: colorid=COLOR_PS1SAVE; break;
+						case COLOR10: colorid=COLOR_ELF; break;
+						case COLOR11: colorid=COLOR_PSU; break;
+					}
+					r = setting->color[colorid] & 0xFF;
+					g = setting->color[colorid] >> 8 & 0xFF;
+					b = setting->color[colorid] >> 16 & 0xFF;
 					if(sel_x==0 && r>0) r--;
 					if(sel_x==1 && g>0) g--;
 					if(sel_x==2 && b>0) b--;
-					setting->color[sel-1] = ITO_RGBA(r, g, b, 0);
+					setting->color[colorid] = ITO_RGBA(r, g, b, 0);
 				}
 				else if(sel==SCREEN_X){	//SCREEN X
 					if(setting->screen_x > 0){
@@ -983,42 +1036,45 @@ void config_screen(SETTING *setting)
 				static int preset=0;
 				//デフォルト
 				if(preset==0){
-					setting->color[0] = DEF_COLOR1;
-					setting->color[1] = DEF_COLOR2;
-					setting->color[2] = DEF_COLOR3;
-					setting->color[3] = DEF_COLOR4;
-					setting->color[4] = DEF_COLOR5;
-					setting->color[5] = DEF_COLOR6;
-					setting->color[6] = DEF_COLOR7;
-					setting->color[7] = DEF_COLOR8;
-					setting->color[8] = DEF_COLOR9;
-					setting->color[9] = DEF_COLOR10;
+					setting->color[COLOR_BACKGROUND] = DEF_COLOR1;
+					setting->color[COLOR_FRAME] = DEF_COLOR2;
+					setting->color[COLOR_HIGHLIGHTTEXT] = DEF_COLOR3;
+					setting->color[COLOR_TEXT] = DEF_COLOR4;
+					setting->color[COLOR_DIR] = DEF_COLOR5;
+					setting->color[COLOR_FILE] = DEF_COLOR6;
+					setting->color[COLOR_PS2SAVE] = DEF_COLOR7;
+					setting->color[COLOR_ELF] = DEF_COLOR8;
+					setting->color[COLOR_PS1SAVE] = DEF_COLOR9;
+					setting->color[COLOR_GRAYTEXT] = DEF_COLOR10;
+					setting->color[COLOR_PSU] = DEF_COLOR11;
 				}
 				//Unofficial LaunchELF
 				if(preset==1){
-					setting->color[0] = ITO_RGBA(128,128,128,0);
-					setting->color[1] = ITO_RGBA(64,64,64,0);
-					setting->color[2] = ITO_RGBA(96,0,0,0);
-					setting->color[3] = ITO_RGBA(0,0,0,0);
-					setting->color[4] = DEF_COLOR5;
-					setting->color[5] = ITO_RGBA(96,96,96,0);
-					setting->color[6] = DEF_COLOR7;
-					setting->color[7] = DEF_COLOR8;
-					setting->color[8] = ITO_RGBA(0,96,192,0);
-					setting->color[9] = ITO_RGBA(64,64,64,0);
+					setting->color[COLOR_BACKGROUND] = ITO_RGBA(128,128,128,0);
+					setting->color[COLOR_FRAME] = ITO_RGBA(64,64,64,0);
+					setting->color[COLOR_HIGHLIGHTTEXT] = ITO_RGBA(96,0,0,0);
+					setting->color[COLOR_TEXT] = ITO_RGBA(0,0,0,0);
+					setting->color[COLOR_DIR] = ITO_RGBA(160,160,0,0);
+					setting->color[COLOR_FILE] = ITO_RGBA(80,80,80,0);
+					setting->color[COLOR_PS2SAVE] = DEF_COLOR7;
+					setting->color[COLOR_ELF] = DEF_COLOR8;
+					setting->color[COLOR_PS1SAVE] = ITO_RGBA(0,96,192,0);
+					setting->color[COLOR_GRAYTEXT] = ITO_RGBA(64,64,64,0);
+					setting->color[COLOR_PSU] = DEF_COLOR11;
 				}
 				//黒い背景
 				if(preset==2){
-					setting->color[0] = ITO_RGBA(24,24,24,0);
-					setting->color[1] = ITO_RGBA(64,64,64,0);
-					setting->color[2] = ITO_RGBA(255,128,0,0);
-					setting->color[3] = ITO_RGBA(144,144,144,0);
-					setting->color[4] = DEF_COLOR5;
-					setting->color[5] = DEF_COLOR6;
-					setting->color[6] = DEF_COLOR7;
-					setting->color[7] = DEF_COLOR8;
-					setting->color[8] = DEF_COLOR9;
-					setting->color[9] = ITO_RGBA(64,64,64,0);
+					setting->color[COLOR_BACKGROUND] = ITO_RGBA(24,24,24,0);
+					setting->color[COLOR_FRAME] = ITO_RGBA(64,64,64,0);
+					setting->color[COLOR_HIGHLIGHTTEXT] = ITO_RGBA(255,128,0,0);
+					setting->color[COLOR_TEXT] = ITO_RGBA(144,144,144,0);
+					setting->color[COLOR_DIR] = DEF_COLOR5;
+					setting->color[COLOR_FILE] = DEF_COLOR6;
+					setting->color[COLOR_PS2SAVE] = DEF_COLOR7;
+					setting->color[COLOR_ELF] = DEF_COLOR8;
+					setting->color[COLOR_PS1SAVE] = DEF_COLOR9;
+					setting->color[COLOR_GRAYTEXT] = ITO_RGBA(64,64,64,0);
+					setting->color[COLOR_PSU] = DEF_COLOR11;
 				}
 				preset++;
 				if(preset>2) preset=0;
@@ -1030,20 +1086,35 @@ void config_screen(SETTING *setting)
 			if(i==0){
 				sprintf(config[i], "..");
 			}
-			else if(i>=COLOR1 && i<=COLOR10){	//COLOR
-				r = setting->color[i-1] & 0xFF;
-				g = setting->color[i-1] >> 8 & 0xFF;
-				b = setting->color[i-1] >> 16 & 0xFF;
+			else if(i>=COLOR1 && i<=COLOR11){	//COLOR
+				switch(i){
+					case COLOR1: colorid=COLOR_BACKGROUND; break;
+					case COLOR2: colorid=COLOR_FRAME; break;
+					case COLOR3: colorid=COLOR_TEXT; break;
+					case COLOR4: colorid=COLOR_HIGHLIGHTTEXT; break;
+					case COLOR5: colorid=COLOR_GRAYTEXT; break;
+					case COLOR6: colorid=COLOR_DIR; break;
+					case COLOR7: colorid=COLOR_FILE; break;
+					case COLOR8: colorid=COLOR_PS2SAVE; break;
+					case COLOR9: colorid=COLOR_PS1SAVE; break;
+					case COLOR10: colorid=COLOR_ELF; break;
+					case COLOR11: colorid=COLOR_PSU; break;
+				}
+				r = setting->color[colorid] & 0xFF;
+				g = setting->color[colorid] >> 8 & 0xFF;
+				b = setting->color[colorid] >> 16 & 0xFF;
+
 				if(i==COLOR1) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_background, r, g, b);
 				if(i==COLOR2) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_frame, r, g, b);
-				if(i==COLOR3) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_highlighttext, r, g, b);
-				if(i==COLOR4) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_normaltext, r, g, b);
-				if(i==COLOR5) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_folder, r, g, b);
-				if(i==COLOR6) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_file, r, g, b);
-				if(i==COLOR7) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_ps2save, r, g, b);
-				if(i==COLOR8) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_elffile, r, g, b);
+				if(i==COLOR3) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_normaltext, r, g, b);
+				if(i==COLOR4) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_highlighttext, r, g, b);
+				if(i==COLOR5) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_disabletext, r, g, b);
+				if(i==COLOR6) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_folder, r, g, b);
+				if(i==COLOR7) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_file, r, g, b);
+				if(i==COLOR8) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_ps2save, r, g, b);
 				if(i==COLOR9) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_ps1save, r, g, b);
-				if(i==COLOR10) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_disabletext, r, g, b);
+				if(i==COLOR10) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_elffile, r, g, b);
+				if(i==COLOR11) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_psufile, r, g, b);
 			}
 			else if(i==TVMODE){	//TVMODE
 				if(setting->tvmode==0)
@@ -1088,7 +1159,7 @@ void config_screen(SETTING *setting)
 				strcpy(config[i], lang->conf_screensettinginit);
 			}
 		}
-		nList=18;
+		nList=19;
 
 		// リスト表示用変数の正規化
 		if(top > nList-MAX_ROWS)	top=nList-MAX_ROWS;
@@ -1099,7 +1170,7 @@ void config_screen(SETTING *setting)
 		if(sel < top)			top=sel;
 
 		// 画面描画開始
-		clrScr(setting->color[0]);
+		clrScr(setting->color[COLOR_BACKGROUND]);
 
 		// リスト
 		x = FONT_WIDTH*3;
@@ -1108,12 +1179,12 @@ void config_screen(SETTING *setting)
 			if(top+i >= nList) break;
 			//色
 			if(top+i == sel)
-				color = setting->color[2];
+				color = setting->color[COLOR_HIGHLIGHTTEXT];
 			else
-				color = setting->color[3];
+				color = setting->color[COLOR_TEXT];
 			//カーソル表示
 			if(top+i == sel){
-				if(sel>=COLOR1 && sel<=COLOR10)
+				if(sel>=COLOR1 && sel<=COLOR11)
 					printXY(">", FONT_WIDTH*21 + FONT_WIDTH*sel_x*8, y, color, TRUE);
 				else
 					printXY(">", x, y, color, TRUE);
@@ -1121,8 +1192,21 @@ void config_screen(SETTING *setting)
 			//リスト表示
 			printXY(config[top+i], x+FONT_WIDTH*2, y, color, TRUE);
 			//色のプレビュー
-			if(top+i>=COLOR1 && top+i<=COLOR10){
-				itoSprite(setting->color[top+i-1],
+			if(top+i>=COLOR1 && top+i<=COLOR11){
+				switch(top+i){
+					case COLOR1: colorid=COLOR_BACKGROUND; break;
+					case COLOR2: colorid=COLOR_FRAME; break;
+					case COLOR3: colorid=COLOR_TEXT; break;
+					case COLOR4: colorid=COLOR_HIGHLIGHTTEXT; break;
+					case COLOR5: colorid=COLOR_GRAYTEXT; break;
+					case COLOR6: colorid=COLOR_DIR; break;
+					case COLOR7: colorid=COLOR_FILE; break;
+					case COLOR8: colorid=COLOR_PS2SAVE; break;
+					case COLOR9: colorid=COLOR_PS1SAVE; break;
+					case COLOR10: colorid=COLOR_ELF; break;
+					case COLOR11: colorid=COLOR_PSU; break;
+				}
+				itoSprite(setting->color[colorid],
 					x+FONT_WIDTH*42, y,
 					x+FONT_WIDTH*42+font_h, y+font_h, 0);
 			}
@@ -1132,10 +1216,10 @@ void config_screen(SETTING *setting)
 		// スクロールバー
 		if(nList > MAX_ROWS){
 			drawFrame((MAX_ROWS_X+8)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3,
-				(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[1]);
+				(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[COLOR_FRAME]);
 			y0=FONT_HEIGHT*MAX_ROWS*((double)top/nList);
 			y1=FONT_HEIGHT*MAX_ROWS*((double)(top+MAX_ROWS)/nList);
-			itoSprite(setting->color[1],
+			itoSprite(setting->color[COLOR_FRAME],
 				(MAX_ROWS_X+8)*FONT_WIDTH,
 				SCREEN_MARGIN+FONT_HEIGHT*3+y0,
 				(MAX_ROWS_X+9)*FONT_WIDTH,
@@ -1147,7 +1231,7 @@ void config_screen(SETTING *setting)
 		// 操作説明
 		if(sel==0)
 			sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
-		else if(sel>=COLOR1 && sel<=COLOR10)
+		else if(sel>=COLOR1 && sel<=COLOR11)
 			sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_add, lang->conf_away, lang->conf_up);
 		else if(sel==TVMODE)
 			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
@@ -1291,7 +1375,7 @@ void config_network(SETTING *setting)
 		if(sel < top)			top=sel;
 
 		// 画面描画開始
-		clrScr(setting->color[0]);
+		clrScr(setting->color[COLOR_BACKGROUND]);
 
 		// リスト
 		x = FONT_WIDTH*3;
@@ -1300,9 +1384,9 @@ void config_network(SETTING *setting)
 			if(top+i >= nList) break;
 			//色
 			if(top+i == sel)
-				color = setting->color[2];
+				color = setting->color[COLOR_HIGHLIGHTTEXT];
 			else
-				color = setting->color[3];
+				color = setting->color[COLOR_TEXT];
 			//カーソル表示
 			if(top+i == sel)
 				printXY(">", x, y, color, TRUE);
@@ -1314,10 +1398,10 @@ void config_network(SETTING *setting)
 		// スクロールバー
 		if(nList > MAX_ROWS){
 			drawFrame((MAX_ROWS_X+8)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3,
-				(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[1]);
+				(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[COLOR_FRAME]);
 			y0=FONT_HEIGHT*MAX_ROWS*((double)top/nList);
 			y1=FONT_HEIGHT*MAX_ROWS*((double)(top+MAX_ROWS)/nList);
-			itoSprite(setting->color[1],
+			itoSprite(setting->color[COLOR_FRAME],
 				(MAX_ROWS_X+8)*FONT_WIDTH,
 				SCREEN_MARGIN+FONT_HEIGHT*3+y0,
 				(MAX_ROWS_X+9)*FONT_WIDTH,
@@ -1540,7 +1624,7 @@ void config_font(SETTING *setting)
 		if(sel < top)			top=sel;
 
 		// 画面描画開始
-		clrScr(setting->color[0]);
+		clrScr(setting->color[COLOR_BACKGROUND]);
 
 		// リスト
 		x = FONT_WIDTH*3;
@@ -1549,9 +1633,9 @@ void config_font(SETTING *setting)
 			if(top+i >= nList) break;
 			//色
 			if(top+i == sel)
-				color = setting->color[2];
+				color = setting->color[COLOR_HIGHLIGHTTEXT];
 			else
-				color = setting->color[3];
+				color = setting->color[COLOR_TEXT];
 			//カーソル表示
 			if(top+i == sel)
 				printXY(">", x, y, color, TRUE);
@@ -1563,10 +1647,10 @@ void config_font(SETTING *setting)
 		// スクロールバー
 		if(nList > MAX_ROWS){
 			drawFrame((MAX_ROWS_X+8)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3,
-				(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[1]);
+				(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[COLOR_FRAME]);
 			y0=FONT_HEIGHT*MAX_ROWS*((double)top/nList);
 			y1=FONT_HEIGHT*MAX_ROWS*((double)(top+MAX_ROWS)/nList);
-			itoSprite(setting->color[1],
+			itoSprite(setting->color[COLOR_FRAME],
 				(MAX_ROWS_X+8)*FONT_WIDTH,
 				SCREEN_MARGIN+FONT_HEIGHT*3+y0,
 				(MAX_ROWS_X+9)*FONT_WIDTH,
@@ -1596,10 +1680,6 @@ void config_font(SETTING *setting)
 			sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_add, lang->conf_away, lang->conf_up);
 		else if(sel==KANJIMARGINLEFT)
 			sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_add, lang->conf_away, lang->conf_up);
-		else if(sel==FONTINIT)
-			sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
-		else if(sel==FONTINIT)
-			sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
 		else if(sel==FONTINIT)
 			sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
 		setScrTmp(msg0, msg1);
@@ -1657,6 +1737,12 @@ void config_misc(SETTING *setting)
 					getFilePath(setting->Exportdir, DIR);
 					if(!strncmp(setting->Exportdir, "cdfs", 2))
 						setting->Exportdir[0]='\0';
+				}
+				else if(sel==DEFAULTTITLE)
+					setting->defaulttitle = !setting->defaulttitle;
+				else if(sel==DEFAULTDETAIL){
+					setting->defaultdetail++;
+					if(setting->defaultdetail>2) setting->defaultdetail = 0;
 				}
 				else if(sel==MISCINIT){
 					//init
@@ -1727,11 +1813,27 @@ void config_misc(SETTING *setting)
 			else if(i==EXPORTDIR){	//EXPORT DIR
 				sprintf(config[i], "%s: %s", lang->conf_export_dir, setting->Exportdir);
 			}
+			else if(i==DEFAULTTITLE){	//DEFAULTTITLE
+				sprintf(config[i], "%s: ", lang->conf_defaulttitle);
+				if(setting->defaulttitle)
+					strcat(config[i], lang->conf_on);
+				else
+					strcat(config[i], lang->conf_off);
+			}
+			else if(i==DEFAULTDETAIL){	//DEFAULTDETAIL
+				sprintf(config[i], "%s: ", lang->conf_defaultdetail);
+				if(setting->defaultdetail==0)
+					strcat(config[i], lang->conf_defaultdetail_none);
+				else if(setting->defaultdetail==1)
+					strcat(config[i], lang->conf_defaultdetail_size);
+				else if(setting->defaultdetail==2)
+					strcat(config[i], lang->conf_defaultdetail_modifytime);
+			}
 			else if(i==MISCINIT){	//INIT
 				strcpy(config[i], lang->conf_miscsettinginit);
 			}
 		}
-		nList=10;
+		nList=12;
 
 		// リスト表示用変数の正規化
 		if(top > nList-MAX_ROWS)	top=nList-MAX_ROWS;
@@ -1742,7 +1844,7 @@ void config_misc(SETTING *setting)
 		if(sel < top)			top=sel;
 
 		// 画面描画開始
-		clrScr(setting->color[0]);
+		clrScr(setting->color[COLOR_BACKGROUND]);
 
 		// リスト
 		x = FONT_WIDTH*3;
@@ -1751,9 +1853,9 @@ void config_misc(SETTING *setting)
 			if(top+i >= nList) break;
 			//色
 			if(top+i == sel)
-				color = setting->color[2];
+				color = setting->color[COLOR_HIGHLIGHTTEXT];
 			else
-				color = setting->color[3];
+				color = setting->color[COLOR_TEXT];
 			//カーソル表示
 			if(top+i == sel)
 				printXY(">", x, y, color, TRUE);
@@ -1765,10 +1867,10 @@ void config_misc(SETTING *setting)
 		// スクロールバー
 		if(nList > MAX_ROWS){
 			drawFrame((MAX_ROWS_X+8)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3,
-				(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[1]);
+				(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[COLOR_FRAME]);
 			y0=FONT_HEIGHT*MAX_ROWS*((double)top/nList);
 			y1=FONT_HEIGHT*MAX_ROWS*((double)(top+MAX_ROWS)/nList);
-			itoSprite(setting->color[1],
+			itoSprite(setting->color[COLOR_FRAME],
 				(MAX_ROWS_X+8)*FONT_WIDTH,
 				SCREEN_MARGIN+FONT_HEIGHT*3+y0,
 				(MAX_ROWS_X+9)*FONT_WIDTH,
@@ -1796,6 +1898,10 @@ void config_misc(SETTING *setting)
 			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
 		else if(sel==EXPORTDIR)
 			sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_edit, lang->conf_clear, lang->conf_up);
+		else if(sel==DEFAULTTITLE)
+			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
+		else if(sel==DEFAULTDETAIL)
+			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
 		else if(sel==MISCINIT)
 			sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
 		setScrTmp(msg0, msg1);
@@ -1907,7 +2013,7 @@ void config(char *mainMsg)
 		if(sel < top)			top=sel;
 
 		// 画面描画開始
-		clrScr(setting->color[0]);
+		clrScr(setting->color[COLOR_BACKGROUND]);
 
 		// リスト
 		x = FONT_WIDTH*3;
@@ -1916,9 +2022,9 @@ void config(char *mainMsg)
 			if(top+i >= nList) break;
 			//色
 			if(top+i == sel)
-				color = setting->color[2];
+				color = setting->color[COLOR_HIGHLIGHTTEXT];
 			else
-				color = setting->color[3];
+				color = setting->color[COLOR_TEXT];
 			//カーソル表示
 			if(top+i == sel)
 				printXY(">", x, y, color, TRUE);
@@ -1930,10 +2036,10 @@ void config(char *mainMsg)
 		// スクロールバー
 		if(nList > MAX_ROWS){
 			drawFrame((MAX_ROWS_X+8)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3,
-				(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[1]);
+				(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[COLOR_FRAME]);
 			y0=FONT_HEIGHT*MAX_ROWS*((double)top/nList);
 			y1=FONT_HEIGHT*MAX_ROWS*((double)(top+MAX_ROWS)/nList);
-			itoSprite(setting->color[1],
+			itoSprite(setting->color[COLOR_FRAME],
 				(MAX_ROWS_X+8)*FONT_WIDTH,
 				SCREEN_MARGIN+FONT_HEIGHT*3+y0,
 				(MAX_ROWS_X+9)*FONT_WIDTH,
