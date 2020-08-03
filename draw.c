@@ -106,12 +106,35 @@ void FreeBIOSFont(void)
 	initbiosfont=0;
 }
 
+//------------------------------------------------------------
+// 暗くする(半透明の黒い四角)
+void drawDark(void)
+{
+	//アルファブレンド有効
+	itoPrimAlphaBlending( TRUE );
+	//
+	itoSprite(ITO_RGBA(0,0,0,0x10),
+		FONT_WIDTH*1.5, SCREEN_MARGIN+FONT_HEIGHT*2.5,
+		FONT_WIDTH*62.5, SCREEN_MARGIN+FONT_HEIGHT*19.5, 0);
+	//アルファブレンド無効
+	itoPrimAlphaBlending(FALSE);
+}
+
+//------------------------------------------------------------
+// ダイアログの背景
+void drawDialogTmp(int x1, int y1, int x2, int y2, uint64 color1, uint64 color2)
+{
+	//
+	itoSprite(color1, x1, y1, x2, y2, 0);
+	drawFrame(x1+2, y1+2, x2-2, y2-2, color2);
+
+}
 ////////////////////////////////////////////////////////////////////////
 // 画面表示のテンプレート
 void setScrTmp(const char *msg0, const char *msg1)
 {
 	// バージョン表記
-	printXY("■ LbF v0.30 ■",
+	printXY("■ LbF v0.40 ■",
 		FONT_WIDTH*47, SCREEN_MARGIN, setting->color[3], TRUE);
 	
 	// メッセージ
@@ -171,12 +194,20 @@ void setupito(void)
 	
 	// misc
 	screen_env.dither			= TRUE;
-	screen_env.interlace		= ITO_INTERLACE;	//setting->interlace;
+	screen_env.interlace		= ITO_INTERLACE;
 	screen_env.ffmode			= ITO_FIELD;
 	screen_env.vmode			= ITO_VMODE_AUTO;
 	
 	itoGsEnvSubmit(&screen_env);
-	
+
+	//アルファブレンド
+	itoSetAlphaBlending(
+		ITO_ALPHA_COLOR_SRC, // A = COLOR SOURCE
+		ITO_ALPHA_COLOR_DST, // B = COLOR DEST
+		ITO_ALPHA_VALUE_SRC, // C = ALPHA VALUE SOURCE
+		ITO_ALPHA_COLOR_DST, // C = COLOR DEST
+		0x80);				 // Fixed Value
+	//
 	itoSetBgColor(setting->color[0]);
 }
 
@@ -200,6 +231,24 @@ void drawScr(void)
 // 枠の描画
 void drawFrame(int x1, int y1, int x2, int y2, uint64 color)
 {
+	uint64 color2;	//アルファ付き
+
+	color = color&0x00FFFFFF;	//透明度を除外
+	color2 = color|0x30000000;	//半透明
+	color = color|0x80000000;	//不透明
+
+	//FLICKER CONTROL: ON
+	if(setting->flickerControl){
+		//アルファブレンド有効
+		itoPrimAlphaBlending( TRUE );
+		//上の横線
+		itoLine(color2, x1, y1+1, 0, color2, x2, y1+1, 0);
+		//下の横線
+		itoLine(color2, x2, y2+1, 0, color2, x1, y2+1, 0);
+		//アルファブレンド無効
+		itoPrimAlphaBlending(FALSE);
+	}
+
 	//上の横線
 	itoLine(color, x1, y1, 0, color, x2, y1, 0);
 	//右の縦線
@@ -208,25 +257,6 @@ void drawFrame(int x1, int y1, int x2, int y2, uint64 color)
 	itoLine(color, x2, y2, 0, color, x1, y2, 0);
 	//左の縦線
 	itoLine(color, x1, y2, 0, color, x1, y1, 0);
-
-	//FLICKER CONTROL: ON
-	if(setting->interlace){
-		itoSetAlphaBlending(
-			ITO_ALPHA_COLOR_SRC, // A = COLOR SOURCE
-			ITO_ALPHA_COLOR_DST, // B = COLOR DEST
-			ITO_ALPHA_VALUE_SRC, // C = ALPHA VALUE SOURCE
-			ITO_ALPHA_COLOR_DST, // C = COLOR DEST
-			0x80);				 // Fixed Value
-		itoPrimAlphaBlending( TRUE );
-		color=color&0xFFFFFF;
-		color=color|0x80000000;
-		//上の横線
-		itoLine(color, x1, y1+1, 0, color, x2, y1+1, 0);
-		//下の横線
-		itoLine(color, x2, y2+1, 0, color, x1, y2+1, 0);
-		itoPrimAlphaBlending(FALSE);
-	}
-
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -236,6 +266,7 @@ void drawChar(unsigned char c, int x, int y, uint64 color)
 	unsigned int i, j;
 	unsigned char cc;
 	unsigned char *pc;
+	uint64 color2;
 
 	//初期化していないか、初期化失敗している
 	if(!initbiosfont) return;
@@ -243,29 +274,24 @@ void drawChar(unsigned char c, int x, int y, uint64 color)
 	//半角スペースのときは、何もしない
 	if(c==' ') return;
 
+	color = color&0x00FFFFFF;	//透明度を除外
+	color2 = color|0x30000000;	//半透明
+	color = color|0x80000000;	//不透明
+
 	pc = &biosfont[104670+(c-33)*15];
 	cc = *pc;
-
+	//
 	for(i=0; i<16; i++){
 		for(j=0; j<8; j++){
 			if(cc & 0x80){
-				itoPoint(color, x+j, y+i, 0);
-				itoPoint(color, x+j+1, y+i, 0);	//太字にする
-				//FLICKER CONTROL: ON
-				if(setting->interlace){
-					itoSetAlphaBlending(
-						ITO_ALPHA_COLOR_SRC, // A = COLOR SOURCE
-						ITO_ALPHA_COLOR_DST, // B = COLOR DEST
-						ITO_ALPHA_VALUE_SRC, // C = ALPHA VALUE SOURCE
-						ITO_ALPHA_COLOR_DST, // C = COLOR DEST
-						0x80);				 // Fixed Value
-					itoPrimAlphaBlending( TRUE );
-					//透明度
-					color=color&0xFFFFFF;
-					color=color|0x80000000;
-					itoPoint(color, x+j, y+i+1, 0);
-					itoPrimAlphaBlending(FALSE);	//元に戻す
+				if(setting->flickerControl){
+					//itoPoint(color2, x+j, y+i+1, 0);
+					//itoPoint(color2, x+j+1, y+i+1, 0);	//太字にする
+					itoLine(color2, x+j, y+i+1, 0, color2, x+j+2, y+i+1, 0);
 				}
+				//itoPoint(color, x+j, y+i, 0);
+				//itoPoint(color, x+j+1, y+i, 0);	//太字にする
+				itoLine(color, x+j, y+i, 0, color2, x+j+2, y+i, 0);
 			}
 			cc = cc << 1;
 		}
@@ -281,6 +307,7 @@ void drawChar_SJIS(unsigned int c, int x, int y, uint64 color)
 	int ret, sum;
 	unsigned char cc;
 	unsigned char *pc;
+	uint64 color2;
 
 	//初期化していないか、初期化失敗している
 	if(!initbiosfont) return;
@@ -295,6 +322,10 @@ void drawChar_SJIS(unsigned int c, int x, int y, uint64 color)
 	}
 	//見つからないときは、なにもしない
 	if (ret==-1) return;
+
+	color = color&0x00FFFFFF;	//透明度を除外
+	color2 = color|0x30000000;	//半透明
+	color = color|0x80000000;	//不透明
 
 	//アドレス算出
 	sum = 0;
@@ -312,23 +343,14 @@ void drawChar_SJIS(unsigned int c, int x, int y, uint64 color)
 		cc = *pc++;
 		for(j=0; j<8; j++) {
 			if(cc & 0x80){
-				itoPoint(color, x+j, y+i, 0);
-				itoPoint(color, x+j+1, y+i, 0);	//太字にする
-				//FLICKER CONTROL: ON
-				if(setting->interlace){
-					itoSetAlphaBlending(
-						ITO_ALPHA_COLOR_SRC, // A = COLOR SOURCE
-						ITO_ALPHA_COLOR_DST, // B = COLOR DEST
-						ITO_ALPHA_VALUE_SRC, // C = ALPHA VALUE SOURCE
-						ITO_ALPHA_COLOR_DST, // C = COLOR DEST
-						0x80);				 // Fixed Value
-					itoPrimAlphaBlending( TRUE );
-					//透明度
-					color=color&0xFFFFFF;
-					color=color|0x80000000;
-					itoPoint(color, x+j, y+i+1, 0);
-					itoPrimAlphaBlending(FALSE);	//元に戻す
+				if(setting->flickerControl){
+					//itoPoint(color2, x+j, y+i+1, 0);
+					//itoPoint(color2, x+j+1, y+i+1, 0);	//太字にする
+					itoLine(color2, x+j, y+i+1, 0, color2, x+j+2, y+i+1, 0);
 				}
+				//itoPoint(color, x+j, y+i, 0);
+				//itoPoint(color, x+j+1, y+i, 0);	//太字にする
+				itoLine(color, x+j, y+i, 0, color2, x+j+2, y+i, 0);
 			}
 			cc = cc << 1;
 		}
@@ -336,23 +358,14 @@ void drawChar_SJIS(unsigned int c, int x, int y, uint64 color)
 		cc = *pc++;
 		for(j=0; j<8; j++) {
 			if(cc & 0x80){
-				itoPoint(color, x+8+j, y+i, 0);
-				itoPoint(color, x+8+j+1, y+i, 0);	//太字にする
-				//FLICKER CONTROL: ON
-				if(setting->interlace){
-					itoSetAlphaBlending(
-						ITO_ALPHA_COLOR_SRC, // A = COLOR SOURCE
-						ITO_ALPHA_COLOR_DST, // B = COLOR DEST
-						ITO_ALPHA_VALUE_SRC, // C = ALPHA VALUE SOURCE
-						ITO_ALPHA_COLOR_DST, // C = COLOR DEST
-						0x80);				 // Fixed Value
-					itoPrimAlphaBlending( TRUE );
-					//透明度
-					color=color&0xFFFFFF;
-					color=color|0x80000000;
-					itoPoint(color, x+8+j, y+i+1, 0);
-					itoPrimAlphaBlending(FALSE);	//元に戻す
+				if(setting->flickerControl){
+					//itoPoint(color2, x+8+j, y+i+1, 0);
+					//itoPoint(color2, x+8+j+1, y+i+1, 0);	//太字にする
+					itoLine(color2, x+8+j, y+i+1, 0, color2, x+8+j+2, y+i+1, 0);
 				}
+				//itoPoint(color, x+8+j, y+i, 0);
+				//itoPoint(color, x+8+j+1, y+i, 0);	//太字にする
+				itoLine(color, x+8+j, y+i, 0, color2, x+8+j+2, y+i, 0);
 			}
 			cc = cc << 1;
 		}
@@ -361,21 +374,25 @@ void drawChar_SJIS(unsigned int c, int x, int y, uint64 color)
 
 ////////////////////////////////////////////////////////////////////////
 // draw a string of characters
-int printXY(const unsigned char *s, int x, int y, uint64 colour, int draw)
+int printXY(const unsigned char *s, int x, int y, uint64 color, int draw)
 {
 	uint16 code;
 	int i;
+
+	//FLICKER CONTROL: ON
+	if(setting->flickerControl)
+		itoPrimAlphaBlending( TRUE );	//アルファブレンド有効
 
 	i=0;
 	while(s[i]){
 		if (( s[i]>=0x81 && s[i]<=0x9f ) || ( s[i]>=0xe0 && s[i]<=0xff )){
 			code = s[i++];
 			code = (code<<8) + s[i++];
-			drawChar_SJIS(code, x, y, colour);
+			drawChar_SJIS(code, x, y, color);
 			x += FONT_WIDTH*2;
 		}           
 		else{
-			if(draw) drawChar(s[i], x, y, colour);
+			if(draw) drawChar(s[i], x, y, color);
 			i++;
 			x += FONT_WIDTH;
 		}
@@ -386,6 +403,8 @@ int printXY(const unsigned char *s, int x, int y, uint64 colour, int draw)
 		}
 */
 	}
+
+	itoPrimAlphaBlending(FALSE);	//アルファブレンド無効
 
 	return x;
 }

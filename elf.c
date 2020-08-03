@@ -70,8 +70,8 @@ int checkELFheader(const char *path)
 		fileXioRead(fd, boot_elf, 52);
 		fileXioClose(fd);
 		fileXioUmount("pfs0:");
-	}else if(!strncmp(fullpath, "mc", 2) ||
-		!strncmp(fullpath, "mass", 4)) {
+	}
+	else if(!strncmp(fullpath, "mc", 2) || !strncmp(fullpath, "mass", 4) || !strncmp(fullpath, "cdfs", 4)) {
 		if ((fd = fioOpen(fullpath, O_RDONLY)) < 0) 
 			goto error;
 		size = fioLseek(fd, 0, SEEK_END);
@@ -82,7 +82,8 @@ int checkELFheader(const char *path)
 		fioLseek(fd, 0, SEEK_SET);
 		fioRead(fd, boot_elf, 52);
 		fioClose(fd);
-	} else {
+	}
+	else {
 		return 0;
 	}
 

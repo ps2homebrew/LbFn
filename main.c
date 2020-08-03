@@ -198,7 +198,7 @@ int drawMainScreen(void)
 	
 	// ëÄçÏê‡ñæ
 	x = FONT_WIDTH*3;
-	y = SCREEN_HEIGHT-FONT_HEIGHT*20;
+	y = SCREEN_MARGIN+FONT_HEIGHT*20;
 	if(mode==BUTTON)	sprintf(c, "PUSH ANY BUTTON or D-PAD!");
 	else				sprintf(c, "Åõ:OK Å~:Cancel");
 	
@@ -500,7 +500,8 @@ void RunElf(const char *path)
 		p = strchr(party, '/');
 		sprintf(fullpath, "pfs0:%s", p);
 		*p = 0;
-	}else if(!strncmp(path, "mc", 2)){
+	}
+	else if(!strncmp(path, "mc", 2)){
 		party[0] = 0;
 		if(path[2]==':'){
 			strcpy(fullpath, "mc0:");
@@ -519,7 +520,8 @@ void RunElf(const char *path)
 				return;
 			}
 		}
-	}else if(!strncmp(path, "mass", 4)){
+	}
+	else if(!strncmp(path, "mass", 4)){
 		loadUsbModules();
 		party[0] = 0;
 		strcpy(fullpath, "mass:");
@@ -528,33 +530,40 @@ void RunElf(const char *path)
 			sprintf(mainMsg, "%s is Not Found.", path);
 			return;
 		}
-	}else if(!stricmp(path, "MISC/PS2Disc")){
+	}
+	else if(!stricmp(path, "MISC/PS2Disc")){
 		drawMsg("Reading SYSTEM.CNF...");
 		strcpy(mainMsg, "Failed");
 		party[0]=0;
 		trayopen=FALSE;
 		if(!ReadCNF(fullpath)) return;
 		//strcpy(mainMsg, "Succece!"); return;
-	}else if(!stricmp(path, "MISC/FileBrowser")){
+	}
+	else if(!stricmp(path, "MISC/FileBrowser")){
 		mainMsg[0] = 0;
 		tmp[0] = 0;
 		LastDir[0] = 0;
 		getFilePath(tmp, FALSE);
 		if(tmp[0]) RunElf(tmp);
 		else return;
-	}else if(!stricmp(path, "MISC/PS2Browser")){
+	}
+	else if(!stricmp(path, "MISC/PS2Browser")){
 		party[0]=0;
 		strcpy(fullpath,"rom0:OSDSYS");
-	}else if(!stricmp(path, "MISC/PS2Net")){	//PS2Net uLaunchELF3.60
+	}
+	else if(!stricmp(path, "MISC/PS2Net")){	//PS2Net uLaunchELF3.60
+		getIpConfig();	//ÉäÉçÅ[Éh
 		mainMsg[0] = 0;
 		loadNetModules();
 		return;
-	}else if(!strncmp(path, "cdfs", 4)){
+	}
+	else if(!strncmp(path, "cdfs", 4)){
 		party[0] = 0;
 		strcpy(fullpath, path);
 		CDVD_FlushCache();
 		CDVD_DiskReady(0);
-	}else if(!strncmp(path, "rom", 3)){
+	}
+	else if(!strncmp(path, "rom", 3)){
 		party[0] = 0;
 		strcpy(fullpath, path);
 	}

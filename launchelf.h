@@ -51,11 +51,14 @@ typedef struct
 	char dirElf[13][MAX_PATH];
 	int timeout;
 	int filename;
-	uint64 color[4];
+	uint64 color[8];
 	int screen_x;
 	int screen_y;
 	int discControl;
-	int interlace;	//FLICKER CONTROL
+	int flickerControl;
+	int fileicon;
+	int discPs2saveCheck;
+	int discELFCheck;
 } SETTING;
 
 extern char LaunchElfDir[MAX_PATH], LastDir[MAX_NAME];
@@ -72,6 +75,8 @@ void RunLoaderElf(char *filename, char *);
 extern itoGsEnv screen_env;
 int InitBIOSFont(void);
 void FreeBIOSFont(void);
+void drawDark(void);
+void drawDialogTmp(int x1, int y1, int x2, int y2, uint64 color1, uint64 color2);
 void setScrTmp(const char *msg0, const char *msg1);
 void drawMsg(const char *msg);
 void setupito(void);
@@ -95,5 +100,6 @@ void config(char *);
 /* filer.c */
 unsigned char *elisaFnt;
 void getFilePath(char *out, const int cnfmode);
+int keyboard(char *out, int max);
 
 #endif
