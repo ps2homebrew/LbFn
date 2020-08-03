@@ -51,9 +51,6 @@ FONTX_DATA kanji_data;
 int kanji_MarginTop;
 int kanji_MarginLeft;
 
-int CurrentPos_x;	//カレントポジションx
-int CurrentPos_y;	//カレントポジションy
-
 unsigned short font_sjis_table[] = {
 0x8140,0x817e,
 0x8180,0x81ac,
@@ -763,7 +760,7 @@ void drawChar_SJIS(unsigned int c, int x, int y, uint64 color)
 	//何番目のテーブルにあるか調べる
 	ret=-1;
 	for(i=0;i<kanji_data.Tnum;i++){
-		if(((fontx_header_kanji->Block[i]).Start <= c) && ((fontx_header_kanji->Block[i]).End >= c)){
+		if((fontx_header_kanji->Block[i].Start <= c) && (fontx_header_kanji->Block[i].End >= c)){
 			ret=i;
 			break;
 		}
@@ -774,11 +771,11 @@ void drawChar_SJIS(unsigned int c, int x, int y, uint64 color)
 	//アドレス算出
 	sum = 0;
 	for(i=0;i<ret;i++){
-		sum += (fontx_header_kanji->Block[i]).End - (fontx_header_kanji->Block[i]).Start;
+		sum += fontx_header_kanji->Block[i].End - fontx_header_kanji->Block[i].Start;
 	}
 
 	//
-	a = sum + ret + ( c - (fontx_header_kanji->Block[ret]).Start );
+	a = sum + ret + ( c - fontx_header_kanji->Block[ret].Start );
 	pc = &font_kanji[kanji_data.offset + a * kanji_data.size];
 
 	for(i=0; i<kanji_data.height; i++) {
@@ -857,6 +854,10 @@ int printXY(const unsigned char *s, int x, int y, uint64 color, int draw)
 
 	return x;
 }
+/*
+//int CurrentPos_x;	//カレントポジションx
+//int CurrentPos_y;	//カレントポジションy
+
 //------------------------------------------------------------
 //カレントポジションを設定
 int SetCurrentPos(int x, int y)
@@ -930,3 +931,4 @@ int printXY2(const unsigned char *s, uint64 color, int draw)
 
 	return x;
 }
+*/

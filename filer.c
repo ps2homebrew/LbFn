@@ -520,47 +520,42 @@ int readHDD(const char *path, FILEINFO *info, int max)
 // USBマスストレージ読み込み
 int readMASS(const char *path, FILEINFO *info, int max)
 {
-	fat_dir_record record;
-	int ret, n=0;
-	
+	fio_dirent_t record;
+	int n=0, dd=-1;
+
 	loadUsbModules();
 	
-	ret = usb_mass_getFirstDirentry((char*)path+5, &record);
-	while(ret > 0){
-		if(record.attr & 0x10 && (!strcmp(record.name, ".") || !strcmp(record.name, ".."))){
-			ret = usb_mass_getNextDirentry(&record);
-			continue;
-		}
-		
+	if ((dd = fioDopen(path)) < 0) goto exit;
+
+	while(fioDread(dd, &record) > 0){
+		if((FIO_SO_ISDIR(record.stat.mode))
+			&& (!strcmp(record.name,".") || !strcmp(record.name,".."))
+		) continue;
+
 		strcpy(info[n].name, record.name);
-		if(record.attr & 0x10)
+		if(FIO_SO_ISDIR(record.stat.mode)){
 			info[n].attr = FIO_S_IFDIR;
-		else
+		}
+		else if(FIO_SO_ISREG(record.stat.mode)){
 			info[n].attr = FIO_S_IFREG;
-		//ファイルサイズ
-		if(setting->MassFileSizeCheck){
-			int fd;
-			char fullpath[MAX_PATH];
-			sprintf(fullpath, "%s%s", path, info[n].name);
-			fd = fioOpen(fullpath, O_RDONLY);
-			info[n].fileSizeByte = fioLseek(fd,0,SEEK_END);
-			fioClose(fd);
+			info[n].fileSizeByte = record.stat.size;
 		}
-		else{
-			//info[n].fileSizeByte = record.size; //取得できない
-			info[n].fileSizeByte = 0;
-		}
+		else
+			continue;
+		strncpy(info[n].name, info[n].name, 32);
 		info[n].modifyTime.unknown = 0;
-		info[n].modifyTime.sec = 0;//record.time[2]; //取得できない
-		info[n].modifyTime.min = record.time[1];
-		info[n].modifyTime.hour = record.time[0];
-		info[n].modifyTime.day = record.date[0];
-		info[n].modifyTime.month = record.date[1];
-		info[n].modifyTime.year = record.date[2] + record.date[3]*256;
+		info[n].modifyTime.sec = record.stat.mtime[1];
+		info[n].modifyTime.min = record.stat.mtime[2];
+		info[n].modifyTime.hour = record.stat.mtime[3];
+		info[n].modifyTime.day = record.stat.mtime[4];
+		info[n].modifyTime.month = record.stat.mtime[5];
+		info[n].modifyTime.year = record.stat.mtime[6] + record.stat.mtime[7]*256;
 		n++;
-		ret = usb_mass_getNextDirentry(&record);
+		if(n==max) break;
 	}
-	
+
+exit:
+	if(dd >= 0) fioDclose(dd);
 	return n;
 }
 
@@ -1021,6 +1016,7 @@ int copy(const char *outPath, const char *inPath, FILEINFO file, int n)
 		ret = newdir(outPath, file.name);
 		if(ret == -17){
 			drawDark();
+			itoGsFinish();
 			itoSwitchFrameBuffers();
 			drawDark();
 			ret=-1;
@@ -1185,7 +1181,6 @@ void sjis2ascii(const unsigned char *in, unsigned char *out)
 	unsigned char ascii;
 	int n=0;
 
-	code=in[i];
 	while(in[i]){
 		if(in[i] & 0x80){
 			// SJISコードの生成
@@ -1500,6 +1495,7 @@ int psuImport(const char *path, const FILEINFO *file)
 		r = newdir(outpath, outdir);
 		if(r == -17){	//フォルダがすでにあるとき上書きを確認する
 			drawDark();
+			itoGsFinish();
 			itoSwitchFrameBuffers();
 			drawDark();
 			sprintf(tmp, "%s%s/\n%s", outpath, outdir, lang->filer_overwrite);
@@ -1535,6 +1531,7 @@ int psuImport(const char *path, const FILEINFO *file)
 		dialog_x = (SCREEN_WIDTH-dialog_width)/2;
 		dialog_y = (SCREEN_HEIGHT-dialog_height)/2;
 		drawDark();
+		itoGsFinish();
 		itoSwitchFrameBuffers();
 		drawDark();
 		seek = sizeof(PSU_HEADER);
@@ -1864,6 +1861,7 @@ int psuExport(const char *path, const FILEINFO *file)
 		dialog_x = (SCREEN_WIDTH-dialog_width)/2;
 		dialog_y = (SCREEN_HEIGHT-dialog_height)/2;
 		drawDark();
+		itoGsFinish();
 		itoSwitchFrameBuffers();
 		drawDark();
 		for(i=0;i<n;i++){
@@ -2195,7 +2193,6 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 			files[5].title[0] = 0;
 			nfiles = 6;
 		}
-		//vfreeSpace=FALSE;
 	}
 	else if(!strcmp(path, "MISC/")){
 		for(i=0;i<7;i++){
@@ -2312,10 +2309,7 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 			}
 		}
 		//ソート
-		if(!strcmp(path, "hdd0:/")){
-			//vfreeSpace=FALSE;
-		}
-		else if(nfiles>1)
+		if(nfiles>1)
 			sort(&files[1], 0, nfiles-2);
 	}
 	
@@ -2461,9 +2455,9 @@ void getFilePath(char *out, int cnfmode)
 					break;
 				}
 			}
-			//FNT_FILE ELF選択時
+			//FNT_FILE FNT選択時
 			else if(cnfmode==FNT_FILE){
-				if(new_pad & PAD_CIRCLE) {//ELFファイルを決定
+				if(new_pad & PAD_CIRCLE) {//FNTファイルを決定
 					if(files[sel].attr & FIO_S_IFREG){
 						sprintf(out, "%s%s", path, files[sel].name);
 						//ヘッダチェック
@@ -2520,6 +2514,7 @@ void getFilePath(char *out, int cnfmode)
 				}
 				else if(new_pad & PAD_R1){	// メニュー
 					drawDark();
+					itoGsFinish();
 					itoSwitchFrameBuffers();
 					drawDark();
 
@@ -2544,6 +2539,7 @@ void getFilePath(char *out, int cnfmode)
 					}
 					else if(ret==DELETE){	// デリート
 						drawDark();
+						itoGsFinish();
 						itoSwitchFrameBuffers();
 						drawDark();
 						if(nmarks==0){
@@ -2594,6 +2590,7 @@ void getFilePath(char *out, int cnfmode)
 					}
 					else if(ret==RENAME){	// リネーム
 						drawDark();
+						itoGsFinish();
 						itoSwitchFrameBuffers();
 						drawDark();
 						strcpy(tmp, files[sel].name);
@@ -2621,6 +2618,7 @@ void getFilePath(char *out, int cnfmode)
 					else if(ret==NEWDIR){	// 新規フォルダ作成
 						tmp[0]=0;
 						drawDark();
+						itoGsFinish();
 						itoSwitchFrameBuffers();
 						drawDark();
 						if(keyboard(tmp, 36)>=0){
@@ -2669,6 +2667,7 @@ void getFilePath(char *out, int cnfmode)
 					}
 					else if(ret==EXPORT){	// psuファイルにエクスポート
 						drawDark();
+						itoGsFinish();
 						itoSwitchFrameBuffers();
 						drawDark();
 
@@ -2689,6 +2688,7 @@ void getFilePath(char *out, int cnfmode)
 					}
 					else if(ret==IMPORT){	// psuファイルからインポート
 						drawDark();
+						itoGsFinish();
 						itoSwitchFrameBuffers();
 						drawDark();
 
@@ -2836,10 +2836,7 @@ void getFilePath(char *out, int cnfmode)
 			}
 
 			//
-			if(!setting->fileicon)
-				//ファイル名のみ表示
-				printXY(tmp, x+FONT_WIDTH*2, y, color, TRUE);
-			else{
+			if(setting->fileicon){
 				//ファイル名とアイコンを表示
 				if(files[top+i].type!=TYPE_OTHER){
 					if(files[top+i].type==TYPE_DIR) iconcolor=setting->color[4];
@@ -2854,28 +2851,27 @@ void getFilePath(char *out, int cnfmode)
 				//ファイル名表示
 				printXY(tmp, x+FONT_WIDTH*4, y, color, TRUE);
 			}
+			else{
+				//ファイル名のみ表示
+				printXY(tmp, x+FONT_WIDTH*2, y, color, TRUE);
+			}
+
 			//詳細表示
 			if(path[0]==0 || !strcmp(path,"hdd0:/") || !strcmp(path,"MISC/")){
 				//何もしない
 			}
 			else{
-				if(detail==1){
+				if(detail==1){	//ファイルサイズ表示
 					int len;
 					if(files[top+i].attr & FIO_S_IFDIR)
 						sprintf(tmp,"<DIR>");
 					else{
-						//setting->MassFileSizeCheck==0のときは、ファイルサイズを取得していない
-						if(!strncmp(path,"mass",4) && !setting->MassFileSizeCheck){
-							strcpy(tmp,"- B ");
-						}
-						else{
-							if(files[top+i].fileSizeByte >= 1024*1024)
-								sprintf(tmp, "%.1f MB", (double)files[top+i].fileSizeByte/1024/1024);
-							else if(files[top+i].fileSizeByte >= 1024)
-								sprintf(tmp, "%.1f KB", (double)files[top+i].fileSizeByte/1024);
-							else
-								sprintf(tmp,"%d B ",files[top+i].fileSizeByte);
-						}
+						if(files[top+i].fileSizeByte >= 1024*1024)
+							sprintf(tmp, "%.1f MB", (double)files[top+i].fileSizeByte/1024/1024);
+						else if(files[top+i].fileSizeByte >= 1024)
+							sprintf(tmp, "%.1f KB", (double)files[top+i].fileSizeByte/1024);
+						else
+							sprintf(tmp,"%d B ",files[top+i].fileSizeByte);
 					}
 					len=strlen(tmp);
 					if(strcmp(files[top+i].name,"..")){
@@ -2887,19 +2883,10 @@ void getFilePath(char *out, int cnfmode)
 						printXY(tmp, SCREEN_WIDTH-FONT_WIDTH*(4+len), y, color, TRUE);
 					}
 				}
-				else if(detail==2){
+				else if(detail==2){	//更新日時表示
 					int len;
-					//massは、更新日時の秒を取得できない
-					if(!strncmp(path,"mass",4)){
-						sprintf(tmp,"%04d/%02d/%02d %02d:%02d:--",
-							files[top+i].modifyTime.year,
-							files[top+i].modifyTime.month,
-							files[top+i].modifyTime.day,
-							files[top+i].modifyTime.hour,
-							files[top+i].modifyTime.min);
-					}
 					//cdfsは、更新日時を取得できない
-					else if(!strncmp(path,"cdfs",4)){
+					if(!strncmp(path,"cdfs",4)){
 						strcpy(tmp,"----/--/-- --:--:--");
 					}
 					else{
@@ -2972,11 +2959,7 @@ void getFilePath(char *out, int cnfmode)
 			else
 				sprintf(tmp, "[%dB free]", freeSpace);
 			ret=strlen(tmp);
-/*
-			itoSprite(setting->color[0],
-				SCREEN_WIDTH-FONT_WIDTH*(ret+2), SCREEN_MARGIN,
-				SCREEN_WIDTH-FONT_WIDTH*2, SCREEN_MARGIN+FONT_HEIGHT, 0);
-*/
+			//
 			printXY(tmp,
 				SCREEN_WIDTH-FONT_WIDTH*(ret+2), SCREEN_MARGIN,
 				setting->color[3], TRUE);

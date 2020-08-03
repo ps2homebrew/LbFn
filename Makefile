@@ -5,9 +5,9 @@ PS2ETH=$(PS2DEV)\ps2eth
 #EE_BIN = LaunchELF.ELF
 EE_BIN = LbF.ELF
 
-EE_OBJS = main.o pad.o config.o elf.o draw.o loader.o  filer.o mass_rpc.o cd.o language.o cnf.o\
+EE_OBJS = main.o pad.o config.o elf.o draw.o loader.o  filer.o cd.o language.o cnf.o\
 	poweroff.o iomanx.o filexio.o ps2atad.o ps2dev9.o ps2hdd.o ps2fs.o ps2netfs.o\
-	usbd.o usb_mass.o cdvd.o ps2ip.o ps2smap.o ps2ftpd.o
+	usbd.o usbhdfsd.o cdvd.o ps2ip.o ps2smap.o ps2ftpd.o
 
 EE_INCS := -I$(LIBITO)/include -I$(PS2DK)/sbv/include\
 	-I$(PS2DEV)/libcdvd/ee
@@ -23,9 +23,8 @@ all: $(EE_BIN)
 usbd.s:
 	bin2s $(PS2SDK)/iop/irx/usbd.irx usbd.s usbd_irx
 
-#usb_mass.irx ulaunchELF 4.01
-usb_mass.s:
-	bin2s modules/usb_mass.irx usb_mass.s usb_mass_irx
+usbhdfsd.s:
+	bin2s $(PS2DEV)/usbhdfsd/bin/usbhdfsd.irx usbhdfsd.s usbhdfsd_irx
 
 #cdvd.irx ulaunchELF 4.01
 cdvd.s:
@@ -63,7 +62,6 @@ ps2smap.s:
 
 ps2ip.s:
 	bin2s $(PS2SDK)/iop/irx/ps2ip.irx ps2ip.s ps2ip_irx
-#	bin2s modules/ps2ip.irx ps2ip.s ps2ip_irx
 
 #ps2ftpd.irx uLaunchELF 4.01
 ps2ftpd.s:

@@ -21,18 +21,16 @@
 #include <stdarg.h>
 #include <sbv_patches.h>
 #include <sys/fcntl.h>
-//#include <debug.h>
 #include <ito.h>
 #include <cdvd_rpc.h>
 #include <smod.h>
-#include "cd.h"
-#include "mass_rpc.h"
 
+#include "cd.h"
 #include "language.h"
 #include "cnf.h"
 
 // バージョン
-#define LBF_VER "LbF v0.53"
+#define LBF_VER "LbF v0.54"
 
 // 垂直スキャンレート
 #define SCANRATE (ITO_VMODE_AUTO==ITO_VMODE_NTSC ? 60:50)
@@ -49,16 +47,11 @@
 enum
 {
 	SCREEN_WIDTH = 640,
-//	SCREEN_HEIGHT = 448,
-//	SCREEN_MARGIN = 14,
-//	FONT_WIDTH = 10,
-//	FONT_HEIGHT = 20,
 	LINE_THICKNESS = 2,
 	
 	MAX_NAME = 256,
 	MAX_PATH = 1025,
 	MAX_ENTRY = 2048,
-//	MAX_ROWS = 16,
 	MAX_PARTITIONS=100
 };
 
@@ -88,7 +81,6 @@ typedef struct
 	int AsciiMarginLeft;
 	int KanjiMarginTop;
 	int KanjiMarginLeft;
-	int MassFileSizeCheck;
 } SETTING;
 
 /* main.c */
@@ -163,9 +155,9 @@ int GetFontBold(void);
 int checkFONTX2header(const char *path);
 void drawChar(unsigned char c, int x, int y, uint64 colour);
 int printXY(const unsigned char *s, int x, int y, uint64 colour, int draw);
-int SetCurrentPos(int x, int y);
-int GetCurrentPos(int type);
-int printXY2(const unsigned char *s, uint64 color, int draw);
+//int SetCurrentPos(int x, int y);
+//int GetCurrentPos(int type);
+//int printXY2(const unsigned char *s, uint64 color, int draw);
 
 /* pad.c */
 extern u32 new_pad;
