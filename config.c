@@ -193,7 +193,7 @@ int CheckMC(void)
 
 	if( -1 == ret || 0 == ret) return 0;
 
-	mcGetInfo(0, 0, NULL, NULL, NULL);
+	mcGetInfo(1, 0, NULL, NULL, NULL);
 	mcSync(0, NULL, &ret);
 
 	if( -1 == ret || 0 == ret ) return 1;
@@ -285,40 +285,49 @@ void saveConfig(char *mainMsg)
 		mainMsg[0] = 0;
 		return;
 	}
-	else if(boot==MC_BOOT || boot==MASS_BOOT){
-		// LaunchELFが実行されたパスから設定ファイルを開く
-		sprintf(path, "%sLBF.CNF", LaunchElfDir);
-		if((fd = fioOpen(path, O_RDONLY)) >= 0)
-			fioClose(fd);
-		else{
-			//mcport
-			if(boot==MC_BOOT)
-				mcport = LaunchElfDir[2]-'0';
-			else
-				mcport = CheckMC();
-			//path
+
+	if(boot==HOST_BOOT){
+		mcport = CheckMC();
+		if(mcport==0||mcport==1){
 			sprintf(path, "mc%d:/SYS-CONF/LBF.CNF", mcport);
 			if((fd = fioOpen(path, O_RDONLY)) >= 0)
 				fioClose(fd);
 			else
 				path[0]=0;
 		}
+		else{
+			path[0]=0;
+		}
 	}
 	else{
-		//有効なmcのSYS-CONFフォルダ
-		sprintf(path, "mc%d:/SYS-CONF/LBF.CNF", CheckMC());
+		//LaunchELFが実行されたパスから設定ファイルを開く
+		sprintf(path, "%sLBF.CNF", LaunchElfDir);
 		if((fd = fioOpen(path, O_RDONLY)) >= 0)
 			fioClose(fd);
-		else
-			path[0]=0;
+		else{
+			//開けなかったら、SYS-CONFの設定ファイルを開く
+			if(boot==MC_BOOT)
+				mcport = LaunchElfDir[2]-'0';
+			else
+				mcport = CheckMC();
+			if(mcport==0||mcport==1){
+				sprintf(path, "mc%d:/SYS-CONF/LBF.CNF", mcport);
+				if((fd = fioOpen(path, O_RDONLY)) >= 0)
+					fioClose(fd);
+				else
+					path[0]=0;
+			}
+			else{
+				path[0]=0;
+			}
+		}
 	}
 
 	cnf_init();
 
 	//cnfファイルオープン
-	if(cnf_load(path)==FALSE){
+	if(cnf_load(path)==FALSE)
 		path[0]=0;
-	}
 
 	error=FALSE;
 	for(i=0;i<NUM_CNF_KEY;i++){
@@ -393,26 +402,44 @@ void saveConfig(char *mainMsg)
 	}
 
 	//cnfファイルのパス
-	if(boot==MC_BOOT || boot==MASS_BOOT){
+	if(boot==HOST_BOOT){
+		mcport = CheckMC();
+		if(mcport==0||mcport==1){
+			//SYS-CONFフォルダがあったらSYS-CONFにセーブ
+			sprintf(path, "mc%d:/SYS-CONF", mcport);
+			if((fd=fioDopen(path)) >= 0){
+				fioDclose(fd);
+				strcat(path, "/LBF.CNF");
+			}
+			// SYS-CONFがなかったらLaunchELFのディレクトリにセーブ
+			else{
+				sprintf(path, "%sLBF.CNF", LaunchElfDir);
+			}
+		}
+	}
+	else{
+		//LaunchELFのディレクトリにCNFがあったらLaunchELFのディレクトリにセーブ
 		sprintf(path, "%sLBF.CNF", LaunchElfDir);
 		if((fd = fioOpen(path, O_RDONLY)) >= 0)
 			fioClose(fd);
 		else{
-			//mcport
 			if(boot==MC_BOOT)
 				mcport = LaunchElfDir[2]-'0';
 			else
 				mcport = CheckMC();
-			//path
-			sprintf(path, "mc%d:/SYS-CONF/LBF.CNF", mcport);
-			if((fd = fioOpen(path, O_RDONLY)) >= 0)
-				fioClose(fd);
-			else
-				sprintf(path, "%sLBF.CNF", LaunchElfDir);
+			if(mcport==0||mcport==1){
+				//SYS-CONFフォルダがあったらSYS-CONFにセーブ
+				sprintf(path, "mc%d:/SYS-CONF", mcport);
+				if((fd=fioDopen(path)) >= 0){
+					fioDclose(fd);
+					strcat(path, "/LBF.CNF");
+				}
+				// SYS-CONFがなかったらLaunchELFのディレクトリにセーブ
+				else{
+					sprintf(path, "%sLBF.CNF", LaunchElfDir);
+				}
+			}
 		}
-	}
-	else{
-		sprintf(path, "mc%d:/SYS-CONF/LBF.CNF", CheckMC());
 	}
 
 	//cnf保存
@@ -439,32 +466,41 @@ void loadConfig(char *mainMsg)
 	setting = (SETTING*)malloc(sizeof(SETTING));
 
 	//cnfファイルのパス
-	if(boot==CD_BOOT || boot==MC_BOOT || boot==MASS_BOOT){
-		// LaunchELFが実行されたパスから設定ファイルを開く
-		sprintf(path, "%sLBF.CNF", LaunchElfDir);
-		if((fd = fioOpen(path, O_RDONLY)) >= 0)
-			fioClose(fd);
-		else{
-			//mcport
-			if(boot==MC_BOOT)
-				mcport = LaunchElfDir[2]-'0';
-			else
-				mcport = CheckMC();
-			//path
+	//LaunchELFが実行されたパスから設定ファイルを開く
+	if(boot==HOST_BOOT){
+		mcport = CheckMC();
+		if(mcport==0||mcport==1){
 			sprintf(path, "mc%d:/SYS-CONF/LBF.CNF", mcport);
 			if((fd = fioOpen(path, O_RDONLY)) >= 0)
 				fioClose(fd);
 			else
 				path[0]=0;
 		}
+		else{
+			path[0]=0;
+		}
 	}
 	else{
-		//有効なmcのSYS-CONFフォルダ
-		sprintf(path, "mc%d:/SYS-CONF/LBF.CNF", CheckMC());
+		sprintf(path, "%sLBF.CNF", LaunchElfDir);
 		if((fd = fioOpen(path, O_RDONLY)) >= 0)
 			fioClose(fd);
-		else
-			path[0]=0;
+		else{
+			//開けなかったら、SYS-CONFの設定ファイルを開く
+			if(boot==MC_BOOT)
+				mcport = LaunchElfDir[2]-'0';
+			else
+				mcport = CheckMC();
+			if(mcport==0||mcport==1){
+				sprintf(path, "mc%d:/SYS-CONF/LBF.CNF", mcport);
+				if((fd = fioOpen(path, O_RDONLY)) >= 0)
+					fioClose(fd);
+				else
+					path[0]=0;
+			}
+			else{
+				path[0]=0;
+			}
+		}
 	}
 
 	//設定を初期化する

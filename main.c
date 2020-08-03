@@ -478,23 +478,19 @@ void	load_poweroff(void)
 	}
 }
 
-/*
 //--------------------------------------------------------------
-void poweroffHandler(void *arg)
+void setupPowerOff(void)
 {
-	hddPowerOff();
-}
-*/
+	static int loaded=FALSE;
 
-//--------------------------------------------------------------
-void PowerOff(void)
-{
-	load_poweroff();
-	load_iomanx();
-	load_filexio();
-	hddPreparePoweroff();
-//	hddSetUserPoweroffCallback((void *)poweroffHandler, NULL);
-	hddPowerOff();
+	if(!loaded){
+		hddPreparePoweroff();
+		load_poweroff();
+		load_iomanx();
+		load_filexio();
+		load_ps2dev9();
+		loaded=TRUE;
+	}
 }
 
 //--------------------------------------------------------------
@@ -505,15 +501,13 @@ void loadHddModules(void)
 	
 	if(!loaded){
 		drawMsg(lang->main_loadhddmod);
-//		load_poweroff();
-		load_iomanx();
-		load_filexio();
-		load_ps2dev9();
+		setupPowerOff();
+//		load_iomanx();
+//		load_filexio();
+//		load_ps2dev9();
 		load_ps2atad();
 		load_ps2hdd();
 		load_ps2fs();
-//		hddPreparePoweroff();
-//		hddSetUserPoweroffCallback((void *)poweroffHandler, NULL);
 		loaded=TRUE;
 	}
 }
@@ -878,7 +872,8 @@ void RunElf(const char *path)
 			return;
 		}
 		else if(!stricmp(path, "MISC/PowerOff")){
-			PowerOff();
+			setupPowerOff();
+			hddPowerOff();
 			return;
 		}
 		else if(!stricmp(path, "MISC/INFO")){
