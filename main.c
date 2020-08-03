@@ -27,7 +27,7 @@ extern int size_usb_mass_irx;
 extern u8 *cdvd_irx;
 extern int size_cdvd_irx;
 
-//PS2Net uLaunchELF3.60
+//PS2Net uLaunchELF4.01
 extern u8 *ps2ip_irx;
 extern int size_ps2ip_irx;
 extern u8 *ps2smap_irx;
@@ -52,10 +52,6 @@ enum
 };
 
 int trayopen=FALSE;
-int selected=0;
-int timeout=0;
-int cancel=FALSE;
-int mode=BUTTON;
 char LaunchElfDir[MAX_PATH], mainMsg[MAX_PATH];
 int boot;
 
@@ -202,10 +198,8 @@ void	load_ps2ip(void)
 	if(!loaded){	
 		if( IOPModulePresent( "TCP/IP Stack" )==0 )
 			SifExecModuleBuffer(&ps2ip_irx, size_ps2ip_irx, 0, NULL, &ret);
-//		if(boot!=HOST_BOOT){
-			if( IOPModulePresent( "INET_SMAP_driver" )==0 )
-				SifExecModuleBuffer(&ps2smap_irx, size_ps2smap_irx, if_conf_len, &if_conf[0], &ret);
-//		}
+		if( IOPModulePresent( "INET_SMAP_driver" )==0 )
+			SifExecModuleBuffer(&ps2smap_irx, size_ps2smap_irx, if_conf_len, &if_conf[0], &ret);
 		loaded=TRUE;
 	}
 }
@@ -506,7 +500,7 @@ void showinfo(void)
 				sel+=MAX_ROWS/2;
 		}
 
-		// ファイルリスト表示用変数の正規化
+		//リスト表示用変数の正規化
 		if(top > nList-MAX_ROWS)	top=nList-MAX_ROWS;
 		if(top < 0)			top=0;
 		if(sel >= nList)		sel=nList-1;
@@ -517,7 +511,7 @@ void showinfo(void)
 		// 画面描画開始
 		clrScr(setting->color[0]);
 
-		// ファイルリスト
+		// リスト
 		x = FONT_WIDTH*3;
 		y = SCREEN_MARGIN+FONT_HEIGHT*3;
 		for(i=0; i<MAX_ROWS; i++){
@@ -530,7 +524,7 @@ void showinfo(void)
 			//カーソル表示
 			if(top+i == sel)
 				printXY(">", x, y, color, TRUE);
-			//ファイルリスト表示
+			//リスト表示
 			printXY(info[top+i], x+FONT_WIDTH*2, y, color, TRUE);
 			y += FONT_HEIGHT;
 		}
@@ -688,6 +682,12 @@ void RunElf(const char *path)
 		showinfo();
 		return;
 	}
+	else if(!stricmp(path, "MISC/CONFIG")){
+		config(mainMsg);
+		if(setting->discControl)
+			loadCdModules();
+		return;
+	}
 	else if(!strncmp(path, "cdfs", 4)){
 		party[0] = 0;
 		strcpy(fullpath, path);
@@ -712,21 +712,6 @@ void RunElf(const char *path)
 }
 
 //--------------------------------------------------------------
-// 方向キーで選択されたELFの実行
-void RunSelectedElf(void)
-{
-	int n=0;
-	int i;
-	
-	for(i=0; i<12; i++){
-		if(setting->dirElf[i][0] && n++==selected){
-			RunElf(setting->dirElf[i]);
-			break;
-		}
-	}
-}
-
-//--------------------------------------------------------------
 // reboot IOP (original source by Hermes in BOOT.c - cogswaploader)
 // uLaunchELF3.60
 void Reset()
@@ -747,159 +732,278 @@ void Reset()
 }
 
 //--------------------------------------------------------------
-// メイン画面の描画
-int drawMainScreen(void)
+void LaunchMain(void)
 {
-	int nElfs=0;
+	int timeout=0;
+	int cancel=FALSE;
+	int mode=BUTTON;
+	CdvdDiscType_t cdmode;
+	int use_default;
 	int i;
-	int x, y;
+	int mode_changed;
+
 	uint64 color;
-	char c[MAX_PATH+8], f[MAX_PATH];
+	char tmp[MAX_PATH+8], name[MAX_PATH];
 	char *p;
 	char dummyElf[MAX_PATH];
 
-	strcpy(setting->dirElf[12], "CONFIG");
-	
-	clrScr(setting->color[0]);
-	
-	// 枠の中
-	x = FONT_WIDTH*5;
-	y = SCREEN_MARGIN + FONT_HEIGHT*3;
+	char list[16][MAX_PATH];
+	char elfpath[16][MAX_PATH];
+	int nList=0, sel=0, top=0;
+	int x, y, y0, y1;
 
-	//DEFAULT
-	if(setting->dirElf[0][0]){
-		if(mode==BUTTON){
-			if(cancel==FALSE)
-				sprintf(c, "TIMEOUT: %d", timeout/SCANRATE);
-			else
-				sprintf(c, "TIMEOUT: -");
+	timeout = (setting->timeout+1)*SCANRATE;
+
+	while(1){
+		mode_changed=FALSE;
+		use_default=FALSE;
+		if(setting->dirElf[0][0]) use_default=TRUE;
+		//discControl
+		if(setting->discControl){
+			CDVD_Stop();
+			cdmode = cdGetDiscType();
+			if(cdmode==CDVD_TYPE_NODISK){
+				trayopen = TRUE;
+				strcpy(mainMsg, lang->main_nodisc);
+			}else if(cdmode>=0x01 && cdmode<=0x04){
+				strcpy(mainMsg, lang->main_detectingdisc);
+			}else if(trayopen==TRUE){
+				trayopen=FALSE;
+				strcpy(mainMsg, lang->main_stopdisc);
+			}
 		}
-		else
-			sprintf(c, "TIMEOUT: -");
-		printXY(c, x, y, setting->color[3], TRUE);
-		y += FONT_HEIGHT;
-	}
 
-	if(mode!=DPAD_MISC){
-		for(i=0; i<13; i++){
-			if(setting->dirElf[i][0]){
-				switch(i){
-				case 0:
-					strcpy(c,"DEFAULT: ");
-					break;
-				case 1:
-					strcpy(c,"     ○: ");
-					break;
-				case 2:
-					strcpy(c,"     ×: ");
-					break;
-				case 3:
-					strcpy(c,"     □: ");
-					break;
-				case 4:
-					strcpy(c,"     △: ");
-					break;
-				case 5:
-					strcpy(c,"     L1: ");
-					break;
-				case 6:
-					strcpy(c,"     R1: ");
-					break;
-				case 7:
-					strcpy(c,"     L2: ");
-					break;
-				case 8:
-					strcpy(c,"     R2: ");
-					break;
-				case 9:
-					strcpy(c,"     L3: ");
-					break;
-				case 10:
-					strcpy(c,"     R3: ");
-					break;
-				case 11:
-					strcpy(c,"  START: ");
-					break;
-				case 12:
-					strcpy(c," SELECT: ");
-					break;
-				}
-				//
-				if(setting->filename){
-					if((p=strrchr(setting->dirElf[i], '/')))
-						strcpy(f, p+1);
+		//表示するリストとELFのパスのリスト作成
+		for(i=0; i<16; i++){
+			list[i][0]='\0';
+			elfpath[i][0]='\0';
+		}
+		if(mode==BUTTON || mode==DPAD){
+			nList=0;
+			//DEFAULT
+			if(setting->dirElf[0][0]){
+				if(mode==BUTTON){
+					if(cancel==FALSE)
+						sprintf(tmp, "TIMEOUT: %d", timeout/SCANRATE);
 					else
-						strcpy(f, setting->dirElf[i]);
-					if((p=strrchr(f, '.')))
-						*p = 0;
+						sprintf(tmp, "TIMEOUT: -");
+				}
+				else if(mode==DPAD)
+					sprintf(tmp, "TIMEOUT: -");
+				strcpy(list[nList], tmp);
+				nList++;
+			}
+			//BUTTON
+			for(i=0; i<13; i++){
+				if(setting->dirElf[i][0]){
+					if(i==0)  strcpy(tmp, "DEFAULT: ");
+					if(i==1)  strcpy(tmp, "     ○: ");
+					if(i==2)  strcpy(tmp, "     ×: ");
+					if(i==3)  strcpy(tmp, "     □: ");
+					if(i==4)  strcpy(tmp, "     △: ");
+					if(i==5)  strcpy(tmp, "     L1: ");
+					if(i==6)  strcpy(tmp, "     R1: ");
+					if(i==7)  strcpy(tmp, "     L2: ");
+					if(i==8)  strcpy(tmp, "     R2: ");
+					if(i==9)  strcpy(tmp, "     L3: ");
+					if(i==10) strcpy(tmp, "     R3: ");
+					if(i==11) strcpy(tmp, "  START: ");
+					if(i==12) strcpy(tmp, " SELECT: ");
+					//ELFのパスのリスト
+					strcpy(elfpath[nList], setting->dirElf[i]);
+					//表示するファイル名
+					if(setting->filename){
+						if((p=strrchr(setting->dirElf[i], '/')))
+							strcpy(name, p+1);
+						else
+							strcpy(name, setting->dirElf[i]);
+						if((p=strrchr(name, '.')))
+							*p = 0;
+					}
+					else{
+						strcpy(name, setting->dirElf[i]);
+					}
+					strcat(tmp, name);
+					strcpy(list[nList], tmp);
+					nList++;
+				}
+			}
+		}
+		else{	//mode==DPAD_MISC
+			nList=6;
+			for(i=0; i<nList; i++){
+				strcpy(tmp, "         ");
+				if(i==0) strcpy(dummyElf, "MISC/FileBrowser");
+				if(i==1) strcpy(dummyElf, "MISC/PS2Browser");
+				if(i==2) strcpy(dummyElf, "MISC/PS2Disc");
+				if(i==3) strcpy(dummyElf, "MISC/PS2Net");
+				if(i==4) strcpy(dummyElf, "MISC/INFO");
+				if(i==5) strcpy(dummyElf, "MISC/CONFIG");
+				//ELFのパスのリスト
+				strcpy(elfpath[i], dummyElf);
+				//表示するファイル名
+				if(setting->filename){
+					if((p=strrchr(dummyElf, '/')))
+						strcpy(name, p+1);
+					else
+						strcpy(name, dummyElf);
 				}
 				else{
-					strcpy(f, setting->dirElf[i]);
+					strcpy(name, dummyElf);
 				}
-				strcat(c, f);
-				//文字列の色
-				if(nElfs++==selected && mode==DPAD)
+				strcat(tmp, name);
+				strcpy(list[i], tmp);
+			}
+		}
+
+		//キー入力
+		waitPadReady(0,0);
+		if(readpad()){
+			if(new_pad) cancel=TRUE;
+			if(mode==BUTTON){
+				if(new_pad & PAD_UP || new_pad & PAD_DOWN){
+					sel=0;
+					if(use_default) sel=1; 
+					mode=DPAD;
+					mode_changed=TRUE;
+				}
+				else if(new_pad & PAD_LEFT || new_pad & PAD_RIGHT){
+					sel=0;
+					mode=DPAD_MISC;
+					mode_changed=TRUE;
+				}
+				else if(new_pad & PAD_CIRCLE)
+					RunElf(setting->dirElf[1]);
+				else if(new_pad & PAD_CROSS)
+					RunElf(setting->dirElf[2]);
+				else if(new_pad & PAD_SQUARE)
+					RunElf(setting->dirElf[3]);
+				else if(new_pad & PAD_TRIANGLE)
+					RunElf(setting->dirElf[4]);
+				else if(new_pad & PAD_L1)
+					RunElf(setting->dirElf[5]);
+				else if(new_pad & PAD_R1)
+					RunElf(setting->dirElf[6]);
+				else if(new_pad & PAD_L2)
+					RunElf(setting->dirElf[7]);
+				else if(new_pad & PAD_R2)
+					RunElf(setting->dirElf[8]);
+				else if(new_pad & PAD_L3)
+					RunElf(setting->dirElf[9]);
+				else if(new_pad & PAD_R3)
+					RunElf(setting->dirElf[10]);
+				else if(new_pad & PAD_START)
+					RunElf(setting->dirElf[11]);
+				else if(new_pad & PAD_SELECT)
+					RunElf(setting->dirElf[12]);
+			}
+			else if(mode==DPAD){
+				if(new_pad & PAD_UP){
+					sel--;
+					if(sel==0 && use_default) sel=nList-1;
+					if(sel<0) sel=nList-1;
+				}
+				else if(new_pad & PAD_DOWN){
+					sel++;
+					if(sel>=nList){
+						sel=0;
+						if(use_default) sel++;
+					}
+					
+				}
+				else if(new_pad & PAD_LEFT || new_pad & PAD_RIGHT){
+					sel=0;
+					mode=DPAD_MISC;
+					mode_changed=TRUE;
+				}
+				else if(new_pad & PAD_CROSS){
+					mode=BUTTON;
+					mode_changed=TRUE;
+				}
+				else if(new_pad & PAD_CIRCLE){
+					RunElf(elfpath[sel]);	//ランチャー
+				}
+/*				else if(new_pad & PAD_R1){	//デバッグ
+				}*/
+			}
+			else if(mode==DPAD_MISC){
+				if(new_pad & PAD_UP){
+					sel--;
+					if(sel<0) sel=nList-1;
+				}
+				else if(new_pad & PAD_DOWN){
+					sel++;
+					if(sel>=nList) sel=0;
+				}
+				else if(new_pad & PAD_LEFT || new_pad & PAD_RIGHT || new_pad & PAD_CROSS){
+					sel=0;
+					mode=BUTTON;
+					mode_changed=TRUE;
+				}
+				else if(new_pad & PAD_CIRCLE){
+					RunElf(elfpath[sel]);	//ランチャー
+				}
+			}
+		}
+
+		//画面描画開始
+		if(!mode_changed){
+			clrScr(setting->color[0]);
+
+			// リスト表示用変数の正規化
+			if(top > nList-MAX_ROWS) top=nList-MAX_ROWS;
+			if(top < 0)              top=0;
+			if(sel >= nList)         sel=nList-1;
+			if(sel < 0)              sel=0;
+			if(sel >= top+MAX_ROWS)  top=sel-MAX_ROWS+1;
+			if(sel < top)            top=sel;
+
+			//
+			x = FONT_WIDTH*3;
+			y = SCREEN_MARGIN+FONT_HEIGHT*3;
+			for(i=0; i<MAX_ROWS; i++){
+				if(top+i >= nList) break;
+				//色
+				if(top+i == sel)
 					color = setting->color[2];
 				else
 					color = setting->color[3];
-				printXY(c, x, y, color, TRUE);
+				if(mode==BUTTON)
+					color = setting->color[3];
+				//リスト表示
+				printXY(list[top+i], x+FONT_WIDTH*2, y, color, TRUE);
 				y += FONT_HEIGHT;
 			}
-		}
-	}
-	else{	//mode==DPAD_MISC
-		for(i=0; i<6; i++){
-			strcpy(c,"         ");
-			switch(i){
-			case 0:
-				strcpy(dummyElf,"MISC/FileBrowser");
-				break;
-			case 1:
-				strcpy(dummyElf,"MISC/PS2Browser");
-				break;
-			case 2:
-				strcpy(dummyElf,"MISC/PS2Disc");
-				break;
-			case 3:
-				strcpy(dummyElf,"MISC/PS2Net");
-				break;
-			case 4:
-				strcpy(dummyElf,"MISC/INFO");
-				break;
-			case 5:
-				strcpy(dummyElf,"CONFIG");
-				break;
+			// スクロールバー
+			if(nList > MAX_ROWS){
+				drawFrame(SCREEN_WIDTH-FONT_WIDTH*3, SCREEN_MARGIN+FONT_HEIGHT*3,
+					SCREEN_WIDTH-FONT_WIDTH*2, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[1]);
+				y0=FONT_HEIGHT*MAX_ROWS*((double)top/nList);
+				y1=FONT_HEIGHT*MAX_ROWS*((double)(top+MAX_ROWS)/nList);
+				itoSprite(setting->color[1],
+					SCREEN_WIDTH-FONT_WIDTH*3,
+					SCREEN_MARGIN+FONT_HEIGHT*3+y0,
+					SCREEN_WIDTH-FONT_WIDTH*2,
+					SCREEN_MARGIN+FONT_HEIGHT*3+y1,
+					0);
 			}
-			//
-			if(setting->filename){
-				if((p=strrchr(dummyElf, '/')))
-					strcpy(f, p+1);
-				else
-					strcpy(f, dummyElf);
-			}
-			else{
-				strcpy(f, dummyElf);
-			}
-			strcat(c, f);
-			//文字列の色
-			if(nElfs++==selected)
-				color = setting->color[2];
+			// 操作説明
+			if(mode==BUTTON)
+				strcpy(tmp, lang->main_launch_hint);
 			else
-				color = setting->color[3];
-			printXY(c, x, y, color, TRUE);
-			y += FONT_HEIGHT;
+				sprintf(tmp, "○:%s ×:%s", lang->gen_ok, lang->gen_cancel);
+	
+			setScrTmp(mainMsg, tmp);
+			drawScr();
 		}
+		//AutoRun
+		if(timeout/SCANRATE==0 && use_default && cancel==FALSE){
+			RunElf(setting->dirElf[0]);
+			cancel=TRUE;
+		}
+		//timeout
+		if(cancel==FALSE) timeout--;
 	}
-	// 操作説明
-	if(mode==BUTTON)
-		strcpy(c, lang->main_launch_hint);
-	else
-		sprintf(c, "○:%s ×:%s", lang->gen_ok, lang->gen_cancel);
-	
-	setScrTmp(mainMsg, c);
-	drawScr();
-	
-	return nElfs;
 }
 
 //--------------------------------------------------------------
@@ -907,8 +1011,6 @@ int drawMainScreen(void)
 int main(int argc, char *argv[])
 {
 	char *p;
-	int nElfs;
-	CdvdDiscType_t cdmode;
 
 	//ブートフォルダ名	original source altimit
 	if (argc == 0){
@@ -926,7 +1028,7 @@ int main(int argc, char *argv[])
 			if (p == NULL){
 				p = strrchr(LaunchElfDir,':');
 				if (p == NULL){
-					scr_printf("Fatal, unrecognised path (%s)!\n", LaunchElfDir);
+					//scr_printf("Fatal, unrecognised path (%s)!\n", LaunchElfDir);
 					SleepThread();
 				}
 			}
@@ -954,12 +1056,13 @@ int main(int argc, char *argv[])
 	else
 		boot = UNK_BOOT;
 
+	SifInitRpc(0);
+
 	//RESET IOP
 	if(boot!=HOST_BOOT)
 		//host以外から起動したときリセット
 		Reset();
 
-	SifInitRpc(0);
 	initsbv_patches();
 	loadModules();
 
@@ -995,178 +1098,12 @@ int main(int argc, char *argv[])
 
 	getIpConfig();
 
-	setupito();
+	setupito(ITO_INIT_ENABLE);
 
 	LastDir[0] = 0;
 
-	timeout = (setting->timeout+1)*SCANRATE;
-	while(1){
-		if(setting->discControl){
-			CDVD_Stop();
-			cdmode = cdGetDiscType();
-			if(cdmode==CDVD_TYPE_NODISK){
-				trayopen = TRUE;
-				strcpy(mainMsg, lang->main_nodisc);
-			}else if(cdmode>=0x01 && cdmode<=0x04){
-				strcpy(mainMsg, lang->main_detectingdisc);
-			}else if(trayopen==TRUE){
-				trayopen=FALSE;
-				strcpy(mainMsg, lang->main_stopdisc);
-			}
-		}
-		
-		if(cancel==FALSE) timeout--;
-		nElfs = drawMainScreen();
+	//ランチャーメイン
+	LaunchMain();
 
-		waitPadReady(0,0);
-		if(readpad()){
-			switch(mode){
-				case BUTTON:
-				{
-					if(new_pad & PAD_CIRCLE){
-						cancel=TRUE;
-						RunElf(setting->dirElf[1]);
-					}
-					else if(new_pad & PAD_CROSS){
-						cancel=TRUE;
-						RunElf(setting->dirElf[2]);
-					}
-					else if(new_pad & PAD_SQUARE){
-						cancel=TRUE;
-						RunElf(setting->dirElf[3]);
-					}
-					else if(new_pad & PAD_TRIANGLE){
-						cancel=TRUE;
-						RunElf(setting->dirElf[4]);
-					}
-					else if(new_pad & PAD_L1){
-						cancel=TRUE;
-						RunElf(setting->dirElf[5]);
-					}
-					else if(new_pad & PAD_R1){
-						cancel=TRUE;
-						RunElf(setting->dirElf[6]);
-					}
-					else if(new_pad & PAD_L2){
-						cancel=TRUE;
-						RunElf(setting->dirElf[7]);
-					}
-					else if(new_pad & PAD_R2){
-						cancel=TRUE;
-						RunElf(setting->dirElf[8]);
-					}
-					else if(new_pad & PAD_L3){
-						cancel=TRUE;
-						RunElf(setting->dirElf[9]);
-					}
-					else if(new_pad & PAD_R3){
-						cancel=TRUE;
-						RunElf(setting->dirElf[10]);
-					}
-					else if(new_pad & PAD_START){
-						cancel=TRUE;
-						RunElf(setting->dirElf[11]);
-					}
-					else if(new_pad & PAD_SELECT){
-						cancel=TRUE;
-						config(mainMsg);
-						if(setting->discControl)
-							loadCdModules();
-					}
-					else if(new_pad & PAD_UP || new_pad & PAD_DOWN){
-						cancel=TRUE;
-						selected=0;
-						mode=DPAD;
-					}
-					else if(new_pad & PAD_LEFT || new_pad & PAD_RIGHT){
-						cancel=TRUE;
-						selected=0;
-						mode=DPAD_MISC;
-					}
-					break;
-				}
-				case DPAD:
-				{
-					if(new_pad & PAD_UP){
-						selected--;
-						if(selected<0)
-							selected=nElfs-1;
-					}
-					else if(new_pad & PAD_DOWN){
-						selected++;
-						if(selected>=nElfs)
-							selected=0;
-					}
-					else if(new_pad & PAD_LEFT || new_pad & PAD_RIGHT){
-						selected=0;
-						mode=DPAD_MISC;
-					}
-					else if(new_pad & PAD_CROSS){
-						mode=BUTTON;
-					}
-					else if(new_pad & PAD_CIRCLE){
-						if(selected==nElfs-1){		//CONFIG
-							mode=BUTTON;
-							config(mainMsg);
-							if(setting->discControl)
-								loadCdModules();
-						}
-						else{
-							if(mode==DPAD)
-								RunSelectedElf();		//ランチャー
-						}
-					}
-/*
-					//デバッグ
-					else if(new_pad & PAD_R1){
-					}
-*/
-					break;
-				}
-				case DPAD_MISC:
-				{
-					if(new_pad & PAD_UP){
-						selected--;
-						if(selected<0)
-							selected=nElfs-1;
-					}
-					else if(new_pad & PAD_DOWN){
-						selected++;
-						if(selected>=nElfs)
-							selected=0;
-					}
-					else if(new_pad & PAD_LEFT || new_pad & PAD_RIGHT || new_pad & PAD_CROSS){
-						selected=0;
-						mode=BUTTON;
-					}
-					else if(new_pad & PAD_CIRCLE){
-						switch(selected){
-						case 0:
-							RunElf("MISC/FileBrowser");
-							break;
-						case 1:
-							RunElf("MISC/PS2Browser");
-							break;
-						case 2:
-							RunElf("MISC/PS2Disc");
-							break;
-						case 3:
-							RunElf("MISC/PS2Net");
-							break;
-						case 4:
-							RunElf("MISC/INFO");
-							break;
-						case 5:
-							config(mainMsg);
-							if(setting->discControl) loadCdModules();
-						}
-					}
-					break;
-				}
-			}
-		}
-		if(timeout/SCANRATE==0 && setting->dirElf[0][0] && mode==BUTTON && cancel==FALSE){
-			RunElf(setting->dirElf[0]);
-		}
-	}
+	return 0;
 }

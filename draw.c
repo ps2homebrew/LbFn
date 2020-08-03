@@ -37,8 +37,6 @@ int MAX_ROWS;
 int char_Margin;	//文字の間隔
 int line_Margin;	//行の間隔
 int font_bold;
-int CurrentPos_x;	//カレントポジションx
-int CurrentPos_y;	//カレントポジションy
 
 //ascii
 int init_ascii=0;	//初期化したかしていないかのフラグ
@@ -52,6 +50,9 @@ char *font_kanji=NULL;
 FONTX_DATA kanji_data;
 int kanji_MarginTop;
 int kanji_MarginLeft;
+
+int CurrentPos_x;	//カレントポジションx
+int CurrentPos_y;	//カレントポジションy
 
 unsigned short font_sjis_table[] = {
 0x8140,0x817e,
@@ -148,7 +149,7 @@ void setScrTmp(const char *msg0, const char *msg1)
 	printXY(msg0, FONT_WIDTH*2, SCREEN_MARGIN+FONT_HEIGHT*1, setting->color[3], TRUE);
 	
 	//FLICKER CONTROL: ON
-	if(setting->flickerControl){
+	if( (setting->flickerControl)||(SCREEN_HEIGHT==448) ){
 		//アルファブレンド有効
 		itoPrimAlphaBlending( TRUE );
 		itoLine(color2, 0, SCREEN_MARGIN+FONT_HEIGHT*2.5+1, 0,
@@ -181,9 +182,9 @@ void drawMsg(const char *msg)
 
 //-------------------------------------------------
 // setup ito
-void setupito(void)
+void setupito(int flag)
 {
-	itoInit();
+	if(flag==ITO_INIT_ENABLE) itoInit();
 
 	// screen resolution
 	screen_env.screen.width		= 640;
@@ -226,6 +227,7 @@ void setupito(void)
 		ITO_ALPHA_VALUE_SRC, // C = ALPHA VALUE SOURCE
 		ITO_ALPHA_COLOR_DST, // C = COLOR DEST
 		0x80);				 // Fixed Value
+
 }
 
 //-------------------------------------------------
@@ -255,7 +257,7 @@ void drawFrame(int x1, int y1, int x2, int y2, uint64 color)
 	color2 = color|0x10000000;	//半透明
 
 	//FLICKER CONTROL: ON
-	if(setting->flickerControl){
+	if((setting->flickerControl)|(SCREEN_HEIGHT==448)){
 		//アルファブレンド有効
 		itoPrimAlphaBlending( TRUE );
 		//上の横線
@@ -277,7 +279,7 @@ void drawFrame(int x1, int y1, int x2, int y2, uint64 color)
 }
 
 //-------------------------------------------------
-//
+//MAX_ROWSなどの設定
 void SetHeight(void)
 {
 	//SCREEN_HEIGHT
@@ -303,7 +305,7 @@ void SetHeight(void)
 
 }
 //------------------------------------------------------------
-//アスキーフォント
+//アスキーフォントをロード
 int InitFontAscii(const char *path)
 {
 	int fd=0;
@@ -418,7 +420,7 @@ int InitFontAscii(const char *path)
 	return 0;
 }
 //------------------------------------------------------------
-//漢字フォント
+//漢字フォントをロード
 int InitFontKnaji(const char *path)
 {
 	int fd=0;
@@ -536,6 +538,7 @@ int InitFontKnaji(const char *path)
 	return 0;
 }
 //------------------------------------------------------------
+//半角フォントを開放
 void FreeFontAscii(void)
 {
 	free(font_ascii);
@@ -544,6 +547,7 @@ void FreeFontAscii(void)
 	return;
 }
 //------------------------------------------------------------
+//漢字フォントを開放
 void FreeFontKnaji(void)
 {
 	free(font_kanji);
@@ -553,6 +557,7 @@ void FreeFontKnaji(void)
 }
 
 //------------------------------------------------------------
+//フォントのマージンを設定
 int SetFontMargin(int type, int Margin)
 {
 	if(type<CHAR_MARGIN || type>KANJI_FONT_MARGIN_LEFT) return -1;
@@ -577,6 +582,7 @@ int SetFontMargin(int type, int Margin)
 	return 0;
 }
 //------------------------------------------------------------
+//フォントのマージンを取得
 int GetFontMargin(int type)
 {
 	if(type<CHAR_MARGIN || type>KANJI_FONT_MARGIN_LEFT) return -1;
@@ -598,24 +604,7 @@ int GetFontMargin(int type)
 }
 
 //------------------------------------------------------------
-int SetCurrentPos(int x, int y)
-{
-	CurrentPos_x = x;
-	CurrentPos_y = y;
-	return 0;
-}
-
-//------------------------------------------------------------
-int GetCurrentPos(int type)
-{
-	if(type==CURRENTPOS_X)
-		return CurrentPos_x;
-	if(type==CURRENTPOS_Y)
-		return CurrentPos_y;
-	return 0;
-}
-
-//------------------------------------------------------------
+//フォントサイズの取得
 int GetFontSize(int type)
 {
 	if(type==ASCII_FONT_WIDTH)
@@ -630,6 +619,7 @@ int GetFontSize(int type)
 }
 
 //------------------------------------------------------------
+//フォントボールドを設定
 void SetFontBold(int flag)
 {
 	font_bold = flag;
@@ -637,12 +627,14 @@ void SetFontBold(int flag)
 }
 
 //------------------------------------------------------------
+//フォントボールドの取得
 int GetFontBold(void)
 {
 	return font_bold;
 }
 
 //------------------------------------------------------------
+//FONTX2ファイルのヘッダチェック
 int checkFONTX2header(const char *path)
 {
 	char *buf=NULL;
@@ -755,7 +747,7 @@ void drawChar_SJIS(unsigned int c, int x, int y, uint64 color)
 	//ヘッダのポインタ
 	fontx_header_kanji = (FONTX_HEADER*)font_kanji;
 
-	//何番目のブロックにあるか調べる
+	//何番目のテーブルにあるか調べる
 	ret=-1;
 	for(i=0;i<kanji_data.Tnum;i++){
 		if(((fontx_header_kanji->Block[i]).Start <= c) && ((fontx_header_kanji->Block[i]).End >= c)){
@@ -806,7 +798,7 @@ void drawChar_SJIS(unsigned int c, int x, int y, uint64 color)
 }
 
 //-------------------------------------------------
-// draw a string of characters
+// 座標を指定して文字列を表示
 int printXY(const unsigned char *s, int x, int y, uint64 color, int draw)
 {
 	uint64 color2;	//アルファ付き
@@ -853,7 +845,27 @@ int printXY(const unsigned char *s, int x, int y, uint64 color, int draw)
 	return x;
 }
 //------------------------------------------------------------
-// draw a string of characters
+//カレントポジションを設定
+int SetCurrentPos(int x, int y)
+{
+	CurrentPos_x = x;
+	CurrentPos_y = y;
+	return 0;
+}
+
+//------------------------------------------------------------
+//カレントポジションを取得
+int GetCurrentPos(int type)
+{
+	if(type==CURRENTPOS_X)
+		return CurrentPos_x;
+	if(type==CURRENTPOS_Y)
+		return CurrentPos_y;
+	return 0;
+}
+
+//------------------------------------------------------------
+// カレントポジションの座標に文字列を表示
 int printXY2(const unsigned char *s, uint64 color, int draw)
 {
 	uint64 color2;	//アルファ付き

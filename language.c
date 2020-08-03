@@ -91,11 +91,11 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_loadconfig, "Load Config");
 		strcpy(lang->conf_initializeconfig, "Initialize Config");
 
-		strcpy(lang->conf_setting_button,  "BUTTON");
-		strcpy(lang->conf_setting_screen,  "SCREEN");
-		strcpy(lang->conf_setting_network, "NETWORK");
-		strcpy(lang->conf_setting_font,    "FONT");
-		strcpy(lang->conf_setting_misc,    "MISC");
+		strcpy(lang->conf_setting_button,  "BUTTON SETTING");
+		strcpy(lang->conf_setting_screen,  "SCREEN SETTING");
+		strcpy(lang->conf_setting_network, "NETWORK SETTING");
+		strcpy(lang->conf_setting_font,    "FONT SETTING");
+		strcpy(lang->conf_setting_misc,    "MISC SETTING");
 		//button
 		strcpy(lang->conf_buttonsettinginit, "BUTTON SETTING INIT");
 		//screen
@@ -129,9 +129,9 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_CharMargin, "CHAR MARGIN");
 		strcpy(lang->conf_LineMargin, "LINE MARGIN");
 		strcpy(lang->conf_FontBold, "FONT BOLD");
-		strcpy(lang->conf_AsciiMarginTop, "ASCII MARGIN TOP");
+		strcpy(lang->conf_AsciiMarginTop,  "ASCII MARGIN TOP ");
 		strcpy(lang->conf_AsciiMarginLeft, "ASCII MARGIN LEFT");
-		strcpy(lang->conf_KanjiMarginTop, "KANJI MARGIN TOP");
+		strcpy(lang->conf_KanjiMarginTop,  "KANJI MARGIN TOP ");
 		strcpy(lang->conf_KanjiMarginLeft, "KANJI MARGIN LEFT");
 		strcpy(lang->conf_fontsettinginit, "FONT SETTING INIT");
 		//misc

@@ -21,7 +21,7 @@
 #include <stdarg.h>
 #include <sbv_patches.h>
 #include <sys/fcntl.h>
-#include <debug.h>
+//#include <debug.h>
 #include <ito.h>
 #include <cdvd_rpc.h>
 #include <smod.h>
@@ -32,7 +32,7 @@
 #include "cnf.h"
 
 // バージョン
-#define LBF_VER "LbF v0.49"
+#define LBF_VER "LbF v0.51"
 
 // 垂直スキャンレート
 #define SCANRATE (ITO_VMODE_AUTO==ITO_VMODE_NTSC ? 60:50)
@@ -102,6 +102,12 @@ int checkELFheader(const char *filename);
 void RunLoaderElf(char *filename, char *);
 
 /* draw.c */
+//setupito
+enum{
+	ITO_INIT_ENABLE,
+	ITO_INIT_DISABLE
+};
+
 //SetFontMargin GetFontMargin
 enum
 {
@@ -139,7 +145,7 @@ void drawDark(void);
 void drawDialogTmp(int x1, int y1, int x2, int y2, uint64 color1, uint64 color2);
 void setScrTmp(const char *msg0, const char *msg1);
 void drawMsg(const char *msg);
-void setupito(void);
+void setupito(int flag);
 void clrScr(uint64 color);
 void drawScr(void);
 void SetHeight(void);
@@ -150,14 +156,14 @@ void FreeFontAscii(void);
 void FreeFontKnaji(void);
 int SetFontMargin(int type, int Margin);
 int GetFontMargin(int type);
-int SetCurrentPos(int x, int y);
-int GetCurrentPos(int type);
 int GetFontSize(int type);
 void SetFontBold(int flag);
 int GetFontBold(void);
 int checkFONTX2header(const char *path);
 void drawChar(unsigned char c, int x, int y, uint64 colour);
 int printXY(const unsigned char *s, int x, int y, uint64 colour, int draw);
+int SetCurrentPos(int x, int y);
+int GetCurrentPos(int type);
 int printXY2(const unsigned char *s, uint64 color, int draw);
 
 /* pad.c */
