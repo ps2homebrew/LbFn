@@ -151,7 +151,7 @@ int MessageBox(const char *Text, const char *Caption, int type)
 	int dialog_y;		//ダイアログy位置
 	int dialog_width;	//ダイアログ幅
 	int dialog_height;	//ダイアログ高さ
-	int sel, redraw=fieldbuffers;
+	int sel, redraw=framebuffers;
 	int x, y;
 	int timeout;
 	char tmp[256];		//表示用
@@ -1222,7 +1222,7 @@ int menu(const char *path, const char *file)
 			y = SCREEN_MARGIN+(MAX_ROWS+4)*FONT_HEIGHT;
 			itoSprite(setting->color[COLOR_BACKGROUND],
 				0, y,
-				SCREEN_WIDTH, y+FONT_HEIGHT, 0);
+				SCREEN_WIDTH, SCREEN_HEIGHT, 0);
 			sprintf(tmp,"○:%s ×:%s", lang->gen_ok, lang->gen_cancel);
 			printXY(tmp, x, y, setting->color[COLOR_TEXT], TRUE);
 			drawScr();
@@ -2138,6 +2138,7 @@ int psuImport(const char *path, const FILEINFO *file, int outmc)
 	PSU_HEADER psu_header[MAX_ENTRY];
 	PSU_HEADER psu_header_dir;
 	char title[16*4+1]="";
+	unsigned char disp[40];
 	char *buff=NULL;
 
 	int in_fd = -1, out_fd = -1;
@@ -2265,7 +2266,7 @@ int psuImport(const char *path, const FILEINFO *file, int outmc)
 		char outpath[MAX_PATH];//セーブデータのフォルダを出力するフォルダのフルパス
 		int seek;
 		char tmp[2048];		//雑用 表示用
-		char out[MAX_PATH];	//セーブデータのフォルダのフルパス セーブデータのフォルダの中のファイルのフルパス
+		char out[MAX_PATH];	//セーブデータのフォルダのフルパス
 		size_t outsize;
 		char party[MAX_NAME];
 		int r;
@@ -2295,6 +2296,7 @@ int psuImport(const char *path, const FILEINFO *file, int outmc)
 
 		//セーブデータのフォルダ作成
 		r = newdir(outpath, psu_header_dir.name);
+		/*
 		if(r == -17){	//フォルダがすでにあるとき上書きを確認する
 			drawDark();
 			itoGsFinish();
@@ -2306,6 +2308,9 @@ int psuImport(const char *path, const FILEINFO *file, int outmc)
 				ret = -7;
 				goto error;
 			}
+		}
+		*/
+		if(r == -17) {
 		}
 		else if(r < 0){//フォルダ作成失敗
 			ret = -9;
@@ -2334,32 +2339,50 @@ int psuImport(const char *path, const FILEINFO *file, int outmc)
 		dialog_height = FONT_HEIGHT*6;
 		dialog_x = (SCREEN_WIDTH-dialog_width)/2;
 		dialog_y = (SCREEN_HEIGHT-dialog_height)/2;
+		/*
 		drawDark();
 		itoGsFinish();
 		itoSwitchFrameBuffers();
 		drawDark();
-
+		*/
+		
 		//
 		seek = sizeof(PSU_HEADER);
+		if (strlen(file->name) > 39) {
+			for(i=0,r=0;i<36;i++) {
+				disp[i] = file->name[i];
+				if (r==0 && ((disp[i]>0x80 && disp[i] < 0xA0)||(disp[i]>=0xE0 && disp[i]<0xFD))) r=2;
+				r--;
+				if (disp[i] == 0) break;
+			}
+			disp[i] = 0;
+			if (r) disp[i-1] = 0;
+			strcat(disp, "...");
+		} else {
+			strncpy(disp, file->name, 39);
+			disp[39] = 0;
+		}
 		for(i=0;i<n;i++){
-			//ダイアログ
-			drawDialogTmp(dialog_x, dialog_y,
-				dialog_x+dialog_width, dialog_y+dialog_height,
-				setting->color[COLOR_BACKGROUND], setting->color[COLOR_FRAME]);
-			//メッセージ
-			printXY(lang->filer_importing, dialog_x+FONT_WIDTH*0.5, dialog_y+FONT_HEIGHT*0.5, setting->color[COLOR_TEXT], TRUE);
-			printXY(file->name, dialog_x+FONT_WIDTH*0.5, dialog_y+FONT_HEIGHT*1.5, setting->color[COLOR_TEXT], TRUE);
-			sprintf(tmp, "%2d / %2d", i, n);
-			printXY(tmp, dialog_x+FONT_WIDTH*0.5, dialog_y+FONT_HEIGHT*2.5, setting->color[COLOR_TEXT], TRUE);
-			//プログレスバーの枠
-			drawDialogTmp(dialog_x+FONT_WIDTH*0.5, dialog_y+FONT_HEIGHT*3.5,
-				dialog_x+dialog_width-FONT_WIDTH*0.5, dialog_y+FONT_HEIGHT*5.5,
-				setting->color[COLOR_BACKGROUND], setting->color[COLOR_FRAME]);
-			//プログレスバー
-			itoSprite(setting->color[COLOR_FRAME],
-				dialog_x+FONT_WIDTH, dialog_y+FONT_HEIGHT*4,
-				dialog_x+FONT_WIDTH+(dialog_width-FONT_WIDTH)*(i*100/n)/100, dialog_y+FONT_HEIGHT*5, 0);
-			drawScr();
+			for (r=0; r<fieldbuffers; r++) {
+				//ダイアログ
+				drawDialogTmp(dialog_x, dialog_y,
+					dialog_x+dialog_width, dialog_y+dialog_height,
+					setting->color[COLOR_BACKGROUND], setting->color[COLOR_FRAME]);
+				//メッセージ
+				printXY(lang->filer_importing, dialog_x+FONT_WIDTH*0.5, dialog_y+FONT_HEIGHT*0.5, setting->color[COLOR_TEXT], TRUE);
+				printXY(disp, dialog_x+FONT_WIDTH*0.5, dialog_y+FONT_HEIGHT*1.5, setting->color[COLOR_TEXT], TRUE);
+				sprintf(tmp, "%2d / %2d", i+1, n);
+				printXY(tmp, dialog_x+FONT_WIDTH*0.5, dialog_y+FONT_HEIGHT*2.5, setting->color[COLOR_TEXT], TRUE);
+				//プログレスバーの枠
+				drawDialogTmp(dialog_x+FONT_WIDTH*0.5, dialog_y+FONT_HEIGHT*3.5,
+					dialog_x+dialog_width-FONT_WIDTH*0.5, dialog_y+FONT_HEIGHT*5.5,
+					setting->color[COLOR_BACKGROUND], setting->color[COLOR_FRAME]);
+				//プログレスバー
+				itoSprite(setting->color[COLOR_FRAME],
+					dialog_x+FONT_WIDTH, dialog_y+FONT_HEIGHT*4,
+					dialog_x+FONT_WIDTH+(dialog_width-FONT_WIDTH*2)*((i+1)*100/n)/100, dialog_y+FONT_HEIGHT*5, 0);
+				drawScr();
+			}
 			//
 			seek += sizeof(PSU_HEADER);
 			if(psu_header[i].attr&MC_ATTR_SUBDIR){
@@ -2629,31 +2652,34 @@ int psuExport(const char *path, const FILEINFO *file, int sjisout)
 		dialog_height = FONT_HEIGHT*6;
 		dialog_x = (SCREEN_WIDTH-dialog_width)/2;
 		dialog_y = (SCREEN_HEIGHT-dialog_height)/2;
+		/*
 		drawDark();
 		itoGsFinish();
 		itoSwitchFrameBuffers();
 		drawDark();
-
+		*/
 		//
 		for(i=0;i<n;i++){
-			//ダイアログ
-			drawDialogTmp(dialog_x, dialog_y,
-				dialog_x+dialog_width, dialog_y+dialog_height,
-				setting->color[COLOR_BACKGROUND], setting->color[COLOR_FRAME]);
-			//メッセージ
-			printXY(lang->filer_exporting, dialog_x+FONT_WIDTH*0.5, dialog_y+FONT_HEIGHT*0.5, setting->color[COLOR_TEXT], TRUE);
-			printXY(file->name, dialog_x+FONT_WIDTH*0.5, dialog_y+FONT_HEIGHT*1.5, setting->color[COLOR_TEXT], TRUE);
-			sprintf(tmp, "%2d / %2d", i, n);
-			printXY(tmp, dialog_x+FONT_WIDTH*0.5, dialog_y+FONT_HEIGHT*2.5, setting->color[COLOR_TEXT], TRUE);
-			//プログレスバーの枠
-			drawDialogTmp(dialog_x+FONT_WIDTH*0.5, dialog_y+FONT_HEIGHT*3.5,
-				dialog_x+dialog_width-FONT_WIDTH*0.5, dialog_y+FONT_HEIGHT*5.5,
-				setting->color[COLOR_BACKGROUND], setting->color[COLOR_FRAME]);
-			//プログレスバー
-			itoSprite(setting->color[COLOR_FRAME],
-				dialog_x+FONT_WIDTH, dialog_y+FONT_HEIGHT*4,
-				dialog_x+FONT_WIDTH+(dialog_width-FONT_WIDTH)*(i*100/n)/100, dialog_y+FONT_HEIGHT*5, 0);
-			drawScr();
+			for(r=0;r<fieldbuffers;r++){
+				//ダイアログ
+				drawDialogTmp(dialog_x, dialog_y,
+					dialog_x+dialog_width, dialog_y+dialog_height,
+					setting->color[COLOR_BACKGROUND], setting->color[COLOR_FRAME]);
+				//メッセージ
+				printXY(lang->filer_exporting, dialog_x+FONT_WIDTH*0.5, dialog_y+FONT_HEIGHT*0.5, setting->color[COLOR_TEXT], TRUE);
+				printXY(file->name, dialog_x+FONT_WIDTH*0.5, dialog_y+FONT_HEIGHT*1.5, setting->color[COLOR_TEXT], TRUE);
+				sprintf(tmp, "%2d / %2d", i+1, n);
+				printXY(tmp, dialog_x+FONT_WIDTH*0.5, dialog_y+FONT_HEIGHT*2.5, setting->color[COLOR_TEXT], TRUE);
+				//プログレスバーの枠
+				drawDialogTmp(dialog_x+FONT_WIDTH*0.5, dialog_y+FONT_HEIGHT*3.5,
+					dialog_x+dialog_width-FONT_WIDTH*0.5, dialog_y+FONT_HEIGHT*5.5,
+					setting->color[COLOR_BACKGROUND], setting->color[COLOR_FRAME]);
+				//プログレスバー
+				itoSprite(setting->color[COLOR_FRAME],
+					dialog_x+FONT_WIDTH, dialog_y+FONT_HEIGHT*4,
+					dialog_x+FONT_WIDTH+(dialog_width-FONT_WIDTH*2)*((i+1)*100/n)/100, dialog_y+FONT_HEIGHT*5, 0);
+				drawScr();
+			}
 			//ファイルヘッダを作成
 			memset(&psu_header, 0, sizeof(PSU_HEADER));
 			psu_header.attr = mcDir[i].attrFile;	//ファイル属性はメモリーカードと同じにする
@@ -2769,6 +2795,8 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 		"DiscStop",
 		"McFormat",
 		"PowerOff",
+		"ShowFont",
+		"SelfUpdate",
 		"INFO",
 		"IPCONFIG",
 		"GSCONFIG",
@@ -3281,7 +3309,7 @@ void getFilePath(char *out, int cnfmode)
 						if(!(files[sel].attr & MC_ATTR_SUBDIR)){
 							sprintf(out, "%s%s", path, files[sel].name);
 							//ヘッダチェック
-							if(checkFONTX2header(out)<0){
+							if(checkFONTX2header(out)<0&&checkMSWinheader(out)<0){
 								pushed=FALSE;
 								sprintf(msg0, lang->filer_not_fnt);
 								out[0] = 0;
@@ -3470,7 +3498,7 @@ void getFilePath(char *out, int cnfmode)
 							itoSwitchFrameBuffers();
 							drawDark();
 							strcpy(tmp, files[sel].name);
-							if(keyboard(tmp, 36)>=0){
+							if(keyboard(SKBD_FILE, tmp, 36)>=0){
 								if(Rename(path, &files[sel], tmp)<0){
 									pushed=FALSE;
 									strcpy(msg0, lang->filer_renamefailed);
@@ -3497,7 +3525,7 @@ void getFilePath(char *out, int cnfmode)
 							itoGsFinish();
 							itoSwitchFrameBuffers();
 							drawDark();
-							if(keyboard(tmp, 36)>=0){
+							if(keyboard(SKBD_FILE, tmp, 36)>=0){
 								ret = newdir(path, tmp);
 								if(ret == -17){
 									strcpy(msg0, lang->filer_direxists);
@@ -3548,9 +3576,11 @@ void getFilePath(char *out, int cnfmode)
 						}
 						else if(ret==EXPORT){	// psuファイルにエクスポート
 							int sjisout = FALSE;
-							drawDark();
-							itoGsFinish();
-							itoSwitchFrameBuffers();
+							if (framebuffers>1) {
+								drawDark();
+								itoGsFinish();
+								itoSwitchFrameBuffers();
+							}
 							drawDark();
 
 							if(nmarks==0){
@@ -3592,9 +3622,11 @@ void getFilePath(char *out, int cnfmode)
 							}
 						}
 						else if(ret==IMPORT){	// psuファイルからインポート
-							drawDark();
-							itoGsFinish();
-							itoSwitchFrameBuffers();
+							if (framebuffers>1) {
+								drawDark();
+								itoGsFinish();
+								itoSwitchFrameBuffers();
+							}
 							drawDark();
 	
 							if(nmarks==0){

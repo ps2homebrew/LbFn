@@ -1,8 +1,8 @@
 #include "launchelf.h"
 //#define	DUMP_DECODE
 //#define	DEBUG
-
-#ifdef DEBUG
+//#define printf(...)	
+//#ifdef DEBUG
 static void *X_malloc(size_t mallocsize)
 {
 	void *ret;
@@ -24,7 +24,7 @@ static void X_free(void *mallocdata)
 }
 #define	malloc	X_malloc
 #define free	X_free
-#endif
+//#endif
 ////////////////////////////////
 // GIF形式の詳細情報取得
 //	info[0]	形式ID(固定値)
@@ -55,8 +55,14 @@ int info_GIF(int *info, char *buff, int size)
 static unsigned char *package=NULL;
 static int bitptr, bitrem;
 static unsigned int gifleft, giftop, gifwidth, gifheight, gifsize, gifstatus;
-static unsigned int width, height, gifx, gify, interlaced;
-static unsigned char *gifbuff;
+static unsigned int width, height, gifx, gify, interlaced, changes;
+static unsigned char *gifbuff, *gifoldtmp;
+static unsigned char *gifext;
+//static unsigned int gifol, gifot, gifow, gifoh;
+static unsigned char gifof;
+#define	TCF	((gifext != NULL) && (gifext[1] & 0x01))
+#define	TCI (gifext[4])
+#define delaytime	(256*gifext[3]+gifext[2])
 static int codebits;
 static int clearcode, eoicode, firstbits, prevcode, tableindex;
 static uint64 globalclut[256];
@@ -145,8 +151,9 @@ static int gifadd(int prev, unsigned char add)
 }
 static void gifpset(unsigned char c)
 {
-	gifbuff[(giftop+gify)*width+gifleft+gifx++] = c;
-	if (gifx >= gifwidth) {
+	if (!TCF || (TCI != c) || (changes == 0)) 
+		gifbuff[(giftop+gify)*width+gifleft+gifx] = c;
+	if (++gifx >= gifwidth) {
 		gifx = 0; 
 		if (interlaced == 0) {
 			gify++;
@@ -221,27 +228,30 @@ void seti32(unsigned char *p, int i) {
 #endif
 int decode_GIF(char *dist, char *src, int size, int bpp)
 {
-	unsigned char *c=(unsigned char *) src;
+	unsigned char *c=(unsigned char *) src, gifback;
 	int siz;
 	//unsigned char bgcolor;
 	int i,m;
-	int cnt,imgs=0;
-	c+=6;
+	int cnt,imgs;
+	c+=6; imgs=changes=0;
 	lzwtable = (LZWDATA*)malloc(sizeof(LZWDATA)*4096);
 	if (lzwtable == NULL) return -2;
-	gifwidth  = (int) c[0] | ((int) c[1] << 8);
-	gifheight = (int) c[2] | ((int) c[3] << 8);
-	gifleft = 0; giftop = 0;
+	width  = gifwidth  = (int) c[0] | ((int) c[1] << 8);
+	height = gifheight = (int) c[2] | ((int) c[3] << 8);
+	gifleft = giftop = 0;
 	gifsize = gifwidth * gifheight;
-	width = gifwidth; height = gifheight;
-	printf("decode_GIF: background color index = %d\n", (int) c[5]);
-	memset(dist, c[5], gifwidth*gifheight);
+	gifext = gifoldtmp = NULL;
+	//gifot = gifol = gifoh = gifow = 
+	gifof = 0;
+	gifback = c[5];
+	printf("decode_GIF: background color index = %d\n", gifback);
+	memset(dist, gifback, gifwidth*gifheight);
 	if (c[4] & 0x80) {
 		// グローバルカラーテーブル
 		m = 2 << (c[4] & 7);
 		c+=7;
 		for (i=0; i<m; i++) {
-			globalclut[i] = ((uint64) c[0]) | ((uint64) c[1] << 8) | ((uint64) c[2] << 16);
+			globalclut[i] = ((uint64) c[0]) | ((uint64) c[1] << 8) | ((uint64) c[2] << 16) | 0x80000000;
 			//printf("clut[%3d]=#%06x\n", i, activeclut[i]);
 			c+=3;
 		}
@@ -251,13 +261,41 @@ int decode_GIF(char *dist, char *src, int size, int bpp)
 	}
 	
 	while (c[0] != 0x3B) {
-		if (c[0] == 0x2C) {
-			// イメージ記述子
+		if (c[0] == 0x2C) {	// イメージ記述子
+			// 前の画像の処理
+			if (gifoldtmp) {
+				// 以前の場所を復元する必要があればする
+				for (i = 0; i < gifheight; i++)
+					memcpy(&dist[(i+giftop)*width+gifleft], &gifoldtmp[i*gifwidth], gifwidth);
+				free(gifoldtmp);
+				changes--;
+				gifoldtmp = NULL;
+			} else if (gifof == 2) {
+				// 背景塗りつぶしで代用
+				for (i = 0; i < gifheight; i++)
+					memset(&dist[(i+giftop)*width+gifleft], gifback, gifwidth);
+				//	gifbuff[(giftop+gify)*width+gifleft+gifx] = c;
+				changes--;
+			}
+			if (gifext)
+				gifof = (gifext[1] >> 2) & 7;
+			else
+				gifof = 0;
+			// イメージのデコード
 			gifleft  = (int) c[1] | ((int) c[2] << 8);
 			giftop   = (int) c[3] | ((int) c[4] << 8);
 			gifwidth = (int) c[5] | ((int) c[6] << 8);
 			gifheight= (int) c[7] | ((int) c[8] << 8);
 			printf("decode_GIF: image offset = (%d,%d), size = (%d,%d)\n", gifleft, giftop, gifwidth, gifheight);
+			// 必要に応じて表示前の画像を保存
+			if (gifof == 3) {
+				gifof = 2;
+				gifoldtmp = (unsigned char*)malloc(gifwidth*gifheight);
+				if (gifoldtmp != NULL) {
+					for (i = 0; i < gifheight; i++)
+						memcpy(&gifoldtmp[i*gifwidth], &dist[(i+giftop)*width+gifleft], gifwidth);
+				}
+			}
 			interlaced = (c[9] & 0x40) != 0;
 			if (interlaced)
 				printf("decode_GIF: interlaced image\n");
@@ -267,7 +305,7 @@ int decode_GIF(char *dist, char *src, int size, int bpp)
 				c+=10;
 				// ローカルカラーテーブル
 				for (i=0; i<m; i++) {
-					localclut[i] = ((uint64) c[0]) | ((uint64) c[1] << 8) | ((uint64) c[2] << 16);
+					localclut[i] = ((uint64) c[0]) | ((uint64) c[1] << 8) | ((uint64) c[2] << 16) | 0x80000000;
 					//printf("clut[%3d]=#%06lx\n", i, activeclut[i]);
 					c+=3;
 				}
@@ -276,6 +314,7 @@ int decode_GIF(char *dist, char *src, int size, int bpp)
 				activeclut = globalclut;
 				c+=10;
 			}
+			if (TCF) activeclut[TCI] &= 0x00FFFFFF;
 			// テーブルベースのイメージデータ
 			firstbits = *c++;
 			printf("decode_GIF: LZW Minimum Code Size (first bits) = %d\n", firstbits);
@@ -339,21 +378,62 @@ int decode_GIF(char *dist, char *src, int size, int bpp)
 			}//*/
 #endif
 			imgs++;
+			changes++;
 			c++;
 			//break;
+			if (gifext) gifext=NULL;
 		} else if (c[0] == 0x21) {
 			// 拡張
 			printf("decode_GIF: Extension Label = 0x%02x, Block Size = %d bytes\n", (int) c[1], (int) c[2]);
-			if (c[1] == 0xF9) {	
-				// グラフィック制御拡張
-			} else if (c[1] == 0xFE) {
-				// コメント拡張
-			} else if (c[1] == 0xFF) {
-				// アプリケーション拡張
-			}
+			int type;
+			unsigned char *d;
+			unsigned char tmps[256];
+			type = c[1]; d = c + 2;
 			c+=3+c[2];
 			while(c[0] != 0x00) c+=c[0]+1;
 			c++;
+			switch(type) {
+				case 0x01:
+					// プレーンテキスト拡張
+					printf("decode_GIF: PlainText: textbox offset=(%d,%d), size=%dx%d, fontsize=%dx%d, fill=%d, back=%d\n", 
+							256*d[2]+d[1], 256*d[4]+d[3], 256*d[6]+d[5], 256*d[8]+d[7], 
+							(int) d[9], (int) d[10], (int) d[11], (int) d[12]);
+					printf("decode_GIF: PlainText: fill=0x%08X, back=0x%08X\n", (int) globalclut[d[11]], (int) globalclut[d[12]]);
+					d+= d[0]+1;
+					printf("decode_GIF: PlainText: \x22");
+					while(d[0] != 00) {
+						memcpy(tmps, &d[1], 255);
+						tmps[255] = 0;
+						printf("%s", tmps);
+						d+=d[0]+1;
+					}
+					printf("\x22\n");
+					if (gifext) gifext=NULL;
+					break;
+				case 0xF9:
+					// グラフィック制御拡張
+					if (gifext) {
+						printf("decode_GIF: warning: graphics extened block was already existed.\n");
+					}
+					gifext = d;
+					//if (TCI) printf("decode_GIF: graphics extersion: transpent=%d, index=%d (0x%02X)\n", TCF, TCI, TCI);
+					printf("decode_GIF: graphics: desp=%d, user=%d, trans=%d, delay=%d, index=%d (0x%02X)\n", (d[1] >> 2) & 7, (d[1] >> 1) & 1, TCF, delaytime, TCI, TCI);
+					//if (TCF && (imgs == 0) && (TCI != gifback)/* && (((d[1] >> 2) & 7) > 1) */) globalclut[gifback] &= 0x00FFFFFF;
+					break;
+				case 0xFE:
+					// コメント拡張
+					printf("decode_GIF: comment: \x22");
+					while(d[0] != 00) {
+						memcpy(tmps, &d[1], 255);
+						tmps[255] = 0;
+						printf("%s", tmps);
+						d+=d[0]+1;
+					}
+					printf("\x22\n");
+				case 0xFF:
+					// アプリケーション拡張
+					break;
+			}
 		} else {
 			printf("decode_GIF: invaild ID #%02X\n", (int) c[0]);
 			break;
@@ -361,6 +441,7 @@ int decode_GIF(char *dist, char *src, int size, int bpp)
 	}
 	printf("decode_GIF: last byte: %02X\n", (int) c[0]);
 	printf("decode_GIF: image stream: %d image(s)\n", imgs);
+	if (gifoldtmp) free(gifoldtmp);
 	free(lzwtable);
 	return 0;
 }

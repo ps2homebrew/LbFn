@@ -45,6 +45,19 @@
  +--------------------------------+
 */
 // ○:決定 ×:削除 L1:左へ R1:右へ L2:種類へ R2:文字へ
+/*
+	ソフトキーボードの各データの扱い
+
+# ソフトキーボード用セッション
+[virtual keyboard]
+# history:漢字履歴用。最大80文字くらいあれば良いか。
+history=11535,11535,11535,11535,11535,11535,11535,11535,11535
+# custom:カスタマイズ用。単一のページのみ。最大500文字くらいだろうか
+custom=1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20
+# addpage:ページ拡張用。複数入力不可。
+addpage=mc:/SYS-CONF/skbdext.dat
+
+*/
 enum{
 	SKBD_LENGTH=40,
 	SKBD_WIDTH=44,
@@ -52,6 +65,7 @@ enum{
 	SKBD_LEFT=12,
 	SKBD_HEIGHT=SKBD_ITEMS+4,
 };
+
 enum{
 	PG_ALPHABET=0x01,
 	PG_HIRAGANA,
@@ -70,8 +84,11 @@ enum{
 	PG_ENTER=0x080000,
 	PG_ABORT=0x080001,
 	MAX_PAGES=16,
-	MAX_CHARS=4000,
+	MAX_CHARS=8000,
 	MAX_PAGENUM=0x200,
+	CUR_NORMAL=0,
+	CUR_ENGLISH,
+	CUR_LINE,
 };
 // ページ数
 //	訓読み漢字	44+1	3D	40
@@ -233,7 +250,7 @@ static unsigned char alphamap[100] =
  "UVWXYZ   \7"
  "abcdefghij"
  "klmnopqrst"
- "uvwxyz    "
+ "uvwxyz   @"
  "|()[]<>{}`"
  ",.-_/;:!?~"
  "*#+^\\=$%&'";
@@ -320,30 +337,12 @@ static int pindex[MAX_PAGES] = {
 };
 static int pages=10-3;
 static int pageisindex=0;
-static unsigned char ctrlchar[32] = "@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_";
+unsigned char ctrlchar[32] = "@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_";
 //	static unsigned char ctrlchar[32] = "@ABCDEFGH>vKL<NOPQRSTYVWXYZ[\\]^_";
 static unsigned short *kbdbuff=NULL;
 static int nowpage=0;
 static int cursor[MAX_PAGENUM];
-
-void drawBar(int x1, int y1, int x2, int y2, uint64 color, int ofs, int len, int size)
-{
-	int z0,z1,z2;
-	drawFrame(x1, y1, x2, y2, color);
-	if (x2-x1 > y2-y1) {
-		z0 = x2 - x1;
-		z1 = ofs * z0 / size;
-		z2 = (ofs + len) * z0 / size;
-		if (z1 == z2) z2++;
-		itoSprite(color, z1+x1, y1, z2+x1, y2, 0);
-	} else {
-		z0 = y2 - y1;
-		z1 = ofs * z0 / size;
-		z2 = (ofs + len) * z0 / size;
-		if (z1 == z2) z2++;
-		itoSprite(color, x1, z1+y1, x2, z2+y1, 0);
-	}
-}
+static int curm=0;
 
 void printXYw(char *normal, char *control, char *dbcs, int left, int top, uint64 color1, uint64 color2, int cleft, int clen)
 {
@@ -365,15 +364,17 @@ int pagemake(short *dist, int limit, int page)
 	// in:	*dist	書き込み先バッファ
 	//		limit	バッファのサイズ
 	//		page	作成するページの番号
-	int i,c,max=0,a,b,s,e;
+	int i,k,c,max=0,a,b,s,e;
 	memset(dist, 0, limit);
 	pageisindex=0;
 	nowpage = page;
+	curm = CUR_NORMAL;
 	if (page == PG_ALPHABET) {
-		for (i=0; i<100; i++) {
+		for (i=0; i<112; i++) {
 			dist[i] = alphamap[i];
 		}
 		max = 100;
+		curm = CUR_ENGLISH;
 	} else if (page == PG_HIRAGANA) {
 		for (i=0; i<100; i++) {
 			dist[i] = hiramap[i]+256;
@@ -416,18 +417,24 @@ int pagemake(short *dist, int limit, int page)
 			dist[i] = i;
 		}
 		max = 126;
+		curm = CUR_LINE;
 	} else if (page == PG_INDEXDBCS) {
 		pageisindex=1;
 	} else if (page == PG_HISTORYKANJI) {
 	} else if (page == PG_RAW) {
 		max = 0;
-		for (i=0; i<51; i++) {
-			extern unsigned short font_sjis_table[];
-			c=font_sjis_table[i*2];
+///*
+		
+		unsigned short *font_kanji_short;
+		font_kanji_short = (unsigned short*)font_kanji;
+		k = font_kanji[17];
+		//printf("k:0x%08X\n", font_kanji[8]);
+		for (i=0; i<k; i++) {
+			c=font_kanji_short[9+i*2];
 			a=(c >> 8) - 0x81; if (a > 0x1E) a-=0x40;
 			b=(c & 255) - 0x40; if (b >=0x3F) b--;
 			s=a*188+b+256;
-			c=font_sjis_table[i*2+1];
+			c=font_kanji_short[10+i*2];
 			a=(c >> 8) - 0x81; if (a > 0x1E) a-=0x40;
 			b=(c & 255) - 0x40; if (b >=0x3F) b--;
 			e=a*188+b+256;
@@ -435,6 +442,22 @@ int pagemake(short *dist, int limit, int page)
 				dist[max++] = c;
 			}
 		}
+/*/		extern unsigned char *font_kanji;
+		k = font_kanji[17];
+		printf("k:0x%08X\n", font_kanji[8]);
+		for (i=0; i<k; i++) {
+			c=i*2;
+			a=font_kanji[19+c] - 0x81; if (a > 0x1E) a-=0x40;
+			b=font_kanji[18+c] - 0x40; if (b >=0x3F) b--;
+			s=a*188+b+256;
+			a=font_kanji[21+c] - 0x81; if (a > 0x1E) a-=0x40;
+			b=font_kanji[20+c] - 0x40; if (b >=0x3F) b--;
+			e=a*188+b+256;
+			for(c=s; c<=e; c++) {
+				dist[max++] = c;
+			}
+		}
+*/
 		//printf("raw-max: %d\n", max);
 	}
 	return max;
@@ -453,7 +476,7 @@ int pagemakefromindex(short *dist, int limit, int ofs)
 	return 0;
 }
 
-int softkbd2(char *c, int max, int type)
+int softkbd2(int type, char *c, int max)
 {	// 	文字列の入力(SJIS専用)
 	//	in:	*out	書き込み用バッファ
 	//		max		制限文字数
@@ -464,6 +487,7 @@ int softkbd2(char *c, int max, int type)
 	//int tx[8], ty[8];
 	int lx=0,ly=0,lz=0,ld=1,lr=1,cx=0,cy=0,cz=0,cd;
 	unsigned char edit[3][max+4],a,b,t=0;
+	//unsigned char temp[32];
 	uint64 lc,rc;
 	//PS2KbdRawKey k;
 	char k;
@@ -717,7 +741,7 @@ int softkbd2(char *c, int max, int type)
 					}
 					if (k < 32) {
 						edit[0][cur] = 32;
-						edit[2][cur] = ctrlchar[k];
+						edit[2][cur] = ctrlchar[(int)k];
 					} else {
 						edit[0][cur] = k;
 						edit[2][cur] = 32;
@@ -741,15 +765,14 @@ int softkbd2(char *c, int max, int type)
 		if (cz+SKBD_ITEMS <= cy) cz = cy - SKBD_ITEMS +1;
 		if (ly >= ld) ly = ld-1;
 		if (ly < 0) ly = 0;
-		if (lz > ly) lz = ly;
 		if (lz+SKBD_ITEMS <= ly) lz = ly - SKBD_ITEMS +1;
+		if (lz > ly) lz = ly;
 		if (redraw) {
 			//	printf("cur: %d\n", cur);
 			drawDialogTmp(left, top, left+width, top+height, setting->color[COLOR_BACKGROUND], setting->color[COLOR_FRAME]);
 			//入力中の文字列の表示
 			printXYw(edit[0], edit[2], edit[1], left+FONT_WIDTH*2, top+FONT_HEIGHT*0.5, setting->color[COLOR_TEXT], setting->color[COLOR_HIGHLIGHTTEXT], cl, SKBD_LENGTH);
-			//printXY(edit[0][cl], left+FONT_WIDTH*2, top+FONT_HEIGHT*0.5, setting->color[COLOR_TEXT], TRUE);
-			//printXY(edit[2][cl], left+FONT_WIDTH*2, top+FONT_HEIGHT*0.5, setting->color[COLOR_HIGHLIGHTTEXT], TRUE);
+
 			//キャレット
 			if(t==SCANRATE) t=0;
 			if(t<SCANRATE/2){
@@ -786,25 +809,63 @@ int softkbd2(char *c, int max, int type)
 			if (cd > SKBD_ITEMS)
 				drawBar(left+width-FONT_WIDTH*2, top+FONT_HEIGHT*2, left+width-FONT_WIDTH-2, top+FONT_HEIGHT*(2+SKBD_ITEMS), setting->color[COLOR_FRAME], cz, SKBD_ITEMS, cd);
 			itoPrimAlphaBlending( TRUE );
-			i = left + (SKBD_LEFT + cx*2.5 +2 +(cx>4)) * FONT_WIDTH -2;
 			j = top + (cy-cz +2) * FONT_HEIGHT -2;
-			itoSprite(rc|0x10000000, i, j, i+FONT_WIDTH*2 -marw*2+5, j+FONT_HEIGHT -marh+5, 0);
-			drawFrame(i, j, i+FONT_WIDTH*2 -marw*2+5, j+FONT_HEIGHT -marh+5, rc);
+			if (curm == CUR_NORMAL || curm == CUR_ENGLISH) {
+				i = left + (SKBD_LEFT + cx*2.5 +2 +(cx>4)) * FONT_WIDTH -2;
+				itoSprite(rc|0x10000000, i, j, i+FONT_WIDTH*2 -marw*2+5, j+FONT_HEIGHT -marh+5, 0);
+				drawFrame(i, j, i+FONT_WIDTH*2 -marw*2+5, j+FONT_HEIGHT -marh+5, rc);
+			} else if (curm == CUR_LINE) {
+				i = left + (SKBD_LEFT + 2) * FONT_WIDTH -2;
+				itoSprite(rc|0x10000000, i, j, i+FONT_WIDTH*(SKBD_WIDTH-SKBD_LEFT-4), j+FONT_HEIGHT -marh+4, 0);
+				drawFrame(i, j, i+FONT_WIDTH*(SKBD_WIDTH-SKBD_LEFT-4), j+FONT_HEIGHT -marh+4, rc);
+			}
 			itoPrimAlphaBlending(FALSE);
 			for (i=cz;i<cz+SKBD_ITEMS;i++) {
 				for (j=0;j<10;j++) {
 					if (kbdbuff[i*10+j] < 256) {
-						drawChar(kbdbuff[i*10+j], left + (SKBD_LEFT + j*2.5 +2 +(j>4)) * FONT_WIDTH +fona, top + (i-cz +2) * FONT_HEIGHT, setting->color[COLOR_TEXT]);
+						drawChar_JIS(kbdbuff[i*10+j], 
+							left + (SKBD_LEFT + j*2.5 +2 +(j>4)) * FONT_WIDTH +fona, 
+							top + (i-cz +2) * FONT_HEIGHT, 
+							setting->color[COLOR_TEXT], setting->color[COLOR_HIGHLIGHTTEXT], ctrlchar);
 					} else {
-						c0 = kbdbuff[i*10+j]-256;
-						c1 = c0 / 188 + 0x81; if (c1 >= 0xA0) c1+=0x40;
-						c2 =(c0 % 188)+ 0x40; if (c2 >= 0x7F) c2++;
-						void drawChar_SJIS(unsigned int c, int x, int y, uint64 color);
-						drawChar_SJIS((unsigned int) (c1*256+c2), left + (SKBD_LEFT +j*2.5 +2 +(j>4)) * FONT_WIDTH, top + (i-cz +2) * FONT_HEIGHT, setting->color[COLOR_TEXT]);
+						drawChar_JIS(kbdbuff[i*10+j], 
+							left + (SKBD_LEFT +j*2.5 +2 +(j>4)) * FONT_WIDTH, 
+							top + (i-cz +2) * FONT_HEIGHT, 
+							setting->color[COLOR_TEXT], setting->color[COLOR_HIGHLIGHTTEXT], ctrlchar);
 					}
 				}
 			}
 			//printXY(">", left+FONT_WIDTH*(SKBD_LEFT+1+cx*3), top+FONT_HEIGHT*(2+cy-cz), rc, TRUE);
+			// 下枠
+			//strcpy(temp, "codepoint:%3d-%2d, SJIS:0x%04X size:%2dx%2d"); 
+			//printXY(temp, left+FONT_WIDTH*2, top+FONT_HEIGHT*(0.5+SKBD_ITEMS+2), setting->color[COLOR_TEXT], TRUE);
+			{
+				char temp[1024];
+				// 下部(お知らせなど)の再描画
+				i = kbdbuff[cy*10+cx];
+				if (i < 256) {
+					if (i == 0)
+						strcpy(temp,  "[ ]  0x0000, -----, U+0000");
+					else if (i < 128) 
+						sprintf(temp, "[%c]  0x%04X, -----, U+%04X", i, i, i);
+					else
+						sprintf(temp, "[%c]  0x%04X, -----, ------", i, i);
+					//drawString(info, TXT_ASCII, tl+((defw+3)-strlen(info))*FONT_WIDTH, tt+th - FONT_HEIGHT*5/4, setting->color[COLOR_TEXT], setting->color[COLOR_HIGHLIGHTTEXT], ctrlchar);
+				} else {
+					int k,m,u;
+					extern unsigned short sjistable[];
+					i = kbdbuff[cy*10+cx] - 256;
+					k = (i / 188) + 0x81;
+					m = (i % 188) + 0x40;
+					u = sjistable[i];
+					if (k > 0x9F) k += 0x40;
+					if (m >= 0x7F) m++;
+					if (u == 0) u = 0x3f;
+					sprintf(temp, "[%c%c] 0x%02X%02X, %02d-%02d, U+%04X", k, m, k, m, i / 94 +1, (i % 94) +1, u);
+					//drawString(info, TXT_SJIS, tl+((defw+3)-strlen(info))*FONT_WIDTH, tt+th - FONT_HEIGHT*5/4, setting->color[COLOR_TEXT], setting->color[COLOR_HIGHLIGHTTEXT], ctrlchar);
+				}
+				printXY(temp, left+FONT_WIDTH*16, top+FONT_HEIGHT*(0.5+SKBD_ITEMS+2), setting->color[COLOR_TEXT], TRUE);
+			}
 			// 操作説明
 			i = SCREEN_MARGIN+(MAX_ROWS+4)*FONT_HEIGHT;
 			itoSprite(setting->color[COLOR_BACKGROUND], 0, i, SCREEN_WIDTH, i+FONT_HEIGHT, 0);
@@ -845,281 +906,464 @@ int softkbd2(char *c, int max, int type)
 	return ret;
 };
 
-#if 0
-//-------------------------------------------------
-// スクリーンキーボード
-/*
-■ 使用不可文字
- : * " | < > \ / ?
-■ レイアウト
-A B C D E F G H I J K L M
-N O P Q R S T U V W X Y Z
-a b c d e f g h i j k l m
-n o p q r s t u v w x y z
-0 1 2 3 4 5 6 7 8 9      
-( ) [ ] ! # $ % & @ ;    
-= + - ' ^ . , _          
-OK                  CANCEL
-*/
-int softkbd1(char *out, int max)
+int keyboard(int mode, char *buff, int limit)
 {
-	int	WFONTS,	//キーボードの横の文字数
-		HFONTS,	//キーボードの縦の文字数
-		KEY_W,	//キーボードの横のサイズ
-		KEY_H,	//キーボードの縦のサイズ
-		KEY_X,	//キーボードのx座標
-		KEY_Y;	//キーボードのy座標
-	char *KEY="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789   ()[]!#$%&@;  =+-`'^~.,_   ";
-	int KEY_LEN;
-	int cur=0, sel=0, i, x, y, t=0, redraw=fieldbuffers;
-	char tmp[MAX_PATH];//, *p;
-	char k;
+	drawDarks(0);
+	if (mode > 15) return softkbd2(SKBD_ALL, (char*)mode, (int)buff);
+	return softkbd2(mode, buff, limit);
+};
 
-	if (usbkbd) {
-		PS2KbdFlushBuffer();
+typedef struct {
+	int flag;
+	int	size;
+	int chk;
+	char url[256];
+	char def[32];
+	char eng[80];
+	char jap[80];
+} dldata;
+
+int makecheckword(char *src, int size)
+{
+	unsigned int *buff=(unsigned int*)src, sz, siz, i, old=0;
+	siz = size - (size & 3);
+	sz = ((unsigned int)size) >> 2;
+	//a = 69069; b = 16807;
+	switch(size & 3) {
+		case 3:
+			old |= (unsigned int) src[siz+2] << 16;
+		case 2:
+			old |= (unsigned int) src[siz+1] << 8;
+		case 1:
+			old |= (unsigned int) src[siz];
+			break;
+		case 0:
+			old = 69069;
+			break;
 	}
-	WFONTS=13;
-	HFONTS=7;
-	KEY_W=(WFONTS*3+4)*FONT_WIDTH;
-	KEY_H=(HFONTS+4.5)*FONT_HEIGHT;
-	KEY_X=(SCREEN_WIDTH-KEY_W)/2;
-	KEY_Y=(SCREEN_HEIGHT-KEY_H)/2;
+	for (i=0; i<sz; i++) {
+		old *= 16807;
+		old += buff[i]; 
+	}
+	return (int)old;
+}
 
-/*
-	//キャレットを拡張子の前に移動
-	p=strrchr(out, '.');
-	if(p==NULL)
-		cur=strlen(out);
-	else
-		cur=(int)(p-out);
-*/
-	//キャレットを文字列の先頭に移動
-	cur=0;
-	KEY_LEN = strlen(KEY);
+typedef struct {
+	char *buff;
+	int size;
+} string;
+
+int file_put_contents(char *path, char *buff, int size)
+{
+	int dl, dt, dw, dh, tl, tt, tw, th, bl, bt, bw, bh, ml, mt, my, r;
+	FILE *fp=NULL;
+	size_t now,rem,tsize,packetsize=16384;
+	char tmp[192];
+	fp = fopen(path, "wb");
+	if (fp != NULL) {
+		//drawDarks(0);
+		//drawMsg(lang->nupd[8]);
+		bw = tw = FONT_WIDTH*32;	th = FONT_HEIGHT*4;
+		dw = tw + 8 + FONT_WIDTH*2; dh = th + FONT_HEIGHT;
+		dl = (SCREEN_WIDTH  - dw) >> 1;
+		dt = (SCREEN_HEIGHT - dh) >> 1;
+		ml = bl = tl = dl + 4 + FONT_WIDTH; mt = tt = dt + 4 + (FONT_HEIGHT >> 1);
+		my = mt + FONT_HEIGHT;
+		bt = mt + FONT_HEIGHT*5/2; bh = FONT_HEIGHT;
+		//ダイアログ
+		for (now=0, rem=size; now<size; now+=packetsize, rem-=packetsize) {
+			if (size-now < packetsize) tsize = size-now; else tsize = packetsize;
+			//sprintf(msg, "%s [%d/%dKB:%3d%%]", lang->nupd[8], now >> 10, (size+1023) >> 10, now * 100 / size);
+			//drawMsg(msg);
+			////itoGsFinish();
+			for(r=0;r<fieldbuffers;r++){
+				drawDialogTmp(dl, dt, dl+dw, dt+dh, setting->color[COLOR_BACKGROUND], setting->color[COLOR_FRAME]);
+				//メッセージ
+				printXY(lang->nupd[9], ml, mt, setting->color[COLOR_TEXT], TRUE);
+				sprintf(tmp, "%5d KB / %d KB ( %3d%% )", (now +tsize +512) >> 10, (size +512) >> 10, (now+tsize) * 100 / size);
+				// *****/*****KB (***%)
+				printXY(tmp, ml, my, setting->color[COLOR_TEXT], TRUE);
+				//プログレスバー
+				drawBar(bl, bt, bl+bw, bt+bh, setting->color[COLOR_FRAME], 0, now+packetsize, size);
+				drawScr();
+			}//*/
+			if (fwrite(buff +now, 1, tsize, fp) < tsize) {
+				fclose(fp);
+				return -2;
+			}
+		}
+		fclose(fp);
+		return 0;
+	}
+	return -1;
+}
+
+string file_get_contents(char *url, int dsize)
+{
+	int dl, dt, dw, dh, tl, tt, tw, th, bl, bt, bw, bh, ml, mt, my, r;
+	FILE *fp=NULL;
+	size_t size=0,now,rem,tsize,packetsize=16384;
+	char *buff=NULL, tmp[192];
+	string ret;
+	fp = fopen(url, "rb");
+	if (fp != NULL) {
+		drawDarks(0);
+		//drawMsg(lang->nupd[8]);
+		fseek(fp, 0, SEEK_END);
+		size = ftell(fp);
+		fseek(fp, 0, SEEK_SET);
+		if (size == 0) size = dsize;
+		if (size == 0) size = 16384;
+		buff = (char*)malloc(size);
+		if (buff != NULL) {
+			bw = tw = FONT_WIDTH*32;	th = FONT_HEIGHT*4;
+			dw = tw + 8 + FONT_WIDTH*2; dh = th + FONT_HEIGHT;
+			dl = (SCREEN_WIDTH  - dw) >> 1;
+			dt = (SCREEN_HEIGHT - dh) >> 1;
+			ml = bl = tl = dl + 4 + FONT_WIDTH; mt = tt = dt + 4 + (FONT_HEIGHT >> 1);
+			my = mt + FONT_HEIGHT;
+			bt = mt + FONT_HEIGHT*5/2; bh = FONT_HEIGHT;
+			//ダイアログ
+			for (now=0, rem=size; now<size; now+=packetsize, rem-=packetsize) {
+				if (size-now < packetsize) tsize = size-now; else tsize = packetsize;
+				//sprintf(msg, "%s [%d/%dKB:%3d%%]", lang->nupd[8], now >> 10, (size+1023) >> 10, now * 100 / size);
+				//drawMsg(msg);
+				////itoGsFinish();
+				for(r=0;r<fieldbuffers;r++){
+					drawDialogTmp(dl, dt, dl+dw, dt+dh, setting->color[COLOR_BACKGROUND], setting->color[COLOR_FRAME]);
+					//メッセージ
+					printXY(lang->nupd[8], ml, mt, setting->color[COLOR_TEXT], TRUE);
+					sprintf(tmp, "%5d KB / %d KB ( %3d%% )", (now +tsize +512) >> 10, (size +512) >> 10, (now+tsize) * 100 / size);
+					// *****/*****KB (***%)
+					printXY(tmp, ml, my, setting->color[COLOR_TEXT], TRUE);
+					//プログレスバー
+					drawBar(bl, bt, bl+bw, bt+bh, setting->color[COLOR_FRAME], 0, now+packetsize, size);
+					drawScr();
+				}//*/
+				fread(buff +now, 1, tsize, fp);
+			}
+		}
+		fclose(fp);
+	} else {
+		size = -(int)fp;
+	}
+	ret.buff = buff;
+	ret.size = size;
+	return ret;
+}
+
+int NetworkDownload(char* msg0)
+{	
+	int ret=-1,i,k,m,files=0;
+	char tmp[2048], key[16], msg1[240];
+	extern char tmps[32][MAX_PATH];
+	extern int tmpi[32], explodeconfig(const char *src);
+	dldata *list=NULL;
+	string data;
+	loadHTTPModules();
+	
+	cnf_init();
+	if (cnf_load("http://www.geocities.jp/nika_towns/lbfn_upd.ini") != 0) {
+		strcpy(msg0, lang->nupd[14]);
+		drawMsg(msg0);
+		cnf_free();
+		return -1;
+	}
+	if (cnf_getstr("files", tmp, "")>=0)
+		files=atoi(tmp);
+	printf("update: %d files\n", files);
+	list = (dldata*)malloc(sizeof(dldata)*files);
+	if (list == NULL) {
+		cnf_free();
+		strcpy(msg0, lang->editor_viewer_error2);
+		drawMsg(msg0);
+		return -2;
+	}
+	for (i=0; i<files; i++) {
+		sprintf(key, "file%d", i);
+		if (cnf_getstr(key, tmp, "")<0) break;
+		m = explodeconfig((const char*)tmp);
+		//printf("update: %s==%s\n", key, tmp);
+		//printf("update:	url[%d]=%s\n	default[%d]=%s\n	english[%d]=%s\n	japanese[%d]=%s\n", i, tmps[0], i, tmps[1], i, tmps[2], i, tmps[3]);
+		k = 0;
+		// ファイルフォーマット
+		//   file%d=[flag],[size],"http://(url)","(default filename)","(English document)","(Japanese document)"
+		list[i].flag = tmpi[k++];
+		list[i].size = tmpi[k++];
+		list[i].chk = tmpi[k++];
+		strcpy(list[i].url, tmps[k++]);
+		strcpy(list[i].def, tmps[k++]);
+		strcpy(list[i].eng, tmps[k++]);
+		strcpy(list[i].jap, tmps[k++]);
+		//printf("upload: chk=0x%08X, url=%s\n", list[i].chk, list[i].url);
+	}
+	
+	enum{
+		downloadfile=0,
+		downloadpath,
+		downloadname,
+		execute,
+		downloadback,
+		menuitems,
+		backupcopy,
+	};
+	uint64 color;
+	int nList=0, sel=0, top=0, redraw=framebuffers;
+	int pushed=TRUE;
+	int x, y, y0, y1;
+	int backup=0,filenum=0,displaytype=3;
+	char dlpath[MAX_PATH],dlrename[64];
+	char config[menuitems][MAX_PATH];
+	char *onoff[2] = {lang->conf_off, lang->conf_on};
+	char *lang0[8] = {lang->nupd[1], lang->nupd[2], lang->nupd[3], lang->nupd[5], lang->nupd[6], lang->nupd[4]};
+	char *lang1[8] = {lang->nupd[19], lang->nupd[20], lang->nupd[20], lang->nupd[21], lang->nupd[21], lang->nupd[20]};
+	strcpy(dlpath, setting->downloadpath);
+	strcpy(dlrename, list[0].def);
 
 	while(1){
 		waitPadReady(0, 0);
 		if(readpad()){
-			if(new_pad) redraw=framebuffers;
-			if(new_pad & PAD_UP){
-				if(sel<WFONTS*HFONTS){
-					if(sel>=WFONTS) sel-=WFONTS;
-				}
-				else{
-					if(sel==WFONTS*HFONTS) sel=82;	//カーソルがOKにあるときに上を押した
-					else sel=86;					//カーソルガCANCELにあるときに上を押した
-				}
-			}
-			else if(new_pad & PAD_DOWN){
-				if(sel/WFONTS == HFONTS-1){
-					if(sel%WFONTS < 6)		//カーソルが中心より左にあるときOKに移動
-						sel=WFONTS*HFONTS;
-					else					//カーソルが中心より右にあるときCANCELに移動
-						sel=WFONTS*HFONTS+1;
-				}else if(sel/WFONTS <= HFONTS-2)
-					sel+=WFONTS;
-			}
-			else if(new_pad & PAD_LEFT){
-				if(sel>0) sel--;
-			}
-			else if(new_pad & PAD_RIGHT){
-				if(sel<=WFONTS*HFONTS) sel++;
-			}
-			else if(new_pad & PAD_START){
-				sel = WFONTS*HFONTS;
-			}
-			else if(new_pad & PAD_SELECT){
-				sel = WFONTS*HFONTS+1;
-			}
-			else if(new_pad & PAD_L1){
-				if(cur>0) cur--;
-				t=0;
-			}
-			else if(new_pad & PAD_R1){
-				if(cur<strlen(out)) cur++;
-				t=0;
-			}
-			else if(new_pad & PAD_CROSS){
-				if(cur>0){
-					strcpy(tmp, out);
-					out[cur-1]=0;
-					strcat(out, &tmp[cur]);
-					cur--;
-					t=0;
-				}
-			}
+			if(new_pad) {pushed=TRUE; redraw = framebuffers;}
+			if(new_pad & PAD_UP)
+				sel--;
+			else if(new_pad & PAD_DOWN)
+				sel++;
+			else if(new_pad & PAD_LEFT)
+				sel-=MAX_ROWS/2;
+			else if(new_pad & PAD_RIGHT)
+				sel+=MAX_ROWS/2;
+			else if(new_pad & PAD_TRIANGLE)
+				break;
 			else if(new_pad & PAD_CIRCLE){
-				i=strlen(out);
-				if(sel < WFONTS*HFONTS){
-					if(i<max && i<33){
-						strcpy(tmp, out);
-						out[cur]=KEY[sel];
-						out[cur+1]=0;
-						strcat(out, &tmp[cur]);
-						cur++;
-						t=0;
+				// downloadfile,path,name, backupcopy, execute, back
+				if(sel==backupcopy)
+					backup ^= 1;
+				else if(sel==downloadpath) {
+				//	strcpy(dlrename, list[filenum].def);
+					strcpy(tmp, dlpath);
+					getFilePath(tmp, DIR);
+					if(strncmp(tmp, "cdfs", 2))
+						strcpy(dlpath, tmp);
+				}
+				else if(sel==downloadname){
+					strcpy(tmp, dlrename);
+					if(keyboard(SKBD_FILE, tmp, 63)>=0)
+						strcpy(dlrename, tmp);
+				}
+				else if(sel==downloadfile){
+					// ファイルを開く
+					data = file_get_contents(list[filenum].url, list[filenum].size);
+					if (data.buff != NULL) {
+						int checkword;
+						char chkstr[8];
+						strcpy(chkstr, "error");
+						checkword = makecheckword(data.buff, data.size);
+						if (checkword == list[filenum].chk) strcpy(chkstr, "ok");
+						printf("update: checkword: %s, list: 0x%08X, dl: 0x%08X\n", chkstr, list[filenum].chk, checkword);
+						viewer(0, list[filenum].url, data.buff, data.size);
+						free(data.buff);
+						data.buff = NULL;
 					}
-				}else if(sel == WFONTS*HFONTS && i>0){
+				}
+				else if(sel==downloadback){
 					break;
-				}else{
-					return -1;
 				}
-			}
-		}
-		if ((usbkbd) && (PS2KbdRead(&k))) {
-			redraw = fieldbuffers;
-			if (k==PS2KBD_ESCAPE_KEY) {
-				PS2KbdRead(&k);
-				if (k == 0x29) {		// →
-					if(sel<=WFONTS*HFONTS) sel++;
-				} else if (k == 0x2A) {	// ←
-					if(sel>0) sel--;
-				} else if (k == 0x2B) {	// ↓
-					if(sel/WFONTS == HFONTS-1){
-						if(sel%WFONTS < 6)		//カーソルが中心より左にあるときOKに移動
-							sel=WFONTS*HFONTS;
-						else					//カーソルが中心より右にあるときCANCELに移動
-							sel=WFONTS*HFONTS+1;
-					}else if(sel/WFONTS <= HFONTS-2)
-						sel+=WFONTS;
-				} else if (k == 0x2C) {	// ↑
-					if(sel<WFONTS*HFONTS){
-						if(sel>=WFONTS) sel-=WFONTS;
-					}
-					else{
-						if(sel==WFONTS*HFONTS) sel=82;	//カーソルがOKにあるときに上を押した
-						else sel=86;					//カーソルガCANCELにあるときに上を押した
-					}
-				} else if (k == 0x24) {	// home
-					cur = 0;
-				} else if (k == 0x27) {	// end
-					cur = strlen(out);
-				} else if (k == 0x25) { // page up
-					if (cur>0) cur--;
-				} else if (k == 0x28) {	// page down
-					if (cur<strlen(out)) cur++;
-				} else if (k == 0x26) {	// delete
-					strcpy(out+cur, out+cur+1);
-				} else if (k == 0x1B) {	// esc
-					sel = WFONTS*HFONTS+1;
-				}
-			} else {
-				if (k == 8) {			// BS
-					if(cur>0){
-						strcpy(tmp, out);
-						out[cur-1]=0;
-						strcat(out, &tmp[cur]);
-						cur--;
-					}
-				} else if (k == 10) {	// Enter
-					i=strlen(out);
-					if(sel < WFONTS*HFONTS){
-						if(i<max && i<33){
-							strcpy(tmp, out);
-							out[cur]=KEY[sel];
-							out[cur+1]=0;
-							strcat(out, &tmp[cur]);
-							cur++;
+				else if(sel==execute) {
+					// ダウンロード実行
+					drawMsg(lang->nupd[0]);
+					if (MessageBox(lang->nupd[7], lang->nupd[0], MB_OKCANCEL) == IDOK) {
+						pushed = FALSE;
+						data = file_get_contents(list[filenum].url, list[filenum].size);
+						if (data.buff != NULL) {
+							// ダウンロード成功
+							if ((list[filenum].chk == 0xFFFFFFFF) || 
+								(makecheckword(data.buff, data.size) == list[filenum].chk)
+							) {	// ダウンロードの検証OK→セーブ
+								sprintf(tmps[0], "%s%s", dlpath, dlrename);
+								// パス変更
+								if (!strncmp(dlpath, "mc:", 3)) {
+									int mcport;
+									if(boot==MC_BOOT)
+										mcport = LaunchElfDir[2]-'0';
+									else
+										mcport = CheckMC();
+									if (mcport<0 || mcport>1) mcport = 0;
+									sprintf(tmps[0], "mc%d:%s%s", mcport, &dlpath[3], dlrename);
+								} else if (!strncmp(dlpath, "hdd0:", 5)) {
+									sprintf(tmps[0], "pfs0:%s%s", &dlpath[5], dlrename);
+								}
+								// 書き出し
+								if (!(i=file_put_contents(tmps[0], data.buff, data.size))) {
+									// 完了
+									strcpy(msg0, lang->nupd[24]);
+								} else if (i == -2) {
+									// 失敗
+									strcpy(msg0, lang->nupd[18]);
+								} else {
+									strcpy(msg0, lang->nupd[10]);
+								}
+							} else {
+								// checkwordの相違エラー
+								strcpy(msg0, lang->nupd[15]);
+							}
+							free(data.buff);
+							data.buff = NULL;
+						} else {
+							// ダウンロード失敗
+							sprintf(msg0, "%s [%d]", lang->nupd[10], -(int)data.size);
 						}
-					}else if(sel == WFONTS*HFONTS && i>0){
-						break;
-					}else{
-						return -1;
-					}
-				} else {
-					i=strlen(out);
-					if(i<max && i<33){
-						strcpy(tmp, out);
-						out[cur]=k;
-						out[cur+1]=0;
-						strcat(out, &tmp[cur]);
-						cur++;
+						MessageBox(msg0, lang->nupd[0], MB_OK);
 					}
 				}
 			}
+			else if(new_pad & PAD_SQUARE) {
+				if (sel==downloadpath) {
+					strcpy(dlpath, "mc:/BOOT/");
+				}
+			}
+			else if (new_pad & PAD_L1) {
+				if (filenum > 0) {
+					filenum--;
+					strcpy(dlrename, list[filenum].def);
+				}
+			}
+			else if (new_pad & PAD_R1) {
+				if (filenum < files-1) {
+					filenum++;
+					strcpy(dlrename, list[filenum].def);
+				}
+			}
+			else if (new_pad & PAD_START) {
+				if (sel == execute) sel = downloadfile; else sel = execute;
+			}
+			else if (new_pad & PAD_SELECT) {
+				sel = downloadback;
+			}
 		}
-		t++;
-		if ((t==SCANRATE/2) || (t == SCANRATE)) redraw = framebuffers;
+
+		// downloadfile,path,name, backupcopy, execute, back
+		for (i=0; i<menuitems; i++) {
+			if (i==downloadfile){
+				switch(displaytype) {
+					case 0:
+						sprintf(msg1, "%s", list[filenum].url);
+						break;
+					case 1:
+						sprintf(msg1, "%s", list[filenum].def);
+						break;
+					case 2:
+						if (setting->language == LANG_JAPANESE)
+							sprintf(msg1, "%s", list[filenum].jap);
+						else
+							sprintf(msg1, "%s", list[filenum].eng);
+						break;
+					case 3:
+						if (setting->language == LANG_JAPANESE)
+							sprintf(msg1, "%s (%s)", list[filenum].def, list[filenum].jap);
+						else
+							sprintf(msg1, "%s (%s)", list[filenum].def, list[filenum].eng);
+						break;
+				}
+			}
+			else if (i==downloadpath)
+				strcpy(msg1, dlpath);
+			else if (i==downloadname)
+				strcpy(msg1, dlrename);
+			else if (i==backupcopy) {
+				strcpy(msg1, onoff[backup != 0]);
+			}
+			sprintf(config[i], lang0[i], msg1);
+			if (i==sel) strcpy(tmp, msg1);
+		}
+		
+		// リスト表示用変数の正規化
+		nList = menuitems;
+		if(top > nList-MAX_ROWS)	top=nList-MAX_ROWS;
+		if(top < 0)			top=0;
+		if(sel >= nList)		sel=nList-1;
+		if(sel < 0)			sel=0;
+		if(sel >= top+MAX_ROWS)	top=sel-MAX_ROWS+1;
+		if(sel < top)			top=sel;
+
+		// 画面描画開始
 		if (redraw) {
-			// 描画開始
-			drawDialogTmp(KEY_X, KEY_Y, KEY_X+KEY_W, KEY_Y+KEY_H, setting->color[COLOR_BACKGROUND], setting->color[COLOR_FRAME]);
-			//キーボード内側の枠
-			drawFrame(KEY_X+FONT_WIDTH, KEY_Y+FONT_HEIGHT*1.5,
-				KEY_X+KEY_W-FONT_WIDTH, KEY_Y+FONT_HEIGHT*9.5, setting->color[COLOR_FRAME]);
-			//入力中の文字列の表示
-			printXY(out,
-				KEY_X+FONT_WIDTH*2, KEY_Y+FONT_HEIGHT*0.5,
-				setting->color[COLOR_TEXT], TRUE);
-			//キャレット
-			if(t==SCANRATE) t=0;
-			if(t<SCANRATE/2){
-				printXY("|",
-					KEY_X+FONT_WIDTH*0.5+(cur+1)*FONT_WIDTH,
-					KEY_Y+FONT_HEIGHT*0.5,
-					setting->color[COLOR_TEXT], TRUE);
-			}
+			clrScr(setting->color[COLOR_BACKGROUND]);
 
-			//カーソル表示
-			//アルファブレンド有効
-			itoPrimAlphaBlending( TRUE );
-			if(sel<WFONTS*HFONTS){	//OKとCANCEL以外
-				x = KEY_X+FONT_WIDTH*2 + (sel%WFONTS)*FONT_WIDTH*3;
-				y = KEY_Y+FONT_HEIGHT*2 + (sel/WFONTS)*FONT_HEIGHT;
-				itoSprite(setting->color[COLOR_HIGHLIGHTTEXT]|0x10000000,
-					x, y-2,
-					x+FONT_WIDTH*3, y+GetFontSize(ASCII_FONT_HEIGHT)+2, 0);
-				drawFrame(x, y-2, x+FONT_WIDTH*3, y+GetFontSize(ASCII_FONT_HEIGHT)+2, setting->color[COLOR_HIGHLIGHTTEXT]);
-			}
-			else{
-				if(sel==WFONTS*HFONTS)
-					x = KEY_X+KEY_W/4;	//OK
+			// リスト
+			x = FONT_WIDTH*3;
+			y = SCREEN_MARGIN+FONT_HEIGHT*3;
+			for(i=0; i<MAX_ROWS; i++){
+				if(top+i >= nList) break;
+				//色
+				if(top+i == sel)
+					color = setting->color[COLOR_HIGHLIGHTTEXT];
 				else
-					x = KEY_X+KEY_W/2;	//CANCEL
-				y = KEY_Y+FONT_HEIGHT*10;
-				itoSprite(setting->color[COLOR_HIGHLIGHTTEXT]|0x10000000,
-					x, y-2,
-					x+KEY_W/4, y+GetFontSize(ASCII_FONT_HEIGHT)+2, 0);
-				drawFrame(x, y-2, x+KEY_W/4, y+GetFontSize(ASCII_FONT_HEIGHT)+2, setting->color[COLOR_HIGHLIGHTTEXT]);
+					color = setting->color[COLOR_TEXT];
+				//カーソル表示
+				if(top+i == sel)
+					printXY(">", x, y, color, TRUE);
+				//リスト表示
+				printXY(config[top+i], x+FONT_WIDTH*2, y, color, TRUE);
+				y += FONT_HEIGHT;
 			}
-			//アルファブレンド無効
-			itoPrimAlphaBlending(FALSE);
 
-			//キーボード表示
-			for(i=0; i<KEY_LEN; i++){
-				sprintf(tmp,"%c",KEY[i]);
-				printXY(tmp,
-					KEY_X+FONT_WIDTH*3 + (i%WFONTS)*FONT_WIDTH*3,
-					KEY_Y+FONT_HEIGHT*2 + (i/WFONTS)*FONT_HEIGHT,
-					setting->color[COLOR_TEXT], TRUE);
+			// スクロールバー
+			if(nList > MAX_ROWS){
+				drawFrame((MAX_ROWS_X+8)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3,
+					(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[COLOR_FRAME]);
+				y0=FONT_HEIGHT*MAX_ROWS*((double)top/nList);
+				y1=FONT_HEIGHT*MAX_ROWS*((double)(top+MAX_ROWS)/nList);
+				itoSprite(setting->color[COLOR_FRAME],
+					(MAX_ROWS_X+8)*FONT_WIDTH,
+					SCREEN_MARGIN+FONT_HEIGHT*3+y0,
+					(MAX_ROWS_X+9)*FONT_WIDTH,
+					SCREEN_MARGIN+FONT_HEIGHT*3+y1,
+					0);
 			}
-			//OK表示
-			x=((KEY_W/4)-FONT_WIDTH*strlen(lang->gen_ok))/2;
-			sprintf(tmp, "%s",lang->gen_ok);
-			printXY(tmp, KEY_X+KEY_W/4+x, KEY_Y+FONT_HEIGHT*10, setting->color[COLOR_TEXT], TRUE);
-			//CANCEL表示
-			x=((KEY_W/4)-FONT_WIDTH*strlen(lang->gen_cancel))/2;
-			sprintf(tmp, "%s",lang->gen_cancel);
-			printXY(tmp, KEY_X+KEY_W/2+x, KEY_Y+FONT_HEIGHT*10, setting->color[COLOR_TEXT], TRUE);
+			// メッセージ
+			if(pushed) sprintf(msg0, "%s", lang->nupd[0]);
 			// 操作説明
-			x = FONT_WIDTH*1;
-			y = SCREEN_MARGIN+(MAX_ROWS+4)*FONT_HEIGHT;
-			itoSprite(setting->color[COLOR_BACKGROUND],
-				0, y,
-				SCREEN_WIDTH, y+FONT_HEIGHT, 0);
-			printXY(lang->filer_keyboard_hint, x, y, setting->color[COLOR_TEXT], TRUE);
+			// downloadfile,path,name, backupcopy, execute, back
+			sprintf(msg1, lang1[sel], tmp);
+			setScrTmp(msg0, msg1);
 			drawScr();
 			redraw--;
 		} else {
 			itoVSync();
 		}
 	}
-	return 0;
+	
+	msg0[0]=0;
+	free(list); list=NULL;
+	cnf_free();
+	return ret;
 }
-#endif
-int keyboard(char *out, int max)
-{
-	drawDarks(0);
-	return softkbd2(out, max, 2);
-};
-
+/*{
+	FILE *fp=NULL;
+	size_t size;
+	char *buff=NULL;
+	char temp[]="http://www.geocities.jp/nika_towns/lbfn_upd.ini";
+	//"http://com-nika.osask.jp/image/sms1024i_japanese3s.jpg";
+	//"http://dic.nicovideo.jp/img/logo_nicopedia.gif";
+	//"http://dic.nicovideo.jp/mml/3256";
+	//"http://smile-cll10.nicovideo.jp/smile?m=9208920.91908";
+	//"http://gyazo.com/f277f7d1cdb064808ead4ac767d57904.png";
+	//"http://res.nimg.jp/img/base/head/icon/nico/417.gif";
+	//	"http://192.168.0.4/tek_comp.c";
+	//	http://202.248.110.224/img/base/head/logo/nine.png
+	fp = fopen(temp, "rb");
+	if (fp != NULL) {
+		fseek(fp, 0, SEEK_END);
+		size = ftell(fp);
+		fseek(fp, 0, SEEK_SET);
+		if (size == 0) size = 128;
+		buff = (char*)malloc(size);
+		if (buff != NULL) {
+			fread(buff, 1, size, fp);
+			viewer(0, temp, buff, size);
+			free(buff);
+		}
+		fclose(fp);
+	}
+}*/
 char LBF_VER[64] = LBFN_VER;

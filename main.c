@@ -35,6 +35,10 @@ extern int size_ps2ftpd_irx;
 //extern int size_ps2kbd_irx;
 //extern u8 *ps2mouse_irx;
 //extern int size_ps2mouse_irx;
+extern u8 *ps2http_irx;
+extern int size_ps2http_irx;
+extern u8 *dns_irx;
+extern int size_dns_irx;
 
 //#define DEBUG
 #ifdef DEBUG
@@ -613,6 +617,32 @@ void	load_ps2ftpd(void)
 }
 
 //--------------------------------------------------------------
+void	load_ps2http(void)
+{
+	int ret;
+	static int loaded=FALSE;
+
+	if(!loaded){
+		X_SifExecModuleBuffer(&ps2http_irx, size_ps2http_irx, 0, NULL, &ret);
+		loaded=TRUE;
+	}
+}
+
+//--------------------------------------------------------------
+void	load_dns(char *dnsarg)
+{
+	int ret;
+	static int loaded=FALSE;
+	//static char dnsarg[] = "204.127.198.4";
+
+
+	if(!loaded){
+		X_SifExecModuleBuffer(&dns_irx, size_dns_irx, strlen(dnsarg), dnsarg, &ret);
+		loaded=TRUE;
+	}
+}
+
+//--------------------------------------------------------------
 void	load_poweroff(void)
 {
 	int ret;
@@ -690,6 +720,36 @@ void loadFtpdModules(void)
 		loaded=TRUE;
 	}
 	strcpy(mainMsg, netConfig);
+}
+
+//--------------------------------------------------------------
+//HTTP
+void loadHTTPModules(void)
+{
+	static int loaded=FALSE;
+
+	if(!loaded){
+		loadHddModules();
+		loadUsbMassModules();
+	//	drawMsg(lang->main_loadftpmod);
+//		load_iomanx();
+//		load_ps2dev9();
+		drawMsg(lang->nupd[22]);
+		load_ps2ip();
+		delay(1);
+		drawMsg(lang->nupd[23]);
+		load_ps2smap();
+		delay(1);
+	//	load_ps2ftpd();
+		drawMsg(lang->nupd[11]);
+		load_dns("8.8.4.4");	// 210.196.3.183, 210.141.112.163
+		delay(1);
+		drawMsg(lang->nupd[12]);
+		load_ps2http();
+		delay(1);
+		loaded=TRUE;
+	}
+	//strcpy(mainMsg, netConfig);
 }
 
 //--------------------------------------------------------------
@@ -835,6 +895,57 @@ void loadModules(void)
 
 
 //--------------------------------------------------------------
+void showfont(void)
+{
+	int x,y;
+	int width,height,left,top,fw,fh,dw,dh,dx,dy,tl,tt;
+	int redraw=framebuffers;
+	unsigned char c;
+	extern unsigned char ctrlchar[];
+	
+	// 1 + (1 + {2 + 8 + 1} + 1) * 17 + 1;
+	fw = FONT_WIDTH - GetFontMargin(CHAR_MARGIN);
+	fh = FONT_HEIGHT - GetFontMargin(LINE_MARGIN);
+	dw = fw +4;
+	dh = fh +4;
+	dx = dw +2;
+	dy = dh +2;
+	width = dx * 17 +2;
+	height = dy * 17 +2;
+	left = (SCREEN_WIDTH - width) >> 1;
+	top = (SCREEN_HEIGHT - height) >> 1;
+	tl = left +2 +2;
+	tt = top +2 +2;
+	//printf("screen size: %dx%d\n", SCREEN_WIDTH, SCREEN_HEIGHT);
+	//printf("drawing box size: %dx%d\n", width, height);
+	//drawScr();
+	while(1){
+		waitPadReady(0, 0);
+		if(readpad()){
+			if (new_pad) break;
+		}
+		if (redraw) {
+			itoSprite(setting->color[COLOR_FRAME], left, top, left+width, top+height, 0);
+			for(y=0; y<17; y++)
+				for (x=0; x<17; x++)
+					itoSprite(setting->color[COLOR_BACKGROUND], left+2+dx*x, top+2+dy*y, left+2+dx*x+dw, top+2+dy*y+dh, 0);
+			for(y=0; y<16; y++) {
+				c = y + 0x30 + (y>9)*7;
+				drawChar_JIS(c, tl+dx*(y+1), tt, setting->color[COLOR_GRAYTEXT], setting->color[COLOR_GRAYTEXT], NULL);
+				drawChar_JIS(c, tl, tt+dy*(y+1), setting->color[COLOR_GRAYTEXT], setting->color[COLOR_GRAYTEXT], NULL);
+				for (x=0; x<16; x++) {
+					drawChar_JIS((y<<4)|x, tl+dx*(x+1), tt+dy*(y+1), setting->color[COLOR_TEXT], setting->color[COLOR_HIGHLIGHTTEXT], ctrlchar);
+				}
+			}
+			drawScr();
+			redraw--;
+		} else {
+			itoVSync();
+		}
+	}
+}
+
+//--------------------------------------------------------------
 void showinfo(void)
 {
 	char msg0[MAX_PATH], msg1[MAX_PATH];
@@ -887,6 +998,8 @@ void showinfo(void)
 		strcpy(bootdevice, "HDD_BOOT");
 	else if(boot==MASS_BOOT)
 		strcpy(bootdevice, "MASS_BOOT");
+	else if(boot==PCSX_BOOT)
+		strcpy(bootdevice, "PCSX_BOOT");
 	sprintf(info[nList], "BOOT        : %s", bootdevice);
 	nList++;
 	//reset
@@ -1232,6 +1345,49 @@ void RunElf(const char *path)
 			PowerOff();
 			return;
 		}
+		else if(!stricmp(path, "MISC/ShowFont")){
+			showfont();
+			return;
+		}
+		else if(!stricmp(path, "MISC/FontViewer")){
+			//extern char *font_ascii, *font_kanji;
+			//viewer(0, "FontViewer", fonzt_ascii, font_ascii_size);
+			viewer(0, "FontViewer", font_kanji, font_kanji_size);
+			return;
+		}
+		else if(!stricmp(path, "MISC/SelfUpdate") ||
+				!stricmp(path, "MISC/NetworkUpdate") ||
+				!stricmp(path, "MISC/Update") ||
+				!stricmp(path, "MISC/NetworkDownload")
+				) {
+			/*
+			loadHTTPModules();
+			FILE *fp=NULL;
+			size_t size;
+			char *buff=NULL;
+			//char temp[]="http://smile-cll10.nicovideo.jp/smile?m=9208920.91908";
+			//"http://gyazo.com/f277f7d1cdb064808ead4ac767d57904.png";
+			//"http://res.nimg.jp/img/base/head/icon/nico/417.gif";
+			//	"http://192.168.0.4/tek_comp.c";
+			//	http://202.248.110.224/img/base/head/logo/nine.png
+			fp = fopen(temp, "rb");
+			if (fp != NULL) {
+				fseek(fp, 0, SEEK_END);
+				size = ftell(fp);
+				fseek(fp, 0, SEEK_SET);
+				if (size == 0) size = 128;
+				buff = (char*)malloc(size);
+				if (buff != NULL) {
+					fread(buff, 1, size, fp);
+					viewer(0, temp, buff, size);
+					free(buff);
+				}
+				fclose(fp);
+			}
+			*/
+			NetworkDownload(mainMsg);
+			return;
+		}
 		else if(!stricmp(path, "MISC/INFO")){
 			showinfo();
 			return;
@@ -1329,6 +1485,9 @@ void LaunchMain(void)
 		"MISC/DiscStop",
 		"MISC/McFormat",
 		"MISC/PowerOff",
+		"MISC/ShowFont",
+	//	"MISC/FontViewer",
+		"MISC/SelfUpdate",
 		"MISC/INFO",
 		"MISC/IPCONFIG",
 		"MISC/GSCONFIG",
@@ -1762,6 +1921,8 @@ int main(int argc, char *argv[])
 	}
 	else if(!strncmp(LaunchElfDir, "mass", 4))
 		boot = MASS_BOOT;
+	else if((LaunchElfDir[0] == 0x2F) || (LaunchElfDir[1] == 0x3A))
+		boot = PCSX_BOOT;
 
 	SifInitRpc(0);
 
@@ -1780,7 +1941,9 @@ int main(int argc, char *argv[])
 	setting = (SETTING*)malloc(sizeof(SETTING));
 	memset(setting, 0, sizeof(SETTING));
 	InitLanguage();
-	loadConfig(mainMsg);
+	//if ((boot!=CD_BOOT)&&(boot!=MASS_BOOT))
+	//if (boot!=CD_BOOT)
+	//	loadConfig(mainMsg);
 
 	itoInit();
 	SetScreenPosVM();

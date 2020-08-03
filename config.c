@@ -16,7 +16,7 @@ enum
 	DEF_SORT_EXT = TRUE,
 
 	DEF_CHAR_MARGIN = 2,
-	DEF_LINE_MARGIN = 5,
+	DEF_LINE_MARGIN = 4,
 	DEF_FONTBOLD = TRUE,
 	DEF_ASCII_MARGINTOP = 0,
 	DEF_ASCII_MARGINLEFT = 0,
@@ -33,7 +33,7 @@ enum
 #define	DEF_LANGUAGE	((*((char*)0x1FC7FF52))=='J'?LANG_JAPANESE:LANG_ENGLISH)
 	DEF_USBMASS_FLAG = FALSE,	// 0:Inside Only
 	DEF_USBD_FLAG = FALSE,
-	DEF_USBM_DEVICES = 2,
+	DEF_USBM_DEVICES = 4,
 	DEF_USBKBD_FLAG = FALSE,
 	DEF_USBMOUSE_FLAG = FALSE,
 
@@ -245,9 +245,9 @@ enum
 	TXT_CRLFTABDISP,
 	TXT_WORDWRAP,
 	IMG_FULLSCREEN,
+	IMG_RESIZE,
 	TXT_AUTODECODE,
 	VIEWERINIT,
-	IMG_RESIZE,
 };
 
 //MISC SETTING
@@ -255,6 +255,7 @@ enum
 {
 	LANG=1,
 	DISCCONTROL,
+	DOWNLOADPATH,
 	MISCINIT,
 };
 
@@ -299,6 +300,8 @@ static int clutnum[16] = {
 /*	画面モードメモ 
 02	NTSC	 720x 480	60
 03	PAL		 720x 576	50
+72	NTSC	 720x 480	60
+73	PAL		 720x 576	50
 82	NTSC	 720x 480	60
 83	PAL		 720x 576	50
 1A	VESA	 640x 480	60
@@ -320,6 +323,7 @@ static int clutnum[16] = {
 D0	480p	 720x 480	60
 51	1080i	1920x1080	60
 52	720p	1280x 720	60
+53	576p	 720x 576	50
 	※スクイーズ信号出力をコントロール方法が不明
 */
 //-------------------------------------------------
@@ -411,13 +415,13 @@ void InitGSREG(void)
 	char src[15][128] = {
 		//"\"NTSC\",640,224,1914,275,3,0,4,640,0,0,640,224,0,448,2,0,1,1,2,0,2,0,0,0,224",
 		"\"NTSC\",640,448,720,480,0x02,1914,275,3,0,4,0,1,0,0,1,2",
-		"\"PAL\",640,512,720,576,0x03,1914,328,3,0,4,0,1,0,0,1,2",
+		"\"PAL\",640,512,720,576,0x03,1934,328,3,0,4,0,1,0,0,1,2",
 		"\"480p\",640,448,720,480,0x50,948,275,1,0,4,0,0,0,0,1,2",
 		"\"1080i\",1820,1024,1920,1080,0x51,1194,578,0,0,2,1,1,0,0,0,2",
 		"\"720p\",1216,684,1280,720,0x52,938,384,0,0,2,1,0,0,0,1,2",
 		"\"CFG0 (NTSC,640x224)\",640,224,640,224,0x02,1914,275,3,0,4,0,1,1,0,1,2",
 		"\"CFG1 (NTSC,832x448)\",832,448,832,448,0x02,1914,275,2,0,4,0,1,0,0,1,2",
-		"\"CFG2 (PAL,832x512)\",832,512,832,512,0x03,1914,328,2,0,4,0,1,0,0,1,2",
+		"\"CFG2 (PAL,832x512)\",832,512,832,512,0x03,1934,328,2,0,4,0,1,0,0,1,2",
 		"\"CFG3 (480p,640x400)\",640,400,640,400,0x50,948,275,1,0,4,0,0,0,0,1,2",
 		"\"CFG4 (1080i,832x512)\",832,512,832,512,0x51,1194,578,1,1,4,0,1,0,0,1,2",
 		"\"CFG5 (1080i,1152x864)\",1152,864,1152,864,0x51,1195,578,0,0,2,1,1,0,0,1,2",
@@ -438,6 +442,9 @@ void InitGSREG(void)
 		if (src[i][0] == 0) break;
 		strtogsreg(i+1,src[i]);
 	}
+	if (boot==PCSX_BOOT)
+		for(i=0;i<3;i++)
+			gsregs[i+1].height=480;
 	gsregs[0].vmode = ITO_VMODE_AUTO;
 }
 
@@ -577,6 +584,7 @@ void InitMiscSetting(void)
 {
 	setting->discControl = DEF_DISCCONTROL;
 	setting->language = DEF_LANGUAGE;
+	strcpy(setting->downloadpath, "mc:/BOOT/");
 }
 
 //-------------------------------------------------
@@ -874,7 +882,7 @@ void saveConfig(char *mainMsg)
 	path[0]=0;
 	//cnfファイルのパス
 	//LaunchELFが実行されたパスから設定ファイルを開く
-	if(boot!=HOST_BOOT){
+	if((boot!=HOST_BOOT)&&(boot!=PCSX_BOOT)&&(boot!=CD_BOOT)){
 		sprintf(path, "%sLBFN.INI", LaunchElfDir);
 		fd = fioOpen(path, O_RDONLY);
 		if(fd >= 0)
@@ -1024,6 +1032,7 @@ void saveConfig(char *mainMsg)
 	if(cnf_setstr("imageresize", tmp)<0) goto error;
 	sprintf(tmp, "%d", setting->txt_autodecode);
 	if(cnf_setstr("autodecode", tmp)<0) goto error;
+	if(cnf_setstr("downloadpath", setting->downloadpath)<0) goto error;
 	
 	ret = 0;
 	for(i=6;i<MAX_GSREG;i++){
@@ -1300,6 +1309,8 @@ void loadConfig(char *mainMsg)
 				settingcheck(&setting->img_resize, tmp, 0, 15, DEF_IMG_RESIZE);
 			if(cnf_getstr("autodecode", tmp, "")>=0)
 				settingcheck(&setting->txt_autodecode, tmp, 0, 1, DEF_AUTODECODE);
+			if(cnf_getstr("downloadpath", tmp, "")>=0)
+				strcpy(setting->downloadpath, tmp);
 			set_viewerconfig(setting->txt_linenumber, setting->txt_tabmode, setting->txt_chardisp, setting->img_fullscreen, setting->txt_wordwrap, setting->img_resize);
 
 			for (i=1; i<MAX_GSREG; i++) {
@@ -1381,7 +1392,7 @@ void ipconfig(char *mainMsg)
 					itoSwitchFrameBuffers();
 					drawDark();
 					strcpy(tmp,ip);
-					if(keyboard(tmp, 15)>=0) strcpy(ip,tmp);
+					if(keyboard(SKBD_IP, tmp, 15)>=0) strcpy(ip,tmp);
 				}
 				else if(sel==NETMASK){
 					drawDark();
@@ -1389,7 +1400,7 @@ void ipconfig(char *mainMsg)
 					itoSwitchFrameBuffers();
 					drawDark();
 					strcpy(tmp,netmask);
-					if(keyboard(tmp, 15)>=0) strcpy(netmask,tmp);
+					if(keyboard(SKBD_IP, tmp, 15)>=0) strcpy(netmask,tmp);
 				}
 				else if(sel==GATEWAY){
 					drawDark();
@@ -1397,7 +1408,7 @@ void ipconfig(char *mainMsg)
 					itoSwitchFrameBuffers();
 					drawDark();
 					strcpy(tmp,gw);
-					if(keyboard(tmp, 15)>=0) strcpy(gw,tmp);
+					if(keyboard(SKBD_IP, tmp, 15)>=0) strcpy(gw,tmp);
 				}
 				else if(sel==NETWORKINIT){
 					//init
@@ -1881,7 +1892,7 @@ void gsconfig_easy(GSREG *gsregs)
 				if (sel==0) break;
 				if (sel==GSE_NAME) {
 					strcpy(tmp, name);
-					if(keyboard(tmp, 64)>=0){
+					if(keyboard(SKBD_TITLE, tmp, 64)>=0){
 						if (strcmp(name, tmp)) saved = 0;
 						strcpy(name, tmp);
 					}
@@ -2044,7 +2055,8 @@ void gsconfig_easy(GSREG *gsregs)
 			vmoded = FALSE;
 			changed = TRUE;
 		}
-		totalsize = ((((width+63)&-64) * (height >> (dbl > 1))+8191) & -8192) * ((dbl>0)+1) * ((depth == 0)*2+2);
+		//totalsize = ((((width+63)&-64) * (height >> (dbl > 1))+8191) & -8192) * ((dbl>0)+1) * ((depth == 0)*2+2);
+		totalsize = ((((width+63)&-64) * (( (height >> (dbl > 1))+(63>>((depth==0)+(dbl==0)*8)) )&(-(64>>((depth==0)+(dbl==0)*8))-(dbl==0)) ) +8191) & -8192) * ((dbl>0)+1) * ((depth == 0)*2+2);
 
 		//
 		if (redraw) {
@@ -2448,7 +2460,7 @@ void config_button(SETTING *setting)
 				}
 				else if (sel == LAUNCH_NAME) {
 					strcpy(c, setting->dirElf[btn].name);
-					if (keyboard(c, MAX_TITLE)>=0) strcpy(setting->dirElf[btn].name, c);
+					if (keyboard(SKBD_TITLE, c, MAX_TITLE)>=0) strcpy(setting->dirElf[btn].name, c);
 				} else if (sel == LAUNCH_PADMSK) {
 					if (btn != 0) {
 						drawDark();
@@ -3469,7 +3481,7 @@ void config_viewer(SETTING *setting)
 					setting->txt_wordwrap ^= 1;
 				}
 				else if(sel==IMG_RESIZE){
-					setting->img_resize+=1;
+					setting->img_resize = (setting->img_resize +1) % 2;
 				}
 				else if(sel==TXT_AUTODECODE){
 					setting->txt_autodecode ^= 1;
@@ -3628,12 +3640,22 @@ void config_misc(SETTING *setting)
 				}
 				else if(sel==DISCCONTROL)
 					setting->discControl = !setting->discControl;
+				else if(sel==DOWNLOADPATH) {
+					getFilePath(setting->downloadpath, DIR);
+					if(!strncmp(setting->downloadpath, "cdfs", 2))
+						setting->downloadpath[0]='\0';
+				}
 				else if(sel==MISCINIT){
 					//init
 					InitMiscSetting();
 					SetLanguage(setting->language);
 					//sprintf(msg0, "%s", "Initialize Misc Setting");
 					//pushed = FALSE;
+				}
+			}
+			else if(new_pad & PAD_SQUARE) {
+				if (sel==DOWNLOADPATH) {
+					strcpy(setting->downloadpath, "mc:/BOOT/");
 				}
 			}
 		}
@@ -3652,6 +3674,9 @@ void config_misc(SETTING *setting)
 			}
 			else if(i==DISCCONTROL){	//DISC CONTROL
 				sprintf(config[i], "%s: %s" ,lang->conf_disc_control, onoff[setting->discControl != 0]);
+			}
+			else if(i==DOWNLOADPATH) {	//DOWNLOAD PATH
+				sprintf(config[i], "%s: %s", lang->conf_downloadpath, setting->downloadpath);
 			}
 			else if(i==MISCINIT){	//INIT
 				strcpy(config[i], lang->conf_miscsettinginit);
@@ -3711,6 +3736,8 @@ void config_misc(SETTING *setting)
 				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
 			else if(sel==DISCCONTROL)
 				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
+			else if(sel==DOWNLOADPATH)
+				sprintf(msg1, "○:%s □:%s △:%s", lang->conf_change, lang->conf_default, lang->conf_up);
 			else if(sel==MISCINIT)
 				sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
 			setScrTmp(msg0, msg1);

@@ -14,6 +14,7 @@
 #define GS_REG_PRMODECONT	0x1A
 #define GS_REG_COLCLAMP		0x46
 #define GS_REG_RGBAQ		0x01
+#define GS_REG_DIMX			0x44
 #define GS_REG_DTHE			0x45
 #define GS_REG_BITBLTBUF	0x50
 #define GS_REG_TRXPOS		0x51
@@ -257,6 +258,7 @@ typedef struct{
 	uint16	height;
 	uint16	x;
 	uint16	y;
+//	uint16	dwidth;
 	uint8	psm;
 	uint8	mag_x;
 	uint8	mag_y;
@@ -271,6 +273,7 @@ typedef struct{
 	uint32	scissor_y1;
 	uint32	scissor_y2;
 
+	uint64	matrix;
 	uint8	dither;
 	uint8	interlace;
 	uint8	ffmode; // Frame/Field Mode
@@ -433,6 +436,7 @@ void itoTEST( uint8 ate, uint8 atst, uint8 aref, uint8 afail, uint8 date, uint8 
 void itoCOLCLAMP( uint64 colclamp);
 void itoPRMODECONT( uint64 prmodecont);
 void itoDITHER( uint64 dither);
+void itoMATRIX( uint64 matrix);
 void itoRGBAQ(uint64 rgbaq);
 uint64 itoXYZ2(uint16 x, uint16 y, uint32 z);
 void itoPRIM(uint8 prim, uint8 iip, uint8 tme, uint8 fge, uint8 abe, uint8 aai, uint8 fst, uint8 ctxt, uint8 fix);

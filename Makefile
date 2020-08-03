@@ -17,7 +17,7 @@ EE_BIN = LbFn.ELF
 EE_OBJS = main.o pad.o config.o elf.o draw.o loader.o  filer.o cd.o language.o\
 	cnf.o tek.o viewer.o shiftjis.o bmp.o jpeg.o gif.o fmcb_cfg.o misc.o\
 	poweroff.o iomanx.o filexio.o ps2atad.o ps2dev9.o ps2hdd.o ps2fs.o\
-	usbd.o usbhdfsd.o cdvd.o ps2ip.o ps2smap.o ps2ftpd.o fakehost.o
+	usbd.o usbhdfsd.o cdvd.o ps2ip.o ps2smap.o ps2ftpd.o dns.o ps2http.o fakehost.o
 
 EE_INCS := -I$(LIBITO)/include -I$(PS2DEV)/libcdvd/ee
 
@@ -57,8 +57,9 @@ usbd.s:
 	bin2s usbd.ir5 usbd.s usbd_irx
 
 usbhdfsd.s:
-	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:$(PS2DEV)/usbhdfsd/bin/usbhdfsd.irx out:usbhdfsd.ir5
-	bin2s usbhdfsd.ir5 usbhdfsd.s usbhdfsd_irx
+	bin2s usbhdfsd.irx usbhdfsd.s usbhdfsd_irx
+#	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:$(PS2DEV)/usbhdfsd/bin/usbhdfsd.irx out:usbhdfsd.ir5
+#	bin2s usbhdfsd.ir5 usbhdfsd.s usbhdfsd_irx
 
 #cdvd.irx ulaunchELF 4.01
 cdvd.s:
@@ -104,10 +105,20 @@ ps2ip.s:
 	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:$(PS2SDK)/iop/irx/ps2ip.irx out:ps2ip.ir5
 	bin2s ps2ip.ir5 ps2ip.s ps2ip_irx
 
-#ps2ftpd.ir5 uLaunchELF 4.01
+#ps2ftpd.irx uLaunchELF 4.01
 ps2ftpd.s:
 	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:modules/ps2ftpd.irx out:ps2ftpd.ir5
 	bin2s ps2ftpd.ir5 ps2ftpd.s ps2ftpd_irx
+
+dns.s:
+	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:dns.irx out:dns.ir5
+	bin2s dns.ir5 dns.s dns_irx
+#	bin2s dns.irx dns.s dns_irx
+
+ps2http.s:
+	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:ps2http.irx out:ps2http.ir5
+	bin2s ps2http.ir5 ps2http.s ps2http_irx
+#	bin2s ps2http.irx ps2http.s ps2http_irx
 
 #loader.elf uLaunchELF 4.12
 loader.s:

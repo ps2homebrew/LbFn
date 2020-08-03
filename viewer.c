@@ -9,29 +9,6 @@ typedef struct {
 	unsigned int bytes;
 } ofscache;
 
-enum
-{
-	TXT_AUTO,
-	TXT_BINARY=TXT_AUTO,
-	TXT_ASCII,
-	TXT_SJIS,
-	TXT_EUCJP,
-	TXT_JIS,
-	TXT_ISO2022JP,
-	TXT_BIG5,
-	TXT_EUCTW,
-	TXT_GB2312,
-	TXT_EUCCN,
-	TXT_JOHAB,
-	TXT_EUCKR,
-	TXT_UTF7,
-	TXT_UTF8,
-	TXT_UTF16BE,
-	TXT_UTF16LE,
-	TXT_UTF32BE,
-	TXT_UTF32LE,
-};
-
 static unsigned int ft_type[FT_TYPES] = {
 	FT_ELF, FT_EXE,
 	FT_JPG, FT_PNG, FT_GIF, FT_BMP,
@@ -52,9 +29,9 @@ static unsigned char ft_char[FT_TYPES][4] = {
 	"FNT",
 };
 static unsigned char *clipbuffer=NULL;
-static unsigned char editline[3][MAX_COLS];
-static unsigned char displine[2][MAX_COLS];
-static int redraw=2, charset=0, fullscreen=0;
+static unsigned char editline[2][MAX_COLS];
+static unsigned char displine[MAX_COLS];
+static int redraw=2, charset=0, fullscreen=0, resizer=1;
 int linenum=0, defaultcharset=0, tabmode=8, tabdisp=0, nldisp=0;
 extern unsigned short sjistable[];
 //extern unsigned short ucstable[];
@@ -62,24 +39,16 @@ static unsigned short ucstable[MAX_UNICODE];
 static int ucstabled=0;
 static int wordwrap=0;
 uint64 *activeclut=NULL;
+static int alphablend=0;
 //static ofscache *line[];
-static int chartable[] = {TXT_AUTO, TXT_ASCII, TXT_SJIS, TXT_EUCJP, TXT_UTF8, -1};
-static char chartablename[][8] = {"AUTO", "ASCII", "SJIS", "EUCJP", "UTF8", ""};
-int bineditfile(int mode, char *file);
-int binedit(int mode, char *file, unsigned char *buffer, unsigned int size);
-int imgviewfile(int mode, char *file);
-int imgview(int mode, char *file, unsigned char *buffer, int w, int h, int bpp);
-int viewer_file(int mode, char *file);
-int viewer(int mode, char *file, unsigned char *buffer, unsigned int size);
-int pcmpause(void);
-int pcmplay(void);
-int pcminit(int mode, int rate, int channels, int bits);
-int pcmclear(void);
-int pcmadd(char *buffer, int size);
+static int chartable[] = {TXT_AUTO, TXT_ASCII, TXT_SJIS, TXT_EUCJP, TXT_JIS, TXT_UTF8, -1};
+static char chartablename[][8] = {"AUTO", "ASCII", "SJIS", "EUCJP", "JIS", "UTF8", ""};
+static unsigned char ctrlchars[32];
 //int txt_convert_encoding(unsigned char *dist, unsigned char *src, int dist_char, int src_char);
-int txtdraw(unsigned char *buffer, unsigned int size, int charcode, uint64 color1, uint64 color2);
+int txtdraw(unsigned char *buffer, unsigned int size, int charcode);
 int utftosjis2(unsigned char *dist, unsigned char *src, unsigned int limit, unsigned int size);
 int euctosjis2(unsigned char *dist, unsigned char *src, unsigned int limit, unsigned int size);
+int jistosjis2(unsigned char *dist, unsigned char *src, unsigned int limit, unsigned int size);
 int ucstableinit();
 
 int info_BMP(int *info, char *src, int size);
@@ -112,6 +81,7 @@ static void X_free(void *mallocdata)
 		printf("viewer: free failed (ofs: %08X)\n", (unsigned int) mallocdata);
 	mallocdata = NULL;
 }
+/*
 static void *X_realloc(void *mallocdata, size_t mallocsize)
 {
 	void *ret;
@@ -122,12 +92,26 @@ static void *X_realloc(void *mallocdata, size_t mallocsize)
 		printf("viewer: realloc failed: (ofs: %08X, size: %d)\n", (unsigned int) mallocdata, mallocsize);
 	return ret;
 }
-
+*/
 #define	malloc	X_malloc
 #define free	X_free
-#define realloc	X_realloc
+//#define realloc	X_realloc
 //*/
 
+void makectrlchars(void)
+{
+	int i;
+	for (i=0; i<32; i++)
+		ctrlchars[i] = i+64;
+	if (nldisp) {
+		ctrlchars[13] = '<';
+		ctrlchars[10] = 'v';
+	} else {
+		ctrlchars[13] = ' ';
+		ctrlchars[10] = ' ';
+	}
+	if (tabdisp) ctrlchars[9] = '>'; else ctrlchars[9] = ' ';
+}
 ////////////////////////////////
 // 文字コードの判定
 //	in:	*buffer	テキストデータ
@@ -136,9 +120,8 @@ static void *X_realloc(void *mallocdata, size_t mallocsize)
 int txt_detect(unsigned char *c, unsigned int size)
 {
 	int w,x,y,z,u,charset,cp;
-	int ascii=0,sjis=0,eucjp=0,utf8=0,text=0,binary=0;
-	int sjisf=0,eucjpf=0,utf8f=0;
-	
+	int ascii=0,jis=0,sjis=0,eucjp=0,utf8=0,text=0,binary=0;
+	int jisb=0,jisf=0,jism=0,sjisf=0,eucjpf=0,utf8f=0;
 	// 文字コードを判定
 	printf("textdetect: detecting charset...\n");
 	for (x=0;x<size;x++) {
@@ -152,6 +135,7 @@ int txt_detect(unsigned char *c, unsigned int size)
 		if ((c[x] > 0) && (c[x] <= 0x7F)) ascii++;
 		if ((c[x] == 0xCD) && (c[y] == 0xCD)) ascii+=4;
 		if ((c[x] == 0xC4) && (c[y] == 0xC4)) ascii+=4;
+		if ((c[x] == 0x80) || (c[x] == 0xA0) || (c[x] > 0xFC)) ascii+=2;
 		if (sjisf == 0) {
 			if (((c[x] > 0x00) && (c[x] <= 0x7F)) || ((c[x] >= 0xA1) && (c[x] <= 0xDF))) {
 				sjisf=1;
@@ -176,6 +160,44 @@ int txt_detect(unsigned char *c, unsigned int size)
 			if (eucjpf == 0) eucjp--;
 		}
 		if (eucjpf > 0) eucjpf--;
+		if (jisf == 0) {
+			if ((c[x] == 0x1B) && ((c[y] == 0x24) || (c[y] == 0x26)) && ((c[z] == 0x40) || (c[z] == 0x42))) {
+				jisf=3; jism=3;
+			} else if ((c[x] == 0x1B) && (c[y] == 0x28) && (c[z] == 0x42)) {
+				// ^[(B ASCII(7bit)
+				jisf=3; jism=0;
+			} else if ((c[x] == 0x1B) && (c[y] == 0x28) && (c[z] == 0x4A)) {
+				// ^[(J JISローマ字?(=ASCII+KANA=ANK?=8bit?)
+				jisf=3; jism=1;
+			} else if ((c[x] == 0x1B) && (c[y] == 0x28) && (c[z] == 0x49)) {
+				// ^[(I 半角カタカナ(7bit?)
+				jisf=3; jism=2;
+			} else if (c[x] == 0x0E) {
+				jisb=jism; jism=2; jisf=1;
+			} else if (c[x] == 0x0F) {
+				jism=jisb; jisb=0; jisf=1;
+			} else if (jism == 1) {
+				// JISローマ字(ANK?)
+				if ((c[x] < 0x80) || ((c[x] >= 0xA1) && (c[x] <= 0xDF)))
+					jisf=1;
+			} else if (jism == 2) {
+				// 半角カタカナ
+				if ((c[x] >= 0x21) && (c[x] <= 0x5F))
+					jisf=1;
+			} else if (jism == 3) {
+				// 漢字
+				if ((c[x] < 0x21) || (c[x] > 0x7E) || (c[y] < 0x21) || (c[y] > 0x7E))
+					jis-=4;
+				jisf=2;
+			} else if ((c[x] > 0) && (c[x] != 27) && (c[x] < 0x80)) {
+				jisf=1;
+			} else {
+				jis--;
+			}
+			jis+=jisf+(jism>1);
+			if (jisf == 0) jis--;
+		}
+		if (jisf > 0) jisf--;
 		if (utf8f == 0) {
 			if ((c[x] > 0x00) && (c[x] <= 0x7F)) {
 				utf8f=1;
@@ -206,9 +228,10 @@ int txt_detect(unsigned char *c, unsigned int size)
 	charset = TXT_SJIS; cp = sjis;
 	if (eucjp >= cp)	{charset = TXT_EUCJP; cp = eucjp;}
 	if (utf8 >= cp) 	{charset = TXT_UTF8; cp = utf8;	}
+	if (jis >= cp)		{charset = TXT_JIS; cp = jis;}
 	if (ascii >= cp)	{charset = TXT_ASCII; cp = ascii;}
 	if (binary >= cp)	{charset = TXT_BINARY; cp = binary;}
-	printf("textdetect:%d txt=%d,bin=%d, asc=%d,sjis=%d,euc=%d,utf8=%d pts.\n", charset, text, binary, ascii, sjis, eucjp, utf8);
+	printf("textdetect:%d txt=%d,bin=%d, asc=%d,sjis=%d,euc=%d,jis=%d,utf8=%d pts.\n", charset, text, binary, ascii, sjis, eucjp, jis, utf8);
 	return charset;
 }
 
@@ -272,9 +295,9 @@ int txtedit(int mode, char *file, unsigned char *c, unsigned int size)
 	int cp=0,cs=0,maxbytes=0;
 	uint64 color1, color2;
 	int sel=0, top=0, selx=0, oldselx=0, oldsel=0;
-	int y0, y1, i, j;
+	int i, j;
 	int l2button=FALSE, oldl2=FALSE;
-	int textwidth, editmode=0;
+	int textwidth;
 	char *onoff[2] = {lang->conf_off, lang->conf_on};
 	
 	int scrnshot=0;
@@ -290,6 +313,8 @@ int txtedit(int mode, char *file, unsigned char *c, unsigned int size)
 	cs = TXT_AUTO; cp=0;
 	redraw=fieldbuffers;
 	maxbytes=MAX_COLS-1;
+	makectrlchars();
+	
 	while(1){
 		waitPadReady(0, 0);
 		if(readpad()){
@@ -363,6 +388,7 @@ int txtedit(int mode, char *file, unsigned char *c, unsigned int size)
 				if (new_pad & PAD_START) {
 					tabdisp = !tabdisp;
 					nldisp = !nldisp;
+					makectrlchars();
 					redraw = fieldbuffers;
 				}
 				if (new_pad & PAD_SELECT)
@@ -417,7 +443,7 @@ int txtedit(int mode, char *file, unsigned char *c, unsigned int size)
 						w = 0;
 						z = line[MAX_LINES-1].offset;
 					}
-					w = txtdraw(c+z, w, cs, color1, color2);
+					w = txtdraw(c+z, w, cs);
 					if (linenum2) {
 						if (w > selx+MAX_ROWS_X) w = MAX_ROWS_X+selx;
 					} else {
@@ -425,14 +451,16 @@ int txtedit(int mode, char *file, unsigned char *c, unsigned int size)
 					}
 					for (j=w;j<w+2;j++) {
 						if (j>=MAX_COLS) break;
-						displine[0][j] = 0;
-						displine[1][j] = 0;
+						displine[j] = 0;
 					}
 						
-					if ((displine[0] != 0)&&(w>=selx))
-						printXY(displine[0]+selx, x+linenum2*6*FONT_WIDTH, y, color1, TRUE);
-					if ((displine[1] != 0)&&(w>=selx))
-						printXY(displine[1]+selx, x+linenum2*6*FONT_WIDTH, y, color2, TRUE);
+					if (cs == TXT_ASCII) {
+						if ((displine[0] != 0)&&(w>=selx))
+							drawString(displine+selx, TXT_ASCII, x+linenum2*6*FONT_WIDTH, y, color1, color2, ctrlchars);
+					} else {
+						if ((displine[0] != 0)&&(w>=selx))
+							drawString(displine+selx, TXT_SJIS, x+linenum2*6*FONT_WIDTH, y, color1, color2, ctrlchars);
+					}
 				}
         
 				y += FONT_HEIGHT;
@@ -442,19 +470,9 @@ int txtedit(int mode, char *file, unsigned char *c, unsigned int size)
 					setting->color[COLOR_FRAME], 7.5*FONT_WIDTH, y, 0);	
 			}
 			// スクロールバー
-			if(lines > MAX_ROWS){
-				drawFrame((MAX_ROWS_X+8)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3,
-					(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[COLOR_FRAME]);
-				y0=FONT_HEIGHT*MAX_ROWS*((double)top/lines);
-				y1=FONT_HEIGHT*MAX_ROWS*((double)(top+MAX_ROWS)/lines);
-				if (y0 == y1) y1++;
-				itoSprite(setting->color[COLOR_FRAME],
-					(MAX_ROWS_X+8)*FONT_WIDTH,
-					SCREEN_MARGIN+FONT_HEIGHT*3+y0,
-					(MAX_ROWS_X+9)*FONT_WIDTH,
-					SCREEN_MARGIN+FONT_HEIGHT*3+y1,
-					0);
-			}
+			if(lines > MAX_ROWS)
+				drawBar((MAX_ROWS_X+8)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3, (MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),
+						setting->color[COLOR_FRAME], top, MAX_ROWS, lines);
 			sprintf(msg1, lang->editor_viewer_help, tabmode);
 			if(l2button){
 				//
@@ -565,9 +583,9 @@ int txteditfile(int mode, char *file)
 
 ////////////////////////////////
 // 文字列変換
-int txtdraw(unsigned char *buffer, unsigned int size, int charcode, uint64 color1, uint64 color2)
+int txtdraw(unsigned char *buffer, unsigned int size, int charcode)
 {
-	int cp,i,j,w,x,c,c0,c1,siz,ret=0;
+	int cp,i,j,w,x,c,siz,ret=0;
 	unsigned char temp[MAX_COLS];
 
 	// テキストの文字コード
@@ -577,12 +595,13 @@ int txtdraw(unsigned char *buffer, unsigned int size, int charcode, uint64 color
 		cp = charcode;
 	
 	// 表示文字列初期化
-	displine[0][0] = 0;
-	displine[1][0] = 0;
+	displine[0] = 0;
 	
 	// SJISに変換
 	if (cp == TXT_EUCJP)
 		ret=euctosjis2(temp, buffer, MAX_COLS, size);
+	else if (cp == TXT_JIS)
+		ret=jistosjis2(temp, buffer, MAX_COLS, size);
 	else if (cp == TXT_UTF8)
 		ret=utftosjis2(temp, buffer, MAX_COLS, size);
 	else {
@@ -594,38 +613,20 @@ int txtdraw(unsigned char *buffer, unsigned int size, int charcode, uint64 color
 	// 表示用変換
 	j=0;
 	for(i=0;i<ret;i++) {
-		c=temp[i];c0=c;c1=32;
+		c=temp[i];
 		if (c == 9) {
 			if (tabmode > 0) {
 				w = tabmode - (j % tabmode);
-				for (x=j; x<j+w; x++) {
-					displine[0][x] = 32;
-					displine[1][x] = 32;
+				displine[j] = 9;
+				for (x=j+1; x<j+w; x++) {
+					displine[x] = 32;
 				}
-				if (tabdisp)
-					displine[1][j] = '>';
-				c = -1; c0 = 0; j+=w;
+				j+=w;
 			}
-		} else if (c == 10) {
-			c = 32; c0 = 32;
-			if (nldisp) c1 = 'v'; else c1 = 32;
-		} else if (c == 13) {
-			c = 32; c0 = 32;
-			if (nldisp) c1 = '<'; else c1 = 32;
+		} else if (c > 0) {
+			displine[j++] = c;
 		}
-		if ((c >= 0) && (c < 32)) {
-			// 制御コード
-			//	displine[0][j] = 32;
-			//	displine[1][j++] = '^';
-			displine[0][j] = 32;
-			displine[1][j++] = c+64;
-		} else if (c0 > 0) {
-			// 通常コード
-			displine[0][j] = c0;
-			displine[1][j++] = c1;
-		}
-		displine[0][j] = 0;
-		displine[1][j] = 0;
+		displine[j] = 0;
 		if (j >= MAX_COLS-2) break;
 	}
 	//printf("viewer: %d/%d\n", j, ret);
@@ -677,6 +678,63 @@ int euctosjis2(unsigned char *dist, unsigned char *src, unsigned int limit, unsi
 	}
 	return j;
 }
+
+int jistosjis2(unsigned char *dist, unsigned char *src, unsigned int limit, unsigned int size)
+{
+	int i,j=0,b=0,m=0;
+	int x,y,z,u,t1,t2;
+	unsigned char *c, *d;
+
+	c = src; d = dist;
+	
+	d[j] = 0;
+	for(i=0;i<size;i++) {
+		x=i;y=x+1;z=y+1;
+		if (y>=size) y=size-1;
+		if (z>=size) z=size-1;
+		// 4バイトのエスケープシーケンスには未対応
+		if ((c[x] == 0x1B) && ((c[y] == 0x24) || (c[y] == 0x26)) && ((c[z] == 0x40) || (c[z] == 0x42))) {
+			// ^[$Bなど 漢字
+			i+=2; m=3;
+		} else if ((c[x] == 0x1B) && (c[y] == 0x28) && (c[z] == 0x42)) {
+			// ^[(B ASCII(7bit)
+			i+=2; m=0;
+		} else if ((c[x] == 0x1B) && (c[y] == 0x28) && (c[z] == 0x4A)) {
+			// ^[(J JISローマ字?(=ASCII+KANA=ANK?=8bit?)
+			i+=2; m=1;
+		} else if ((c[x] == 0x1B) && (c[y] == 0x28) && (c[z] == 0x49)) {
+			// ^[(I 半角カタカナ(7bit?)
+			i+=2; m=2;
+		} else if (c[x] == 0x0E) {
+			b=m; m=2;
+		} else if (c[x] == 0x0F) {
+			m=b; b=0;
+		} else if (m == 1) {
+			// JISローマ字(ANK?)
+			d[j++] = c[x];
+		} else if (m == 2) {
+			// 半角カタカナ
+			d[j++] = 0x80 | c[x];
+		} else if (m == 3) {
+			// 漢字
+			if (j<limit-2) {
+				u=94*(c[x]-0x21)+(c[y]-0x21);
+				t1=(u/188)+0x81;t2=(u%188)+0x40;
+				if (t1 >= 0xA0) t1+=0x40;
+				if (t2 >= 0x7F) t2++;
+				d[j++]=t1;d[j++]=t2;
+			}
+			i++;
+		} else if ((c[x] < 0x80) && (c[x] != 27)) {
+			d[j++] = c[x];
+		}
+		// 改行の場所で漢字やカタカナだったらマイナスポイントにしようか
+		d[j] = 0;
+		if (j >= limit-1) break;
+	}
+	return j;
+}
+
 int utftosjis2(unsigned char *dist, unsigned char *src, unsigned int limit, unsigned int size)
 {
 	int i,j=0;
@@ -879,6 +937,8 @@ int formatcheck(unsigned char *c, unsigned int size)
 		type = FT_XML;
 	} else if ((size >= 32) && (c[1] == 0x3C) && (c[2] == 0x3F) && (c[3] == 0x78) && (c[4] == 0x6D) && (c[5] == 0x6C) && (c[6] == 0x20)) {
 		type = FT_XML;
+	} else if ((size >= 80) && (c[0] == 0x00) && ((c[1] == 0x02) || (c[1] == 0x03)) && (c[2]+256*c[3]+65536*c[4] == size) && (c[5] == 0x00)) {
+		type = FT_FNT;
 	} else if ((size >= 32) && (c[0] == 0x4D) && (c[1] == 0x5A)) {
 		type = FT_EXE;
 	}
@@ -946,6 +1006,7 @@ int viewer(int mode, char *file, unsigned char *c, unsigned int size)
 	tvmode = setting->tvmode;
 	if (gsregs[tvmode].loaded != 1) tvmode = ITO_VMODE_AUTO-1;
 	bpp = setting->screen_depth[tvmode] > 0 ? (setting->screen_depth[tvmode]-1):4-gsregs[tvmode].psm;
+	if (setting->screen_dither) bpp = 4;
 	if (setting->txt_autodecode && ((dsize = tek_getsize(c)) >= 0)) {
 		decoded = (unsigned char*)malloc(dsize);
 		if (decoded != NULL) {
@@ -974,6 +1035,7 @@ int viewer(int mode, char *file, unsigned char *c, unsigned int size)
 			break;
 		}
 	}
+	alphablend = FALSE;
 	switch(type){
 		case FT_JPG:
 		{
@@ -1052,6 +1114,7 @@ int viewer(int mode, char *file, unsigned char *c, unsigned int size)
 		}
 		case FT_GIF:
 		{
+			alphablend = TRUE;
 			i = info_GIF(info, decoded, dsize);
 			bpp = 1;
 			printf("viewer: info_GIF returned: %d\n", i);
@@ -1071,6 +1134,11 @@ int viewer(int mode, char *file, unsigned char *c, unsigned int size)
 			//free(buffer);
 			//if ((decoded != NULL) && (decoded != c)) free(decoded);
 			//return i;
+			break;
+		}
+		case FT_FNT:
+		{	// フォントビューアを起動
+			ret = fntview(mode, file, buffer, dsize);
 			break;
 		}
 		case FT_PCM:
@@ -1128,19 +1196,17 @@ int imgview(int mode, char *file, unsigned char *buffer, int w, int h, int bpp)
 {
 	int redraw=fieldbuffers;
 	//int sl=0,st=0,sw=1,sh=1; // カーソル位置
-	int tl,tt,tw,th,x,y;
+	int tl,tt,tw,th,x,y,ff;
 	int vl,vt,vw,vh; // ビューポート(描画可能範囲)
 	int dl,dt,dw,dh; // 描画範囲用
 	int k,gx,gy,gz;
+	int tmpx[2048], tmpy[1088];
+	static int bilinear=0;
 	//uint64 color;
 	//unsigned char *d;
 	char msg0[MAX_PATH], msg1[MAX_PATH];
-	double mx,my,dx,dy;	// 倍率
+	double mx,my,dx,dy,gw,gh;	// 倍率
 	strcpy(msg0, file);
-	if (mode & 2) 
-		sprintf(msg1, lang->editor_image_help2, w, h);
-	else
-		sprintf(msg1, lang->editor_image_help, w, h);
 	// イメージ全体をアスペクト比を保ったままビューポート全体に表示するように初期値を調整
 	// イメージ1ドット進むごとに画面はbx,byピクセル進む(=拡大率)
 	//mx = (double) vw / w;
@@ -1178,6 +1244,14 @@ int imgview(int mode, char *file, unsigned char *buffer, int w, int h, int bpp)
 					}
 				}
 			}
+			if (new_pad & PAD_SQUARE) {
+				redraw = fieldbuffers;
+				resizer = (resizer +1) % 2;
+			}
+			if (!ffmode && (new_pad & PAD_R2)) {
+				redraw = fieldbuffers;
+				bilinear ^= 1;
+			}
 			if (mode & 2) {
 				if (new_pad & PAD_L1) return 1;
 				if (new_pad & PAD_R1) return 2;
@@ -1201,39 +1275,130 @@ int imgview(int mode, char *file, unsigned char *buffer, int w, int h, int bpp)
 				vt = SCREEN_MARGIN+FONT_HEIGHT*2.5+1;
 				vw = SCREEN_WIDTH;
 				vh = MAX_ROWS*FONT_HEIGHT+FONT_HEIGHT-1;
-				// ついでに枠なども描画
-				setScrTmp(msg0, msg1);
 			}
 			// リサイズ後のサイズを求める
-			// イメージ1ドット進むごとに画面はbx,byピクセル進む(=拡大率)
-			mx = (double) vw * gx / w;
-			my = (double) vh * gy * (ffmode+1) / h;
-			// 画面1ピクセル進むごとにイメージはbx,byドット進む(=縮小率)
-			//dx = (double) w / vw;
-			//dy = (double) h / vh;
-			if (mx < my) my = mx; else mx = my;
-			dx = 1/mx*gx;
-			dy = 1/my*gy;
-			//printf("screen: %dx%d, ps: %.3fx%.3f, %.3fx%.3f\n", vw, vh, dx, dy, mx, my);
-			tw = w * mx / gx; th = h * my / (ffmode+1) / gy;
+			if (resizer) {
+				if (!ffmode && bilinear)
+					ff = 1;
+				else
+					ff = 0;
+				// イメージ1ドット進むごとに画面はbx,byピクセル進む(=拡大率)
+				mx = (double) vw * gx / (w -ff);
+				my = (double) vh * gy * (ffmode+1) / (h -ff);
+				gw = (double) vw / w;
+				gh = (double) vh * (ffmode+1) / h;
+				// 画面1ピクセル進むごとにイメージはbx,byドット進む(=縮小率)
+				//dx = (double) w / vw;
+				//dy = (double) h / vh;
+				if (mx < my) my = mx; else mx = my;
+				if (gw < gh) gh = gw; else gw = gh;
+				dx = 1/mx*gx;
+				dy = 1/my*gy;
+				//printf("screen: %dx%d, ps: %.3fx%.3f, %.3fx%.3f\n", vw, vh, dx, dy, mx, my);
+				tw = w * mx / gx; th = h * my / (ffmode+1) / gy;
+			} else {
+				dx = dy = mx = my = gw = gh = 1;
+				tw = w; th = h;
+				if (ffmode) {
+					th >>= 1;
+				}
+			}
 			tl = (vw - tw) / 2;
 			tt = (vh - th) / 2;
 			if (tw > vw) dw = vw; else dw = tw;
 			if (th > vh) dh = vh; else dh = th;
 			if (tl < 0) dl = vl; else dl = tl+vl;
 			if (tt < 0) dt = vt; else dt = tt+vt;
+			if (tw > vw) tw = vw;
+			if (th > vh) th = vh;
+			if (!fullscreen) {
+				if (mode & 2) 
+					sprintf(msg1, lang->editor_image_help2, w, h, tw, th);
+				else
+					sprintf(msg1, lang->editor_image_help, w, h, tw, th);
+				setScrTmp(msg0, msg1);
+			}
+			
 			// イメージの描画
 			// (テクスチャ読み込みをしてテクスチャを貼った方が良いかも知れない、特に極小サイズのイメージの場合)
+			if (alphablend)	{itoPrimAlphaBlending(TRUE);}
 			if (ffmode) {
 				k=itoGetActiveFrameBuffer();
-				for (y=0;y<dh;y++)
+				if (gw > 1.5) {
+					k^=1;
+					// 座標のキャッシュ - 高速化を期待してみる
+					gw = mx/gx;
+					gh = my/gy;
+					for (x=0;x<=w;x++)
+						tmpx[x] = x*gw+dl;
+					for (y=0;y<=h;y++)
+						tmpy[y] = (y*gh+k)/2+dt;
+					// 描画
+					for (y=0;y<h;y++)
+						for (x=0;x<w;)
+							itoSprite(pget(buffer,x,y,w,h,bpp), tmpx[x], tmpy[y], tmpx[++x], tmpy[y+1], 0);
+				} else {
+					// 座標のキャッシュ - 高速化を期待してみる
 					for (x=0;x<dw;x++)
-						itoPoint(pget(buffer,x*dx,(y*2+k)*dy,w,h,bpp), x+dl, y+dt, 0);
+						tmpx[x] = x*dx;
+					for (y=0;y<dh;y++)
+						tmpy[y] = (y*2+k)*dy;
+					// 描画
+					for (y=0;y<dh;y++)
+						for (x=0;x<dw;x++)
+							itoPoint(pget(buffer,tmpx[x],tmpy[y],w,h,bpp), x+dl, y+dt, 0);
+					//	itoPoint(pget(buffer,x*dx,(y*2+k)*dy,w,h,bpp), x+dl, y+dt, 0);
+				}
 			} else {
-				for (y=0;y<dh;y++)
+				//printf("window: (%d,%d)-(%d,%d) %dx%d\n", dl, dt, dl+dw-1, dt+dh-1, dw, dh);
+				//printf("floats: m=%6.3lf,%6.3lf d=%6.3lf,%6.3lf g=%6.3lf,%6.3lf mg=%d,%d\n", mx, my, dx, dy, gw, gh, gx, gy);
+				if (gw > 1.5) {
+					// 座標のキャッシュ - 高速化を期待してみる
+					gw = mx/gx;
+					gh = my/gy;
+					for (x=0;x<=w;x++)
+						tmpx[x] = x*gw+dl;
+					for (y=0;y<=h;y++)
+						tmpy[y] = y*gh+dt;
+					// 描画
+					if (!bilinear) {
+						for (y=0;y<h;y++)
+							for (x=0;x<w;)
+								itoSprite(pget(buffer,x,y,w,h,bpp), tmpx[x], tmpy[y], tmpx[++x], tmpy[y+1], 0);
+						//	itoSprite(pget(buffer,x,y,w,h,bpp), x*gw+dl, y*gh+dt, (x+1)*gw+dl, (y+1)*gh+dt, 0);
+					} else {
+						// バイリニアテスト
+							itoPrimShade( ITO_PRIM_SHADE_GOURAUD );
+						for (y=0;y<h-1;y++) {
+							itoTriangleStrip(	pget(buffer,0,y  ,w,h,bpp), tmpx[0], tmpy[y]  , 0,
+												pget(buffer,0,y+1,w,h,bpp), tmpx[0], tmpy[y+1], 0,
+												pget(buffer,1,y  ,w,h,bpp), tmpx[1], tmpy[y]  , 0);
+							itoAddVertex(		pget(buffer,1,y+1,w,h,bpp), tmpx[1], tmpy[y+1], 0);
+							for (x=2;x<w;x++) {
+								itoAddVertex(	pget(buffer,x,y  ,w,h,bpp), tmpx[x], tmpy[y  ], 0);
+								itoAddVertex(	pget(buffer,x,y+1,w,h,bpp), tmpx[x], tmpy[y+1], 0);
+							}
+							itoEndVertex();
+							itoGsFinish();
+						}
+						// 結果: ピクセルが ↓ のようにスムージングされてしまう
+						//                 ／￣|
+						//                |＿／
+							itoPrimShade( ITO_PRIM_SHADE_FLAT );
+					}
+				} else {
+					// 座標のキャッシュ - 高速化を期待してみる
 					for (x=0;x<dw;x++)
-						itoPoint(pget(buffer,x*dx,y*dy,w,h,bpp), x+dl, y+dt, 0);
+						tmpx[x] = x*dx;
+					for (y=0;y<dh;y++)
+						tmpy[y] = y*dy;
+					// 描画
+					for (y=0;y<dh;y++)
+						for (x=0;x<dw;x++)
+							itoPoint(pget(buffer,tmpx[x],tmpy[y],w,h,bpp), x+dl, y+dt, 0);
+				}
 			}
+			if (alphablend)	itoPrimAlphaBlending(FALSE);
 			if (memoryerror) {
 //	デコード結果を表示できるようにヘッダをつけてPCにダンプ
 				printf("viewer: memory error at %08X (buff:%08X, ptr:%08X)\n", memoryerror, (int)&buffer[0], memoryerror-(int)&buffer[0]);
@@ -1268,5 +1433,79 @@ int set_viewerconfig(int linedisp, int tabspaces, int chardisp, int screenmode, 
 	tabdisp = nldisp = chardisp;
 	fullscreen = screenmode;
 	wordwrap = textwrap;
+	resizer = drawtype;
 	return 0;
 }
+
+int fntview(int mode, char *file, unsigned char *buffer, unsigned int size)
+{
+	// フォントビューア
+	//	*buffer が対応しているフォント形式なら表示する (単一のファイルのみ)
+	// 対応形式: FONTX2形式(半角/全角), MS-Win2.0(uLaunchELF互換)形式(半角かつビットマップフォントのみ)
+	int ret=0,i,redraw=fieldbuffers, ref=fieldbuffers;
+	char msg0[MAX_PATH], msg1[MAX_PATH];
+	int cx,cy,ox,oy,cp,op,tx,ty;
+	
+	cx=cy=cp=ox=oy=0; op=1;
+	strcpy(msg0, file);
+	while(1) {
+		waitPadReady(0, 0);
+		if(readpad()){
+			if (new_pad & PAD_SELECT) break;
+			if (new_pad & PAD_TRIANGLE) break;
+			if (new_pad & PAD_UP) cy--;
+			if (new_pad & PAD_DOWN) cy++;
+			if (new_pad & PAD_LEFT) cx--;
+			if (new_pad & PAD_RIGHT) cx++;
+			
+		}
+		if ((cx != ox) || (cy != oy) || (cp != op)) redraw = fieldbuffers;
+		if (ref) {
+			clrScr(setting->color[COLOR_BACKGROUND]);
+			setScrTmp(msg0, msg1);
+			ref--;
+		}
+		if (redraw) {
+			
+			// LbFn v0.70.14                                                             
+			// mass:/tmp.fnt                                                             
+			// ─────────────────────────────────────
+			//   種類: FONTX2(SBCS/ASCII), 8x16                                          
+			//   種類: FONTX2(DBCS/KANJI), 16x16, 11280 (4435) 字形                      
+			//   名称: KROM                                                              
+			//   文字一覧:                                                               
+			//   ┌─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┐  
+			//   │  │０│１│２│３│４│５│６│７│８│９│Ａ│Ｂ│Ｃ│Ｄ│Ｅ│Ｆ│  
+			//   ├─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┤  
+			//   │０│  │  │  │  │  │  │  │  │  │  │  │  │  │  │  │  │  
+			//   ├─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┤  
+			//   │１│  │  │  │  │  │  │  │  │  │  │  │  │  │  │  │  │  
+			//   ├─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┤  
+			//   │２│  │  │  │  │  │  │  │  │  │  │  │  │  │  │  │  │  
+			//   ├─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┤  
+			//   │３│  │  │  │  │  │  │  │  │  │  │  │  │  │  │  │  │  
+			//   ├─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┤  
+			//   │４│  │  │  │  │  │  │  │  │  │  │  │  │  │  │  │  │  
+			//   ├─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┤  
+			//   │５│  │  │  │  │  │  │  │  │  │  │  │  │  │  │  │  │  
+			//   ├─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┤  
+			//   │６│  │  │  │  │  │  │  │  │  │  │  │  │  │  │  │  │  
+			//   ├─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┤  
+			//   │７│  │  │  │  │  │  │  │  │  │  │  │  │  │  │  │  │  
+			//   └─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┘  
+			// ─────────────────────────────────────
+			//   ○/×:戻る                                                              
+			
+			for (ty=0; ty<16; ty++) {
+				//itoLine(setting->color[COLOR_FRAME], tx*16, ty*24+SCREEN_TOP, tx*16+16, ty*24+24+SCREEN_TOP, 0);
+			}
+			drawScr();
+			ox = cx; oy = cy; op = cp;
+			redraw--;
+		} else {
+			itoVSync();
+		}
+	}
+	return ret;
+}
+

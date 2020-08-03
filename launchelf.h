@@ -31,7 +31,7 @@
 #include <libmouse.h>
 
 // バージョン
-#define LBFN_VER "LbFn v0.70.13"
+#define LBFN_VER "LbFn v0.70.14"
 
 // 垂直スキャンレート
 //#define SCANRATE (ITO_VMODE_AUTO==ITO_VMODE_PAL ? 50:60)
@@ -45,6 +45,7 @@
 #define VFS_BOOT 5
 #define HDD_BOOT 6
 #define MASS_BOOT 7
+#define PCSX_BOOT 8
 
 enum
 {
@@ -65,6 +66,7 @@ enum
 	COLOR_FRAME,
 	COLOR_TEXT,
 	COLOR_HIGHLIGHTTEXT,
+//	COLOR_CONTROLTEXT,
 	COLOR_GRAYTEXT,
 	COLOR_DIR,
 	COLOR_FILE,
@@ -75,6 +77,29 @@ enum
 	COLOR_TXT,
 	COLOR_OUTSIDE,
 	NUM_COLOR
+};
+
+enum
+{
+	TXT_AUTO,
+	TXT_BINARY=TXT_AUTO,
+	TXT_LANG=TXT_AUTO,
+	TXT_ASCII,
+	TXT_SJIS,
+	TXT_EUCJP,
+	TXT_JIS,
+	TXT_BIG5,
+	TXT_EUCTW,
+	TXT_GB2312,
+	TXT_EUCCN,
+	TXT_JOHAB,
+	TXT_EUCKR,
+	TXT_UTF7,
+	TXT_UTF8,
+	TXT_UTF16BE,
+	TXT_UTF16LE,
+	TXT_UTF32BE,
+	TXT_UTF32LE,
 };
 
 enum
@@ -151,6 +176,7 @@ typedef struct
 	char AsciiFont[MAX_PATH];
 	char KanjiFont[MAX_PATH];
 	char LangFont[MAX_PATH];
+	int fontcache;
 	int CharMargin;
 	int LineMargin;
 	int FontBold;
@@ -179,6 +205,7 @@ typedef struct
 	char kbd_extpath[MAX_PATH];
 	char kbd_histpath[MAX_PATH];
 	char kbd_dicpath[MAX_PATH];
+	char downloadpath[MAX_PATH];
 	char sav_db_path[MAX_PATH];
 	int sav_ps1save;
 	int sav_ps2save;
@@ -224,6 +251,7 @@ void loadUsbMassModules(void);
 void loadUsbKbdModules(void);
 void loadUsbMouseModules(void);
 void loadHddModules(void);
+void delay(int count);
 
 /* elf.c */
 int checkELFheader(const char *filename);
@@ -330,12 +358,16 @@ extern int fieldbuffers;
 extern int ffmode, interlace;
 extern int fieldnow;
 extern int SCANRATE;
+extern char *font_ascii, *font_kanji;
+extern unsigned int font_ascii_size, font_kanji_size;
+extern uint64 totalcount;
 void setup_vsync();
 void drawDark(void);
 int drawDarks(int ret);
 void drawDialogTmp(int x1, int y1, int x2, int y2, uint64 color1, uint64 color2);
 void setScrTmp(const char *msg0, const char *msg1);
 void drawMsg(const char *msg);
+void drawBar(int x1, int y1, int x2, int y2, uint64 color, int ofs, int len, int size);
 void setupito(int tvmode);
 void clrScr(uint64 color);
 void drawScr(void);
@@ -354,9 +386,13 @@ void SetFontHalf(int flag);
 int GetFontHalf(void);
 void SetFontVHalf(int flag);
 int GetFontVHalf(void);
+int checkMSWinheader(const char *path);
 int checkFONTX2header(const char *path);
-void drawChar(unsigned char c, int x, int y, uint64 colour);
-int printXY(const unsigned char *s, int x, int y, uint64 colour, int draw);
+//void drawChar(unsigned char c, int x, int y, uint64 colour);
+void drawChar_JIS(unsigned int c, int x, int y, uint64 fcol, uint64 scol, unsigned char *ctrlchars);
+int printXY(const unsigned char *s, int x, int y, uint64 color, int draw);
+int drawString(const unsigned char *s, int charset, int x, int y, uint64 fcol, uint64 scol, unsigned char *ctrlchars);
+
 #ifdef ENABLE_ICON
 void loadIcon(void);
 int drawIcon(int x, int y, int w, int h, int id);
@@ -424,7 +460,6 @@ int newdir(const char *path, const char *name);
 #ifdef ENABLE_PSB
 int psb(const char *psbpath);
 #endif
-int keyboard(char *out, int max);
 void getFilePath(char *out, const int cnfmode);
 
 /* language.c */
@@ -459,11 +494,33 @@ int tek_comp(int type, char *src, int size, char *dst, int limit);
 /* viewer.c */
 int txteditfile(int mode, char *file);
 int txtedit(int mode, char *file, unsigned char *buffer, unsigned int size);
+int bineditfile(int mode, char *file);
+int binedit(int mode, char *file, unsigned char *buffer, unsigned int size);
+int imgviewfile(int mode, char *file);
+int imgview(int mode, char *file, unsigned char *buffer, int w, int h, int bpp);
+int viewer_file(int mode, char *file);
+int viewer(int mode, char *file, unsigned char *buffer, unsigned int size);
+int fntview_file(int mode, char *file);
+int fntview(int mode, char *file, unsigned char *buffer, unsigned int size);
+int pcmpause(void);
+int pcmplay(void);
+int pcminit(int mode, int rate, int channels, int bits);
+int pcmclear(void);
+int pcmadd(char *buffer, int size);
 int formatcheck(unsigned char *buff, unsigned int size);
 int formatcheckfile(char *file);
 int set_viewerconfig(int linedisp, int tabspaces, int chardisp, int screenmode, int textwrap, int drawtype);
 //int set_viewerconfig(int *conf);
 
 /* misc.c */
+enum{
+	SKBD_ALL=0,	
+	SKBD_IP,
+	SKBD_FILE,
+	SKBD_TITLE,
+};
 extern char LBF_VER[];
+int keyboard(int type, char *buff, int limit);
+int NetworkDownload(char* msg0);
+
 #endif

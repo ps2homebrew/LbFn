@@ -11,6 +11,8 @@
 #include <itogs.h>
 #include <itoglobal.h>
 
+//#include <stdio.h>
+
 void itoSetTEX0();
 
 //-----------------------------------------------------------------
@@ -24,7 +26,7 @@ uint64 *itoActivePacketStart align(128);
 // Packet used for video setup and textureloading, etc.
 //-----------------------------------------------------------------
 
-uint64 itoPacket[ 20 * 2 ] align(16);
+uint64 itoPacket[ 20 * 2 + 1024] align(16);
 
 uint8	itoActiveFrameBuffer;
 uint8	itoVisibleFrameBuffer;
@@ -64,8 +66,9 @@ void itoGsEnvSubmit(itoGsEnv* env)
 		ito.screen.psm = env->screen.psm;
 		ito.screen.x = env->screen.x;//  * (ito.screen.mag_x+1);
 		ito.screen.y = env->screen.y;
-		ito.screen.height = env->screen.height;
+		ito.screen.height = height;
 		ito.screen.width = bufferwidth;
+		ito.screen.dwidth = width;
 
 		//-----------------------------------------------------------------
 		// offset_x, offset_y calculations taken from duke's lib.
@@ -88,13 +91,17 @@ void itoGsEnvSubmit(itoGsEnv* env)
 
 		//printf("bufferwidth: %d\nheight: %d\n psm: %d\npixelsize: %d\n buffersize: %d (%08X)\n", bufferwidth, env->screen.height, env->screen.psm, itoGetPixelSize(env->screen.psm), buffersize, buffersize);
 		ito.fbp[ITO_FRAMEBUFFER1] = 0;//env->framebuffer1;//((env->framebuffer1.y*bufferwidth) + env->framebuffer1.x)*itoGetPixelSize(env->screen.psm);
-		ito.fbp[ITO_FRAMEBUFFER2] = buffersize * env->doublebuffer;//env->framebuffer2;//((env->framebuffer2.y*bufferwidth) + env->framebuffer2.x)*itoGetPixelSize(env->screen.psm);
+		ito.fbp[ITO_FRAMEBUFFER2] = 0x200000 * env->doublebuffer;//env->framebuffer2;//((env->framebuffer2.y*bufferwidth) + env->framebuffer2.x)*itoGetPixelSize(env->screen.psm);
 		
-		ito.zbuffer.base		= buffersize * (env->doublebuffer+1);;//((env->zbuffer.y*bufferwidth) + env->zbuffer.x)*itoGetPixelSize(env->screen.psm);
-		ito.texturebuffer.base	= ito.zbuffer.base + ((bufferwidth * env->screen.height * itoGetZPixelSize(env->zpsm) +8191) & (-8192));
-
-
-		//------------------------------------------------------------
+		ito.zbuffer.base		= 0; //buffersize * (env->doublebuffer+1);;//((env->zbuffer.y*bufferwidth) + env->zbuffer.x)*itoGetPixelSize(env->screen.psm);
+		ito.texturebuffer.base	= 0x3C0000;//ito.zbuffer.base + ((bufferwidth * env->screen.height * itoGetZPixelSize(env->zpsm) +8191) & (-8192));
+/*
+		printf("itogs: buffersize=%d (%08X)\n", buffersize, buffersize);
+		printf("itogs: framebuffer0: %08X\n", ito.fbp[0]);
+		printf("itogs: framebuffer1: %08X\n", ito.fbp[1]);
+		printf("itogs: z buffer    : %08X\n", ito.zbuffer.base);
+		printf("itogs: tex buffer  : %08X\n", ito.texturebuffer.base);
+*/		//------------------------------------------------------------
 		//------------------------------------------------------------
 		
 			itoiPutIMR(0xFF00); // // Mask everything, itoGsReset() also does this.
@@ -112,7 +119,7 @@ void itoGsEnvSubmit(itoGsEnv* env)
 		itoSetActivePacket( &itoPacket[0] );
 		
 
-		itoGifTag(13, TRUE, FALSE, 0, ITO_GIFTAG_TYPE_LIST, 1, ITO_GIFTAG_A_D); // GifTag for Gs Enviroment Settings
+		itoGifTag(14, TRUE, FALSE, 0, ITO_GIFTAG_TYPE_LIST, 1, ITO_GIFTAG_A_D); // GifTag for Gs Enviroment Settings
 
 		for(i=ITO_FRAMEBUFFER1; i < (ITO_FRAMEBUFFER2+1); i++)
 		{
@@ -128,6 +135,7 @@ void itoGsEnvSubmit(itoGsEnv* env)
 			itoPRMODECONT(PRMODE_PRIM); // use prim register for prim attributes
 			itoCOLCLAMP(TRUE); // Perform ColClamp
 			itoDITHER(env->dither);
+			itoMATRIX(env->matrix);
 		
 		itoSendActivePacket();
 		itoDmaWait();
@@ -301,7 +309,10 @@ void itoMoveTexture(	uint8 psm, uint16 w, uint16 h,
 // DMA mode.
 // TODO: Optimize.
 // -------------------------------------------------
-void itoLoadTexture(void *src, uint32 dest, uint32 tbw, uint8 psm, uint16 x, uint16 y, uint16 w, uint16 h )
+void itoLoadTexture(void *src, uint32 dest, 
+					uint32 tbw, uint8 psm, 
+					uint16 x, uint16 y, 
+					uint16 w, uint16 h )
 {
 	
 	uint32 packets;
@@ -564,11 +575,25 @@ void itoCOLCLAMP( uint64 colclamp)
 //-----------------------------------------------------------------
 void itoDITHER( uint64 dither)
 {
+/*	if (dither) {
+		//itoActivePacket[0] = 0x5D7F91B36E4CA280;
+		itoActivePacket[0] = 0x4026264040262640;
+	} else {
+		itoActivePacket[0] = 0x0000000000000000;
+	}
+	itoActivePacket[1] = GS_REG_DIMX;
+	itoActivePacket+=2;
+	*/
 	itoActivePacket[0] = dither;
 	itoActivePacket[1] = GS_REG_DTHE;
 	itoActivePacket+=2;
 }
-
+void itoMATRIX( uint64 matrix)
+{
+	itoActivePacket[0] = matrix; //0x2626404026264040;
+	itoActivePacket[1] = GS_REG_DIMX;
+	itoActivePacket+=2;
+}
 
 //-----------------------------------------------------------------
 // FRAME
@@ -799,10 +824,12 @@ void itoGsReset()
 // GS interface (GIF)
 //-----------------------------------------------------------------
 //-----------------------------------------------------------------
-
+//itoGifTag(1, 1, 0, 0, 0, 1, 
 void itoGifTag(uint16 nloop, uint8 eop, uint8 pre, uint16 prim, uint8 flag,uint8 nreg, uint64 regs)
 {
-	itoActivePacket[0] = ((uint64)nreg << 60) | ((uint64)flag << 58) | ((uint64)prim << 47) | ((uint64)pre << 46) | ((uint64)eop << 15) | nloop;
+	itoActivePacket[0] = ((uint64)nreg << 60) | ((uint64)flag << 58) |
+	 ((uint64)prim << 47) | ((uint64)pre << 46) | ((uint64)eop << 15) |
+	  nloop;
 	itoActivePacket[1] = regs;
 	itoActivePacket+=2;
 }
@@ -1024,7 +1051,8 @@ void itoSetScreenPos(uint16 x, uint16 y)
 	//-----------------------------------------------------------------
 	// using global vars
 	//-----------------------------------------------------------------
-	itoDISPLAY2(x, y, ito.screen.mag_x, ito.screen.mag_y, (ito.screen.width-1)*(ito.screen.mag_x+1), (ito.screen.height-1)*(ito.screen.mag_y+1) );
+	itoDISPLAY2(x, y, ito.screen.mag_x, ito.screen.mag_y, ito.screen.dwidth, ito.screen.height);
+	//itoDISPLAY2(x, y, ito.screen.mag_x, ito.screen.mag_y, (ito.screen.width-1)*(ito.screen.mag_x+1), (ito.screen.height-1)*(ito.screen.mag_y+1) );
 }
 
 void itoSetAlphaBlending(uint8 a, uint8 b, uint8 c, uint8 d, uint8 fix)

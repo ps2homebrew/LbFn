@@ -4,6 +4,8 @@
 #define MAX_LANGUAGE_STR 64
 #define	MAX_MESSAGE_STR 256
 #define	MAX_FMCB_LANGS 64
+#define	MAX_SKBD_LANGS 32
+#define	MAX_UPDATE_LANGS 32
 enum
 {
 	LANG_ENGLISH = 0,
@@ -90,11 +92,6 @@ typedef struct
 	char filer_l2popup_icon[MAX_LANGUAGE_STR];
 	char filer_l2popup_flicker[MAX_LANGUAGE_STR];
 	char filer_l2popup_sort[MAX_LANGUAGE_STR];
-	char kbd_page[16][MAX_LANGUAGE_STR];
-	char kbd_enter[MAX_LANGUAGE_STR];
-	char kbd_abort[MAX_LANGUAGE_STR];
-	char kbd_helpl[MAX_LANGUAGE_STR];
-	char kbd_helpr[MAX_LANGUAGE_STR];
 
 	//editor
 	char editor_viewer_help[MAX_LANGUAGE_STR];
@@ -244,6 +241,7 @@ typedef struct
 	char conf_usbmouse_use[MAX_LANGUAGE_STR];
 	char conf_usbmouse_path[MAX_LANGUAGE_STR];
 	char conf_auto_decompression[MAX_LANGUAGE_STR];
+	char conf_downloadpath[MAX_LANGUAGE_STR];
 	char conf_miscsettinginit[MAX_LANGUAGE_STR];
 	char conf_filersettinginit[MAX_LANGUAGE_STR];
 	char conf_devicesettinginit[MAX_LANGUAGE_STR];
@@ -311,6 +309,13 @@ typedef struct
 	char conf_default[MAX_LANGUAGE_STR];
 	
 	char fmcb[MAX_FMCB_LANGS][MAX_LANGUAGE_STR];
+	char nupd[MAX_UPDATE_LANGS][MAX_LANGUAGE_STR];
+	char kbd_page[16][MAX_LANGUAGE_STR];
+	char kbd_enter[MAX_LANGUAGE_STR];
+	char kbd_abort[MAX_LANGUAGE_STR];
+	char kbd_helpl[MAX_LANGUAGE_STR];
+	char kbd_helpr[MAX_LANGUAGE_STR];
+	char kbd[MAX_SKBD_LANGS][MAX_LANGUAGE_STR];
 } LANGUAGE;
 
 #endif

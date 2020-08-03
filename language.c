@@ -102,6 +102,21 @@ void SetLanguage(const int langID)
 		strcpy(lang->filer_l2popup_icon, "Icon");
 		strcpy(lang->filer_l2popup_flicker, "Flicker Control");
 		strcpy(lang->filer_l2popup_sort, "Sort Mode");
+		/*
+		strcpy(lang->kbd_page[ 0], "ASCII");
+		strcpy(lang->kbd_page[ 1], "for IP");
+		strcpy(lang->kbd_page[ 2], "HalfMarks");
+		strcpy(lang->kbd_page[ 3], "FullMarks");
+		strcpy(lang->kbd_page[ 4], "Hiragana");
+		strcpy(lang->kbd_page[ 5], "Katakana");
+		strcpy(lang->kbd_page[ 6], "Kanji-on");
+		strcpy(lang->kbd_page[ 7], "Kanji-kun");
+		strcpy(lang->kbd_page[ 8], "History");
+		strcpy(lang->kbd_page[ 9], "Raw");
+		strcpy(lang->kbd_page[10], "Custom");
+		strcpy(lang->kbd_page[11], "Extend");
+		strcpy(lang->kbd_page[12], "Direct");
+		*/
 		strcpy(lang->kbd_page[0], "ASCII");
 		strcpy(lang->kbd_page[1], "Hiragana");
 		strcpy(lang->kbd_page[2], "Katakana");
@@ -112,6 +127,7 @@ void SetLanguage(const int langID)
 		strcpy(lang->kbd_page[7], "Raw");
 		strcpy(lang->kbd_page[8], "Custom");
 		strcpy(lang->kbd_page[9], "Extended");
+
 		strcpy(lang->kbd_enter,    "Enter");
 		strcpy(lang->kbd_abort,    "Abort");
 		strcpy(lang->kbd_helpl, "○:Change ×:BS L1:Left R1:Right R2:Chars");
@@ -127,8 +143,10 @@ void SetLanguage(const int langID)
 		strcpy(lang->editor_l2popup_linenum, "Line Number Count");
 		strcpy(lang->editor_l2popup_flicker, "Flicker Control");
 		strcpy(lang->editor_l2popup_wordwrap, "Auto New Line Mode");
-		strcpy(lang->editor_image_help, "○:FullScreen △/×:Exit  SIZE:%d×%d");
-		strcpy(lang->editor_image_help2, "○:FullScreen L1:Prev R1:Next △/×:Exit SIZE:%d×%d");
+		strcpy(lang->editor_image_help, "○:Frame □:Zoom △/×:Exit  SIZE:%d×%d (%dx%d)");
+		strcpy(lang->editor_image_help2, "○:Frame □:Zoom L1:Prev R1:Next △/×:Exit SIZE:%d×%d (%dx%d)");
+		//								  1234567890123456789012345678901234567890123456789012345678901234
+		//									       1         2         3         4         5         6    
 		}
 		//config
 		{
@@ -203,8 +221,8 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_ipsaved, "Saved");
 		strcpy(lang->conf_ipsavefailed, "Save Failed");
 		//font
-		strcpy(lang->conf_AsciiFont, "ASCII FONT");
-		strcpy(lang->conf_KanjiFont, "KANJI FONT");
+		strcpy(lang->conf_AsciiFont, "SBCS FONT");
+		strcpy(lang->conf_KanjiFont, "DBCS FONT");
 		strcpy(lang->conf_CharMargin, "CHAR MARGIN");
 		strcpy(lang->conf_LineMargin, "LINE MARGIN");
 		strcpy(lang->conf_FontBold, "FONT BOLD");
@@ -213,11 +231,11 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_FontScaler, "FIX FONT MODE");
 		strcpy(lang->conf_FontScaler_A, "Faster (nearest/composite)");
 		strcpy(lang->conf_FontScaler_B, "Normal (bilinear)");
-		strcpy(lang->conf_FontScaler_C, "4x AA (and bilinear)");
-		strcpy(lang->conf_AsciiMarginTop,  "ASCII MARGIN TOP ");
-		strcpy(lang->conf_AsciiMarginLeft, "ASCII MARGIN LEFT");
-		strcpy(lang->conf_KanjiMarginTop,  "KANJI MARGIN TOP ");
-		strcpy(lang->conf_KanjiMarginLeft, "KANJI MARGIN LEFT");
+		strcpy(lang->conf_FontScaler_C, "Reserved");
+		strcpy(lang->conf_AsciiMarginTop,  "SBCS MARGIN TOP ");
+		strcpy(lang->conf_AsciiMarginLeft, "SBCS MARGIN LEFT");
+		strcpy(lang->conf_KanjiMarginTop,  "DBCS MARGIN TOP ");
+		strcpy(lang->conf_KanjiMarginLeft, "DBCS MARGIN LEFT");
 		strcpy(lang->conf_fontsettinginit, "FONT SETTING INIT");
 		//viewer
 		strcpy(lang->conf_linenumber, "DISPLAY LINE NUMBER IN TEXT");
@@ -225,17 +243,9 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_chardisp,   "DISPLAY RETURN AND TAB CODE IN TEXT");
 		strcpy(lang->conf_wordwrap,   "AUTO NEW LINE IN TEXT");
 		strcpy(lang->conf_fullscreen, "FULLSCREEN MODE IN IMAGE");
-		strcpy(lang->conf_imageresize,"RESIZE IN IMAGE");
+		strcpy(lang->conf_imageresize,"DO NOT RESIZE IN IMAGE");
 		strcpy(lang->conf_autodecode, "AUTO DECODE OF TEK COMPRESSION");
 		strcpy(lang->conf_viewerinit, "VIEWER SETTING INIT");
-		strcpy(lang->conf_imageresizes[0], "OFF");
-		strcpy(lang->conf_imageresizes[1], "ONNNNNN");
-		strcpy(lang->conf_imageresizes[2], "OFF");
-		strcpy(lang->conf_imageresizes[3], "OFF");
-		strcpy(lang->conf_imageresizes[4], "OFF");
-		strcpy(lang->conf_imageresizes[5], "OFF");
-		strcpy(lang->conf_imageresizes[6], "OFF");
-		strcpy(lang->conf_imageresizes[7], "OFF");
 		//misc
 		strcpy(lang->conf_language, "LANGUAGE");
 		strcpy(lang->conf_language_us, "ENGLISH");
@@ -274,6 +284,7 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_usbkbd_path, "PS2KBD.IRX");
 		strcpy(lang->conf_usbmouse_use, "USE USB MOUSE");
 		strcpy(lang->conf_usbmouse_path, "PS2MOUSE.IRX");
+		strcpy(lang->conf_downloadpath, "DEFAULT DOWNLOAD DIR");
 		strcpy(lang->conf_miscsettinginit, "MISC SETTING INIT");
 		strcpy(lang->conf_filersettinginit, "FILER SETTING INIT");
 		strcpy(lang->conf_devicesettinginit, "DEVICE SETTING INIT");
@@ -394,6 +405,34 @@ void SetLanguage(const int langID)
 		strcpy(lang->fmcb[49], "Setting was initialized");
 		strcpy(lang->fmcb[50], "All set to default");
 		}
+		// ネットワークダウンロード
+		{
+		strcpy(lang->nupd[ 0], "NetworkDownload");
+		strcpy(lang->nupd[ 1], "Download file: %s");
+		strcpy(lang->nupd[ 2], "Save folder of downloaded file: %s");
+		strcpy(lang->nupd[ 3], "Save with change the filename: %s");
+		strcpy(lang->nupd[ 4], "Make the backup: %s");
+		strcpy(lang->nupd[ 5], "Execute");
+		strcpy(lang->nupd[ 6], "Return");
+		strcpy(lang->nupd[ 7], "Begin the download.\nAre you ready?");
+		strcpy(lang->nupd[ 8], "Now downloading...");
+		strcpy(lang->nupd[ 9], "Now saving...");
+		strcpy(lang->nupd[10], "Download was failed.");
+		strcpy(lang->nupd[11], "Loading DNS driver");
+		strcpy(lang->nupd[12], "Loading HTTP driver");
+		strcpy(lang->nupd[13], "Now downloading the list.");
+		strcpy(lang->nupd[14], "Failed download the list.");
+		strcpy(lang->nupd[15], "Verify was failed.");
+		strcpy(lang->nupd[16], "Now making the backup");
+		strcpy(lang->nupd[17], "Backup was failed.\nAre you continue?");
+		strcpy(lang->nupd[18], "Out of free space.");
+		strcpy(lang->nupd[19], "○:Look L1:Prev R1:Next R2:Info △:Up");
+		strcpy(lang->nupd[20], "○:Change ×/□:Default △:Up");
+		strcpy(lang->nupd[21], "○:OK △:Up");
+		strcpy(lang->nupd[22], "Loading TCP/IP (PS2IP) driver");
+		strcpy(lang->nupd[23], "Loading LAN (PS2SMAP) device driver");
+		strcpy(lang->nupd[24], "Download was completed.");
+		}
 		strcpy(lang->conf_on, "ON");
 		strcpy(lang->conf_off, "OFF");
 		strcpy(lang->conf_edit, "Edit");
@@ -483,6 +522,21 @@ void SetLanguage(const int langID)
 		strcpy(lang->filer_l2popup_icon, "アイコン表\示");
 		strcpy(lang->filer_l2popup_flicker, "フリッカーコントロール");
 		strcpy(lang->filer_l2popup_sort, "リスト並び");
+		/*
+		strcpy(lang->kbd_page[ 0], "ASCII");
+		strcpy(lang->kbd_page[ 1], "IP入力用");
+		strcpy(lang->kbd_page[ 2], "半角記号");
+		strcpy(lang->kbd_page[ 3], "全角記号");
+		strcpy(lang->kbd_page[ 4], "ひらがな");
+		strcpy(lang->kbd_page[ 5], "カタカナ");
+		strcpy(lang->kbd_page[ 6], "漢字(音)");
+		strcpy(lang->kbd_page[ 7], "漢字(訓)");
+		strcpy(lang->kbd_page[ 8], "漢字履歴");
+		strcpy(lang->kbd_page[ 9], "文字一覧");
+		strcpy(lang->kbd_page[10], "カスタム");
+		strcpy(lang->kbd_page[11], "外部拡張");
+		strcpy(lang->kbd_page[12], "直接入力");
+		*/
 		strcpy(lang->kbd_page[0], "ASCII");
 		strcpy(lang->kbd_page[1], "ひらがな");
 		strcpy(lang->kbd_page[2], "カタカナ");
@@ -493,7 +547,8 @@ void SetLanguage(const int langID)
 		strcpy(lang->kbd_page[7], "文字一覧");
 		strcpy(lang->kbd_page[8], "カスタム");
 		strcpy(lang->kbd_page[9], "外部拡張");
-		strcpy(lang->kbd_enter,    "終了");
+		
+		strcpy(lang->kbd_enter,    "決定");
 		strcpy(lang->kbd_abort,    "中止");
 		strcpy(lang->kbd_helpl, "○:決定 ×:削除 L1:左へ R1:右へ R2:入力へ");
 		strcpy(lang->kbd_helpr, "○:入力 ×:削除 △:戻る L1:左へ R1:右へ L2:種類へ R2:登録");
@@ -508,8 +563,10 @@ void SetLanguage(const int langID)
 		strcpy(lang->editor_l2popup_linenum, "行番号表\示");
 		strcpy(lang->editor_l2popup_flicker, "フリッカーコントロール");
 		strcpy(lang->editor_l2popup_wordwrap, "右端で折り返し変更");
-		strcpy(lang->editor_image_help, "○:フルスクリーン △/×:戻る サイズ:%d×%d");
-		strcpy(lang->editor_image_help2, "○:フルスクリーン L1:前へ R1:次へ △/×:戻る サイズ:%d×%d");
+		strcpy(lang->editor_image_help, "○:フル □:ズーム △/×:戻る 画像:%d×%d 表\示:%d×%d");
+		strcpy(lang->editor_image_help2, "○:フル □:ズーム L1/R1:前/次 △/×:戻る サイズ:%d×%d (%d×%d)");
+		//								  1234567890123456789012345678901234567890123456789012345678901234
+		//									       1         2         3         4         5         6    
 		}
 		//config
 		{
@@ -584,8 +641,8 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_ipsaved, "保存完了");
 		strcpy(lang->conf_ipsavefailed, "保存失敗");
 		//font
-		strcpy(lang->conf_AsciiFont, "アスキーフォント");
-		strcpy(lang->conf_KanjiFont, "漢字フォント    ");
+		strcpy(lang->conf_AsciiFont, "半角フォント");
+		strcpy(lang->conf_KanjiFont, "全角フォント");
 		strcpy(lang->conf_CharMargin, "文字の間隔");
 		strcpy(lang->conf_LineMargin, "行の間隔  ");
 		strcpy(lang->conf_FontBold, "太字にする");
@@ -594,11 +651,11 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_FontScaler, "フォント補正モード");
 		strcpy(lang->conf_FontScaler_A, "高速");
 		strcpy(lang->conf_FontScaler_B, "標準");
-		strcpy(lang->conf_FontScaler_C, "高画質");
-		strcpy(lang->conf_AsciiMarginTop, "アスキーフォントの上の間隔");
-		strcpy(lang->conf_AsciiMarginLeft, "アスキーフォントの左の間隔");
-		strcpy(lang->conf_KanjiMarginTop, "漢字フォントの上の間隔");
-		strcpy(lang->conf_KanjiMarginLeft, "漢字フォントの左の間隔");
+		strcpy(lang->conf_FontScaler_C, "未定");
+		strcpy(lang->conf_AsciiMarginTop, "半角フォントの上の間隔");
+		strcpy(lang->conf_AsciiMarginLeft, "半角フォントの左の間隔");
+		strcpy(lang->conf_KanjiMarginTop, "全角フォントの上の間隔");
+		strcpy(lang->conf_KanjiMarginLeft, "全角フォントの左の間隔");
 		strcpy(lang->conf_fontsettinginit, "「フォント設定」を初期化する");
 		//viewer
 		strcpy(lang->conf_linenumber, "テキストの行番号表\示");
@@ -606,17 +663,9 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_chardisp,   "テキストの改行やTABのマーク表\示");
 		strcpy(lang->conf_wordwrap,   "テキストの行末の折り返し処理");
 		strcpy(lang->conf_fullscreen, "イメージのフルスクリーンモード");
-		strcpy(lang->conf_imageresize,"イメージのリサイズ処理");
+		strcpy(lang->conf_imageresize,"イメージをリサイズしないで表\示");
 		strcpy(lang->conf_autodecode, "tek圧縮の自動伸張");
 		strcpy(lang->conf_viewerinit, "「ビューア設定」を初期化する");
-		strcpy(lang->conf_imageresizes[0], "OFF");
-		strcpy(lang->conf_imageresizes[1], "画像全体を描画領域全体にリサイズ");
-		strcpy(lang->conf_imageresizes[2], "OFF");
-		strcpy(lang->conf_imageresizes[3], "OFF");
-		strcpy(lang->conf_imageresizes[4], "OFF");
-		strcpy(lang->conf_imageresizes[5], "OFF");
-		strcpy(lang->conf_imageresizes[6], "OFF");
-		strcpy(lang->conf_imageresizes[7], "OFF");
 		//misc
 		strcpy(lang->conf_language, "LANGUAGE");
 		strcpy(lang->conf_language_us, "ENGLISH");
@@ -655,6 +704,7 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_usbkbd_path, "PS2KBD.IRX");
 		strcpy(lang->conf_usbmouse_use, "USBマウスを使用する");
 		strcpy(lang->conf_usbmouse_path, "PS2MOUSE.IRX");
+		strcpy(lang->conf_downloadpath, "標準ダウンロードフォルダ");
 		strcpy(lang->conf_miscsettinginit, "「その他設定」を初期化する");
 		strcpy(lang->conf_filersettinginit, "「ファイラー設定」を初期化する");
 		strcpy(lang->conf_devicesettinginit, "「デバイス設定」を初期化する");
@@ -733,8 +783,8 @@ void SetLanguage(const int langID)
 		strcpy(lang->fmcb[22], "アイテムの色:   ");
 		strcpy(lang->fmcb[23], "メニューの水平位置: %3d");
 		strcpy(lang->fmcb[24], "メニューの垂直位置: %3d");
-		strcpy(lang->fmcb[25], "Enter:          ");
-		strcpy(lang->fmcb[26], "Version:        ");
+		strcpy(lang->fmcb[25], "決定:           ");
+		strcpy(lang->fmcb[26], "本体設定:       ");
 		strcpy(lang->fmcb[40], "メニューアイテム番号: %3d");
 		strcpy(lang->fmcb[29], "アイテム名: %s");
 		strcpy(lang->fmcb[30], "登録%d: %s");
@@ -772,6 +822,34 @@ void SetLanguage(const int langID)
 		strcpy(lang->fmcb[48], "○:次へ ×:前へ");
 		strcpy(lang->fmcb[49], "設定を初期化しました");
 		strcpy(lang->fmcb[50], "標準値をロードしました");
+		}
+		// ネットワークダウンロード
+		{
+		strcpy(lang->nupd[ 0], "ネットワークダウンロード");
+		strcpy(lang->nupd[ 1], "ファイル: %s");
+		strcpy(lang->nupd[ 2], "ダウンロード先: %s");
+		strcpy(lang->nupd[ 3], "ファイル名の変更: %s");
+		strcpy(lang->nupd[ 4], "バックアップ作成: %s");
+		strcpy(lang->nupd[ 5], "実行する");
+		strcpy(lang->nupd[ 6], "戻る");
+		strcpy(lang->nupd[ 7], "ダウンロードを開始します。\nよろしいですか?");
+		strcpy(lang->nupd[ 8], "ダウンロードしています。");
+		strcpy(lang->nupd[ 9], "ファイルを書き込み中です。");
+		strcpy(lang->nupd[10], "ファイルのダウンロードが失敗しました。");
+		strcpy(lang->nupd[11], "DNSドライバを読み込み中です");
+		strcpy(lang->nupd[12], "HTTPドライバを読み込み中です");
+		strcpy(lang->nupd[13], "ダウンロードリストを取得しています");
+		strcpy(lang->nupd[14], "ダウンロードリストの取得に失敗しました");
+		strcpy(lang->nupd[15], "ファイルの検査で失敗しました");
+		strcpy(lang->nupd[16], "バックアップを作成しています");
+		strcpy(lang->nupd[17], "バックアップの作成に失敗しました\n続行してもよろしいですか?");
+		strcpy(lang->nupd[18], "空き容量が不足しています");
+		strcpy(lang->nupd[19], "○:見る L1:前へ R1:次へ R2:情報 △:戻る");
+		strcpy(lang->nupd[20], "○:変更 ×/□:標準 △:戻る");
+		strcpy(lang->nupd[21], "○:決定 △:戻る");
+		strcpy(lang->nupd[22], "TCP/IPドライバを読み込み中です");
+		strcpy(lang->nupd[23], "LANデバイスドライバを読み込み中です");
+		strcpy(lang->nupd[24], "ダウンロードが完了しました");
 		}
 		strcpy(lang->conf_on, "ON");
 		strcpy(lang->conf_off, "OFF");
