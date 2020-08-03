@@ -1332,7 +1332,7 @@ void LaunchMain(void)
 		"MISC/INFO",
 		"MISC/IPCONFIG",
 		"MISC/GSCONFIG",
-		//"MISC/FMCBCONFIG",
+		"MISC/FMCBCONFIG",
 		"MISC/CONFIG",
 	};
 

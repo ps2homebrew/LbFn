@@ -1,10 +1,11 @@
 #include "launchelf.h"
 
-LANGUAGE *lang;
+LANGUAGE *lang=NULL;
 
 //-------------------------------------------------
 void InitLanguage(void)
 {
+	if (lang != NULL) free(lang);
 	lang = (LANGUAGE*)malloc(sizeof(LANGUAGE));
 	SetLanguage(LANG_ENGLISH);
 }
@@ -12,7 +13,7 @@ void InitLanguage(void)
 //-------------------------------------------------
 void FreeLanguage(void)
 {
-	free(lang);
+	if (lang != NULL) free(lang);
 }
 
 //-------------------------------------------------
@@ -101,6 +102,20 @@ void SetLanguage(const int langID)
 		strcpy(lang->filer_l2popup_icon, "Icon");
 		strcpy(lang->filer_l2popup_flicker, "Flicker Control");
 		strcpy(lang->filer_l2popup_sort, "Sort Mode");
+		strcpy(lang->kbd_page[0], "ASCII");
+		strcpy(lang->kbd_page[1], "Hiragana");
+		strcpy(lang->kbd_page[2], "Katakana");
+		strcpy(lang->kbd_page[3], "Num,Marks");
+		strcpy(lang->kbd_page[4], "Kanji-on");
+		strcpy(lang->kbd_page[5], "Kanji-kun");
+		strcpy(lang->kbd_page[6], "History");
+		strcpy(lang->kbd_page[7], "Raw");
+		strcpy(lang->kbd_page[8], "Custom");
+		strcpy(lang->kbd_page[9], "Extended");
+		strcpy(lang->kbd_enter,    "Enter");
+		strcpy(lang->kbd_abort,    "Abort");
+		strcpy(lang->kbd_helpl, "○:Change ×:BS L1:Left R1:Right R2:Chars");
+		strcpy(lang->kbd_helpr, "○:Insert ×:BS △:Return L1:Left R1:Right L2:Type R2:Regist");
 		}
 		//editor
 		{
@@ -312,6 +327,73 @@ void SetLanguage(const int langID)
 		strcpy(lang->gs_apply,			"Apply");
 		strcpy(lang->gs_default,		"Default");
 		}
+		//	FMCB_CONFIG
+		{
+		strcpy(lang->fmcb[ 0], "NULL");
+		strcpy(lang->fmcb[ 1], "Load CNF from: %s");
+		strcpy(lang->fmcb[ 2], "Save CNF to: %s");
+		strcpy(lang->fmcb[ 3], "Configutre launcher buttons...");
+		strcpy(lang->fmcb[ 4], "Configutre OSDSYS options...");
+		strcpy(lang->fmcb[ 5], "Configutre ESR path...");
+		strcpy(lang->fmcb[ 6], "FastBoot: %s");
+		strcpy(lang->fmcb[ 7], "Debug Screen: %s");
+		strcpy(lang->fmcb[ 8], "Pad Delay: %d.%d");
+		strcpy(lang->fmcb[ 9], "Return");
+		strcpy(lang->fmcb[10], "Pad: %s");
+		strcpy(lang->fmcb[11], "Check the all launcher buttons");
+		strcpy(lang->fmcb[12], "Hacked OSDSYS: %s");
+		strcpy(lang->fmcb[13], "Configutre Items...");
+		strcpy(lang->fmcb[14], "Configutre Scrolling Options...");
+		strcpy(lang->fmcb[15], "Video Mode: %s");
+		strcpy(lang->fmcb[16], "Skip MC update check: %s");
+		strcpy(lang->fmcb[17], "Skip HDD update check: %s");
+		strcpy(lang->fmcb[18], "Skip Disc Boot: %s");
+		strcpy(lang->fmcb[19], "Skip Sony Logo: %s");
+		strcpy(lang->fmcb[20], "Go to Browser: %s");
+		strcpy(lang->fmcb[21], "Selected Color:   ");
+		strcpy(lang->fmcb[22], "Unselected Color: ");
+		strcpy(lang->fmcb[23], "Menu X: %3d");
+		strcpy(lang->fmcb[24], "Menu y: %3d");
+		strcpy(lang->fmcb[25], "Enter:            ");
+		strcpy(lang->fmcb[26], "Version:          ");
+		strcpy(lang->fmcb[40], "Number of Item: %3d");
+		strcpy(lang->fmcb[29], "Name: %s");
+		strcpy(lang->fmcb[30], "Path%d: %s");
+		strcpy(lang->fmcb[31], "Scroll Menu: %s");
+		strcpy(lang->fmcb[32], "Displayed Items: %3d");
+		strcpy(lang->fmcb[33], "Cursor Max Velocity:%6d");
+		strcpy(lang->fmcb[34], "Cursor Acceleration:%6d");
+		strcpy(lang->fmcb[35], "Left Cursor: %s");
+		strcpy(lang->fmcb[36], "Right Cursor: %s");
+		strcpy(lang->fmcb[37], "Top Deimiter: %s");
+		strcpy(lang->fmcb[38], "Bottom Delimiter: %s");
+		strcpy(lang->fmcb[39], "..");
+		strcpy(lang->fmcb[41], "Loaded %s");
+		strcpy(lang->fmcb[42], "Failed to load %s");
+		strcpy(lang->fmcb[43], "Saved %s");
+		strcpy(lang->fmcb[44], "Failed to open %s");
+		strcpy(lang->fmcb[51], "Free McBoot Settings");
+		strcpy(lang->fmcb[52], "Button Settings");
+		strcpy(lang->fmcb[53], "OSD Settings");
+		strcpy(lang->fmcb[54], "Item Settings");
+		strcpy(lang->fmcb[55], "Scroll Settings");
+		strcpy(lang->fmcb[56], "ESR Path");
+		strcpy(lang->fmcb[27], "○:OK L1/R1:Change L2:Init R2:Default");// CNF
+		strcpy(lang->fmcb[28], "○:OK L1/R1:Change");
+		strcpy(lang->fmcb[59], "○:Add ×:Sub +□:Fast");//public
+		strcpy(lang->fmcb[60], "○:OK");
+		strcpy(lang->fmcb[61], "○:Edit ×:Clear");
+		strcpy(lang->fmcb[62], "○:Change");
+		strcpy(lang->fmcb[63], "○:Edit");
+		strcpy(lang->fmcb[57], "○:Edit ×:Clear L1:Any R1:Special L2:Copy R2:Paste"); //dir
+		strcpy(lang->fmcb[58], "○:Edit ×:Clear L2:Copy R2:Paste");	//title
+		strcpy(lang->fmcb[45], "○:Add ×:Sub +□:Fast L2:Copy R2:Paste");
+		strcpy(lang->fmcb[46], "○:Next ×:Prev L2:Copy R2:Paste");
+		strcpy(lang->fmcb[47], "○:Add ×:Sub");
+		strcpy(lang->fmcb[48], "○:Next ×:Prev");
+		strcpy(lang->fmcb[49], "Setting was initialized");
+		strcpy(lang->fmcb[50], "All set to default");
+		}
 		strcpy(lang->conf_on, "ON");
 		strcpy(lang->conf_off, "OFF");
 		strcpy(lang->conf_edit, "Edit");
@@ -401,6 +483,20 @@ void SetLanguage(const int langID)
 		strcpy(lang->filer_l2popup_icon, "アイコン表\示");
 		strcpy(lang->filer_l2popup_flicker, "フリッカーコントロール");
 		strcpy(lang->filer_l2popup_sort, "リスト並び");
+		strcpy(lang->kbd_page[0], "ASCII");
+		strcpy(lang->kbd_page[1], "ひらがな");
+		strcpy(lang->kbd_page[2], "カタカナ");
+		strcpy(lang->kbd_page[3], "英数記号");
+		strcpy(lang->kbd_page[4], "漢字(音)");
+		strcpy(lang->kbd_page[5], "漢字(訓)");
+		strcpy(lang->kbd_page[6], "漢字履歴");
+		strcpy(lang->kbd_page[7], "文字一覧");
+		strcpy(lang->kbd_page[8], "カスタム");
+		strcpy(lang->kbd_page[9], "外部拡張");
+		strcpy(lang->kbd_enter,    "終了");
+		strcpy(lang->kbd_abort,    "中止");
+		strcpy(lang->kbd_helpl, "○:決定 ×:削除 L1:左へ R1:右へ R2:入力へ");
+		strcpy(lang->kbd_helpr, "○:入力 ×:削除 △:戻る L1:左へ R1:右へ L2:種類へ R2:登録");
 		}
 		//editor
 		{
@@ -609,6 +705,73 @@ void SetLanguage(const int langID)
 		strcpy(lang->gs_paste,			"ペースト");
 		strcpy(lang->gs_apply,			"適用");
 		strcpy(lang->gs_default,		"標準");
+		}
+		//	FMCB_CONFIG
+		{
+		strcpy(lang->fmcb[ 0], "NULL");
+		strcpy(lang->fmcb[ 1], "ロード: %s");
+		strcpy(lang->fmcb[ 2], "セーブ: %s");
+		strcpy(lang->fmcb[ 3], "ランチャー設定...");
+		strcpy(lang->fmcb[ 4], "OSDSYSメニューの設定...");
+		strcpy(lang->fmcb[ 5], "ESR設定...");
+		strcpy(lang->fmcb[ 6], "高速起動(FASTBOOT): %s");
+		strcpy(lang->fmcb[ 7], "デバッグスクリーン: %s");
+		strcpy(lang->fmcb[ 8], "ボタン入力待ち時間: %d.%d");
+		strcpy(lang->fmcb[ 9], "戻る");
+		strcpy(lang->fmcb[10], "ボタン: %s");
+		strcpy(lang->fmcb[11], "すべてのランチャー設定を確認する");
+		strcpy(lang->fmcb[12], "OSDSYSをハックする: %s");
+		strcpy(lang->fmcb[13], "メニューアイテムの設定...");
+		strcpy(lang->fmcb[14], "スクロール設定...");
+		strcpy(lang->fmcb[15], "映像出力: %s");
+		strcpy(lang->fmcb[16], "メモリーカードを検索しない: %s");
+		strcpy(lang->fmcb[17], "ハードディスクを検索しない: %s");
+		strcpy(lang->fmcb[18], "CD/DVDの起動をスキップ: %s");
+		strcpy(lang->fmcb[19], "起動時のSONYロゴ非表\示: %s");
+		strcpy(lang->fmcb[20], "起動したらブラウザ画面: %s");
+		strcpy(lang->fmcb[21], "カーソ\ルの色:   ");
+		strcpy(lang->fmcb[22], "アイテムの色:   ");
+		strcpy(lang->fmcb[23], "メニューの水平位置: %3d");
+		strcpy(lang->fmcb[24], "メニューの垂直位置: %3d");
+		strcpy(lang->fmcb[25], "Enter:          ");
+		strcpy(lang->fmcb[26], "Version:        ");
+		strcpy(lang->fmcb[40], "メニューアイテム番号: %3d");
+		strcpy(lang->fmcb[29], "アイテム名: %s");
+		strcpy(lang->fmcb[30], "登録%d: %s");
+		strcpy(lang->fmcb[31], "メニューをスクロール式にする: %s");
+		strcpy(lang->fmcb[32], "表\示するメニューアイテム数: %3d");
+		strcpy(lang->fmcb[33], "カーソ\ル最大移動速度:%7d");
+		strcpy(lang->fmcb[34], "カーソ\ルの高速化まで:%7d");
+		strcpy(lang->fmcb[35], "左側のカーソ\ル: %s");
+		strcpy(lang->fmcb[36], "右側のカーソ\ル: %s");
+		strcpy(lang->fmcb[37], "上部の装飾表\示: %s");
+		strcpy(lang->fmcb[38], "下部の装飾表\示: %s");
+		strcpy(lang->fmcb[39], "..");
+		strcpy(lang->fmcb[41], "%s を読み込みました");
+		strcpy(lang->fmcb[42], "%s の読み込みに失敗しました");
+		strcpy(lang->fmcb[43], "%s へ保存しました");
+		strcpy(lang->fmcb[44], "%s への保存に失敗しました");
+		strcpy(lang->fmcb[51], "FMCBCONFIG");
+		strcpy(lang->fmcb[52], "ランチャー設定");
+		strcpy(lang->fmcb[53], "メニュー設定");
+		strcpy(lang->fmcb[54], "アイテム設定");
+		strcpy(lang->fmcb[55], "スクロール設定");
+		strcpy(lang->fmcb[56], "ESR設定");
+		strcpy(lang->fmcb[27], "○:OK L1/R1:変更 L2:初期化 R2:標準化");// CNF
+		strcpy(lang->fmcb[28], "○:OK L1/R1:変更");
+		strcpy(lang->fmcb[59], "○:増やす ×:減らす +□:高速");//public
+		strcpy(lang->fmcb[60], "○:OK");
+		strcpy(lang->fmcb[61], "○:編集 ×:削除");
+		strcpy(lang->fmcb[62], "○:変更");
+		strcpy(lang->fmcb[63], "○:編集");
+		strcpy(lang->fmcb[57], "○:編集 ×:削除 L1:MC変更 R1:機能\登録 L2:コピー R2:ペースト"); //dir
+		strcpy(lang->fmcb[58], "○:編集 ×:削除 L2:コピー R2:ペースト");	//title
+		strcpy(lang->fmcb[45], "○:増やす ×:減らす +□:高速 L2:コピー R2:ペースト");
+		strcpy(lang->fmcb[46], "○:次へ ×:前へ L2:コピー R2:ペースト");
+		strcpy(lang->fmcb[47], "○:増やす ×:減らす");
+		strcpy(lang->fmcb[48], "○:次へ ×:前へ");
+		strcpy(lang->fmcb[49], "設定を初期化しました");
+		strcpy(lang->fmcb[50], "標準値をロードしました");
 		}
 		strcpy(lang->conf_on, "ON");
 		strcpy(lang->conf_off, "OFF");

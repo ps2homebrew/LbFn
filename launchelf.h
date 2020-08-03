@@ -31,7 +31,7 @@
 #include <libmouse.h>
 
 // バージョン
-#define LBF_VER "LbFn v0.70.12"
+#define LBFN_VER "LbFn v0.70.13"
 
 // 垂直スキャンレート
 //#define SCANRATE (ITO_VMODE_AUTO==ITO_VMODE_PAL ? 50:60)
@@ -55,7 +55,8 @@ enum
 	MAX_PARTITIONS=100,
 	MAX_BUTTON = 32,
 	MAX_ELF = 5,
-	MAX_GSREG = 32
+	MAX_GSREG = 32,
+	MAX_SKIN = 3,
 };
 
 enum
@@ -115,6 +116,17 @@ typedef struct
 
 typedef struct
 {
+	void *tex;
+	int mode;
+	int dp;
+	int tx;
+	int ty;
+	int tw;
+	int th;
+} SKINDATA;
+
+typedef struct
+{
 	DIRELF dirElf[MAX_BUTTON];
 	int timeout;
 	int filename;
@@ -157,6 +169,24 @@ typedef struct
 	int usbmouse_flag;
 	char usbmouse_path[MAX_PATH];
 	int usbmdevs;
+	int vmc_flag;
+	char vmc_path[MAX_PATH];
+	int mcraw_flag;
+	char mcdump_path[MAX_PATH];
+	char mcstore_path[MAX_PATH];
+	char kbd_sbcspath[MAX_PATH];
+	char kbd_dbcspath[MAX_PATH];
+	char kbd_extpath[MAX_PATH];
+	char kbd_histpath[MAX_PATH];
+	char kbd_dicpath[MAX_PATH];
+	char sav_db_path[MAX_PATH];
+	int sav_ps1save;
+	int sav_ps2save;
+	int sav_pspsave;
+	int sav_psusave;
+	int sav_startup;
+	int sav_mode;
+	int cnf_compress;
 	int txt_linenumber;
 	int txt_tabmode;
 	int txt_chardisp;
@@ -178,7 +208,10 @@ typedef struct
 	char font_scaler[MAX_GSREG];
 	char font_bold[MAX_GSREG];
 	char flickerfilter[MAX_GSREG];
-	
+	char skin_image[MAX_PATH];
+	SKINDATA skin[MAX_SKIN];
+	unsigned short *skbd_history;
+	unsigned char *skbd_dictionary;
 } SETTING;
 
 /* main.c */
@@ -361,7 +394,8 @@ enum	//getFilePath
 	FNT_FILE,
 	IRX_FILE,
 	JPG_FILE,
-	TXT_FILE
+	TXT_FILE,
+	FMB_FILE,
 };
 /* MessageBox */
 #define MB_OK           0x00000000
@@ -394,6 +428,7 @@ int keyboard(char *out, int max);
 void getFilePath(char *out, const int cnfmode);
 
 /* language.c */
+//extern char *lang[];
 extern LANGUAGE *lang;
 void InitLanguage(void);
 void FreeLanguage(void);
@@ -402,8 +437,10 @@ void SetLanguage(const int langID);
 /* cnf.c */
 int cnf_init(void);
 void cnf_free(void);
+int cnf_inited(void);
 int cnf_load(char* path);
 int cnf_save(char* path);
+int cnf_bload(char *buffer, size_t limit);
 size_t cnf_bsave(char *buff, int maxbytes);
 int cnf_getstr(const char* key, char *str, const char* def);
 int cnf_setstr(const char* key, char *str);
@@ -415,6 +452,10 @@ int cnf_mode(int mode);
 int tek_getsize(unsigned char *p);
 int tek_decomp(unsigned char *p, char *q, int size);
 
+/* tek_comp.c */
+int tek_compfile(int type, char *infile, char *outfile);
+int tek_comp(int type, char *src, int size, char *dst, int limit);
+
 /* viewer.c */
 int txteditfile(int mode, char *file);
 int txtedit(int mode, char *file, unsigned char *buffer, unsigned int size);
@@ -422,4 +463,7 @@ int formatcheck(unsigned char *buff, unsigned int size);
 int formatcheckfile(char *file);
 int set_viewerconfig(int linedisp, int tabspaces, int chardisp, int screenmode, int textwrap, int drawtype);
 //int set_viewerconfig(int *conf);
+
+/* misc.c */
+extern char LBF_VER[];
 #endif

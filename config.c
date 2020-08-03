@@ -264,8 +264,8 @@ char *splitcopy(const char *src, char *dist, int maxlen);
 int explodeconfig(const char *src);
 int strtogsreg(int num, char *src);
 int gsregtostr(char *dst, int num);
-static int tmpi[32];
-static char tmps[32][MAX_PATH];
+int tmpi[32];
+char tmps[32][MAX_PATH];
 static uint64 clut[8][16] = 
 {
 	{	0x106040, 0xC0C0C0, 0x00C0FF, 0xFFFFFF, 0x00A0A0, 0x606060,
@@ -2826,7 +2826,7 @@ void config_color(SETTING *setting)
 					0);
 			}
 			// メッセージ
-			if(pushed) sprintf(msg0, "CONFIG/%s", lang->conf_setting_screen);
+			if(pushed) sprintf(msg0, "CONFIG/%s", lang->conf_setting_color);
 			// 操作説明
 			if(sel==0)
 				sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
@@ -3896,7 +3896,7 @@ void config_filer(SETTING *setting)
 					0);
 			}
 			// メッセージ
-			if(pushed) sprintf(msg0, "CONFIG/%s", lang->conf_setting_misc);
+			if(pushed) sprintf(msg0, "CONFIG/%s", lang->conf_setting_filer);
 			// 操作説明
 			if(sel==0)
 				sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
@@ -4105,7 +4105,7 @@ void config_device(SETTING *setting)
 					0);
 			}
 			// メッセージ
-			if(pushed) sprintf(msg0, "CONFIG/%s", lang->conf_setting_misc);
+			if(pushed) sprintf(msg0, "CONFIG/%s", lang->conf_setting_device);
 			// 操作説明
 			if(sel==0)
 				sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);

@@ -2749,276 +2749,6 @@ error:
 }
 
 //-------------------------------------------------
-// スクリーンキーボード
-/*
-■ 使用不可文字
- : * " | < > \ / ?
-■ レイアウト
-A B C D E F G H I J K L M
-N O P Q R S T U V W X Y Z
-a b c d e f g h i j k l m
-n o p q r s t u v w x y z
-0 1 2 3 4 5 6 7 8 9      
-( ) [ ] ! # $ % & @ ;    
-= + - ' ^ . , _          
-OK                  CANCEL
-*/
-int keyboard(char *out, int max)
-{
-	int	WFONTS,	//キーボードの横の文字数
-		HFONTS,	//キーボードの縦の文字数
-		KEY_W,	//キーボードの横のサイズ
-		KEY_H,	//キーボードの縦のサイズ
-		KEY_X,	//キーボードのx座標
-		KEY_Y;	//キーボードのy座標
-	char *KEY="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789   ()[]!#$%&@;  =+-`'^~.,_   ";
-	int KEY_LEN;
-	int cur=0, sel=0, i, x, y, t=0, redraw=fieldbuffers;
-	char tmp[MAX_PATH];//, *p;
-	char k;
-
-	if (usbkbd) {
-		PS2KbdFlushBuffer();
-	}
-	WFONTS=13;
-	HFONTS=7;
-	KEY_W=(WFONTS*3+4)*FONT_WIDTH;
-	KEY_H=(HFONTS+4.5)*FONT_HEIGHT;
-	KEY_X=(SCREEN_WIDTH-KEY_W)/2;
-	KEY_Y=(SCREEN_HEIGHT-KEY_H)/2;
-
-/*
-	//キャレットを拡張子の前に移動
-	p=strrchr(out, '.');
-	if(p==NULL)
-		cur=strlen(out);
-	else
-		cur=(int)(p-out);
-*/
-	//キャレットを文字列の先頭に移動
-	cur=0;
-	KEY_LEN = strlen(KEY);
-
-	while(1){
-		waitPadReady(0, 0);
-		if(readpad()){
-			if(new_pad) redraw=framebuffers;
-			if(new_pad & PAD_UP){
-				if(sel<WFONTS*HFONTS){
-					if(sel>=WFONTS) sel-=WFONTS;
-				}
-				else{
-					if(sel==WFONTS*HFONTS) sel=82;	//カーソルがOKにあるときに上を押した
-					else sel=86;					//カーソルガCANCELにあるときに上を押した
-				}
-			}
-			else if(new_pad & PAD_DOWN){
-				if(sel/WFONTS == HFONTS-1){
-					if(sel%WFONTS < 6)		//カーソルが中心より左にあるときOKに移動
-						sel=WFONTS*HFONTS;
-					else					//カーソルが中心より右にあるときCANCELに移動
-						sel=WFONTS*HFONTS+1;
-				}else if(sel/WFONTS <= HFONTS-2)
-					sel+=WFONTS;
-			}
-			else if(new_pad & PAD_LEFT){
-				if(sel>0) sel--;
-			}
-			else if(new_pad & PAD_RIGHT){
-				if(sel<=WFONTS*HFONTS) sel++;
-			}
-			else if(new_pad & PAD_START){
-				sel = WFONTS*HFONTS;
-			}
-			else if(new_pad & PAD_SELECT){
-				sel = WFONTS*HFONTS+1;
-			}
-			else if(new_pad & PAD_L1){
-				if(cur>0) cur--;
-				t=0;
-			}
-			else if(new_pad & PAD_R1){
-				if(cur<strlen(out)) cur++;
-				t=0;
-			}
-			else if(new_pad & PAD_CROSS){
-				if(cur>0){
-					strcpy(tmp, out);
-					out[cur-1]=0;
-					strcat(out, &tmp[cur]);
-					cur--;
-					t=0;
-				}
-			}
-			else if(new_pad & PAD_CIRCLE){
-				i=strlen(out);
-				if(sel < WFONTS*HFONTS){
-					if(i<max && i<33){
-						strcpy(tmp, out);
-						out[cur]=KEY[sel];
-						out[cur+1]=0;
-						strcat(out, &tmp[cur]);
-						cur++;
-						t=0;
-					}
-				}else if(sel == WFONTS*HFONTS && i>0){
-					break;
-				}else{
-					return -1;
-				}
-			}
-		}
-		if ((usbkbd) && (PS2KbdRead(&k))) {
-			redraw = fieldbuffers;
-			if (k==PS2KBD_ESCAPE_KEY) {
-				PS2KbdRead(&k);
-				if (k == 0x29) {		// →
-					if(sel<=WFONTS*HFONTS) sel++;
-				} else if (k == 0x2A) {	// ←
-					if(sel>0) sel--;
-				} else if (k == 0x2B) {	// ↓
-					if(sel/WFONTS == HFONTS-1){
-						if(sel%WFONTS < 6)		//カーソルが中心より左にあるときOKに移動
-							sel=WFONTS*HFONTS;
-						else					//カーソルが中心より右にあるときCANCELに移動
-							sel=WFONTS*HFONTS+1;
-					}else if(sel/WFONTS <= HFONTS-2)
-						sel+=WFONTS;
-				} else if (k == 0x2C) {	// ↑
-					if(sel<WFONTS*HFONTS){
-						if(sel>=WFONTS) sel-=WFONTS;
-					}
-					else{
-						if(sel==WFONTS*HFONTS) sel=82;	//カーソルがOKにあるときに上を押した
-						else sel=86;					//カーソルガCANCELにあるときに上を押した
-					}
-				} else if (k == 0x24) {	// home
-					cur = 0;
-				} else if (k == 0x27) {	// end
-					cur = strlen(out);
-				} else if (k == 0x25) { // page up
-					if (cur>0) cur--;
-				} else if (k == 0x28) {	// page down
-					if (cur<strlen(out)) cur++;
-				} else if (k == 0x26) {	// delete
-					strcpy(out+cur, out+cur+1);
-				} else if (k == 0x1B) {	// esc
-					sel = WFONTS*HFONTS+1;
-				}
-			} else {
-				if (k == 8) {			// BS
-					if(cur>0){
-						strcpy(tmp, out);
-						out[cur-1]=0;
-						strcat(out, &tmp[cur]);
-						cur--;
-					}
-				} else if (k == 10) {	// Enter
-					i=strlen(out);
-					if(sel < WFONTS*HFONTS){
-						if(i<max && i<33){
-							strcpy(tmp, out);
-							out[cur]=KEY[sel];
-							out[cur+1]=0;
-							strcat(out, &tmp[cur]);
-							cur++;
-						}
-					}else if(sel == WFONTS*HFONTS && i>0){
-						break;
-					}else{
-						return -1;
-					}
-				} else {
-					i=strlen(out);
-					if(i<max && i<33){
-						strcpy(tmp, out);
-						out[cur]=k;
-						out[cur+1]=0;
-						strcat(out, &tmp[cur]);
-						cur++;
-					}
-				}
-			}
-		}
-		t++;
-		if ((t==SCANRATE/2) || (t == SCANRATE)) redraw = framebuffers;
-		if (redraw) {
-			// 描画開始
-			drawDialogTmp(KEY_X, KEY_Y, KEY_X+KEY_W, KEY_Y+KEY_H, setting->color[COLOR_BACKGROUND], setting->color[COLOR_FRAME]);
-			//キーボード内側の枠
-			drawFrame(KEY_X+FONT_WIDTH, KEY_Y+FONT_HEIGHT*1.5,
-				KEY_X+KEY_W-FONT_WIDTH, KEY_Y+FONT_HEIGHT*9.5, setting->color[COLOR_FRAME]);
-			//入力中の文字列の表示
-			printXY(out,
-				KEY_X+FONT_WIDTH*2, KEY_Y+FONT_HEIGHT*0.5,
-				setting->color[COLOR_TEXT], TRUE);
-			//キャレット
-			if(t==SCANRATE) t=0;
-			if(t<SCANRATE/2){
-				printXY("|",
-					KEY_X+FONT_WIDTH*0.5+(cur+1)*FONT_WIDTH,
-					KEY_Y+FONT_HEIGHT*0.5,
-					setting->color[COLOR_TEXT], TRUE);
-			}
-
-			//カーソル表示
-			//アルファブレンド有効
-			itoPrimAlphaBlending( TRUE );
-			if(sel<WFONTS*HFONTS){	//OKとCANCEL以外
-				x = KEY_X+FONT_WIDTH*2 + (sel%WFONTS)*FONT_WIDTH*3;
-				y = KEY_Y+FONT_HEIGHT*2 + (sel/WFONTS)*FONT_HEIGHT;
-				itoSprite(setting->color[COLOR_HIGHLIGHTTEXT]|0x10000000,
-					x, y-2,
-					x+FONT_WIDTH*3, y+GetFontSize(ASCII_FONT_HEIGHT)+2, 0);
-				drawFrame(x, y-2, x+FONT_WIDTH*3, y+GetFontSize(ASCII_FONT_HEIGHT)+2, setting->color[COLOR_HIGHLIGHTTEXT]);
-			}
-			else{
-				if(sel==WFONTS*HFONTS)
-					x = KEY_X+KEY_W/4;	//OK
-				else
-					x = KEY_X+KEY_W/2;	//CANCEL
-				y = KEY_Y+FONT_HEIGHT*10;
-				itoSprite(setting->color[COLOR_HIGHLIGHTTEXT]|0x10000000,
-					x, y-2,
-					x+KEY_W/4, y+GetFontSize(ASCII_FONT_HEIGHT)+2, 0);
-				drawFrame(x, y-2, x+KEY_W/4, y+GetFontSize(ASCII_FONT_HEIGHT)+2, setting->color[COLOR_HIGHLIGHTTEXT]);
-			}
-			//アルファブレンド無効
-			itoPrimAlphaBlending(FALSE);
-
-			//キーボード表示
-			for(i=0; i<KEY_LEN; i++){
-				sprintf(tmp,"%c",KEY[i]);
-				printXY(tmp,
-					KEY_X+FONT_WIDTH*3 + (i%WFONTS)*FONT_WIDTH*3,
-					KEY_Y+FONT_HEIGHT*2 + (i/WFONTS)*FONT_HEIGHT,
-					setting->color[COLOR_TEXT], TRUE);
-			}
-			//OK表示
-			x=((KEY_W/4)-FONT_WIDTH*strlen(lang->gen_ok))/2;
-			sprintf(tmp, "%s",lang->gen_ok);
-			printXY(tmp, KEY_X+KEY_W/4+x, KEY_Y+FONT_HEIGHT*10, setting->color[COLOR_TEXT], TRUE);
-			//CANCEL表示
-			x=((KEY_W/4)-FONT_WIDTH*strlen(lang->gen_cancel))/2;
-			sprintf(tmp, "%s",lang->gen_cancel);
-			printXY(tmp, KEY_X+KEY_W/2+x, KEY_Y+FONT_HEIGHT*10, setting->color[COLOR_TEXT], TRUE);
-			// 操作説明
-			x = FONT_WIDTH*1;
-			y = SCREEN_MARGIN+(MAX_ROWS+4)*FONT_HEIGHT;
-			itoSprite(setting->color[COLOR_BACKGROUND],
-				0, y,
-				SCREEN_WIDTH, y+FONT_HEIGHT, 0);
-			printXY(lang->filer_keyboard_hint, x, y, setting->color[COLOR_TEXT], TRUE);
-			drawScr();
-			redraw--;
-		} else {
-			itoVSync();
-		}
-	}
-	return 0;
-}
-
-//-------------------------------------------------
 // ファイルリスト設定
 int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 {
@@ -3042,7 +2772,7 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 		"INFO",
 		"IPCONFIG",
 		"GSCONFIG",
-	//	"FMCBCONFIG",
+		"FMCBCONFIG",
 		"CONFIG",
 	};
 	//struct fileXioDevice devs[128];
@@ -3056,40 +2786,64 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 		//	printf("\x09[%02d] %4d %08X %s, %s\n", i, devs[i].type, devs[i].version, devs[i].name, devs[i].desc);
 		//}
 		//ret = 0;
-		for(i=0;i<5+setting->usbmdevs+(setting->usbmdevs==1)*3+(boot==HOST_BOOT);i++){
-			memset(&files[i].createtime, 0, sizeof(PS2TIME));
-			memset(&files[i].modifytime, 0, sizeof(PS2TIME));
-			files[i].fileSizeByte = 0;
-			files[i].attr = MC_ATTR_SUBDIR;
-			files[i].title[0] = 0;
-			if(i==0){
-				strcpy(files[i].name, "mc0:");
-				files[i].type = TYPE_DEVICE_MC;
+		if (cnfmode!=FMB_FILE) {
+			for(i=0;i<5+setting->usbmdevs+(setting->usbmdevs==1)*3+(boot==HOST_BOOT);i++){
+				memset(&files[i].createtime, 0, sizeof(PS2TIME));
+				memset(&files[i].modifytime, 0, sizeof(PS2TIME));
+				files[i].fileSizeByte = 0;
+				files[i].attr = MC_ATTR_SUBDIR;
+				files[i].title[0] = 0;
+				files[i].timestamp = 0;
+				files[i].num = i;
+				if(i==0){
+					strcpy(files[i].name, "mc0:");
+					files[i].type = TYPE_DEVICE_MC;
+				}
+				if(i==1){
+					strcpy(files[i].name, "mc1:");
+					files[i].type = TYPE_DEVICE_MC;
+				}
+				if(i==2){
+					strcpy(files[i].name, "hdd0:");
+					files[i].type = TYPE_DEVICE_HDD;
+				}
+				if(i==3){
+					strcpy(files[i].name, "cdfs:");
+					files[i].type = TYPE_DEVICE_CD;
+				}
+				if(i==4){
+					strcpy(files[i].name, "mass:");
+					files[i].type = TYPE_DEVICE_MASS;
+				}
+				if(i==5&&boot==HOST_BOOT){
+					strcpy(files[i].name, "host:");
+					files[i].type = TYPE_DEVICE_HOST;
+				}
+				if((i>=5+(boot==HOST_BOOT)) && (i<5+(boot==HOST_BOOT)+setting->usbmdevs+(setting->usbmdevs==1)*3)){
+					sprintf(files[i].name, "mass%d:", i-5-(boot==HOST_BOOT));
+					files[i].type = TYPE_DEVICE_MASS;
+				}
 			}
-			if(i==1){
-				strcpy(files[i].name, "mc1:");
-				files[i].type = TYPE_DEVICE_MC;
+		} else {
+			for(i=0;i<3+setting->usbmdevs+(setting->usbmdevs==1)*3;i++){
+				memset(&files[i].createtime, 0, sizeof(PS2TIME));
+				memset(&files[i].modifytime, 0, sizeof(PS2TIME));
+				files[i].fileSizeByte = 0;
+				files[i].attr = MC_ATTR_SUBDIR;
+				files[i].title[0] = 0;
+				files[i].timestamp = 0;
+				files[i].num = i;
+				if (i>=3&&i<3+setting->usbmdevs+(setting->usbmdevs==1)*3){
+					sprintf(files[i].name, "mass%d:", i-3);
+					files[i].type = TYPE_DEVICE_MASS;
+				}
 			}
-			if(i==2){
-				strcpy(files[i].name, "hdd0:");
-				files[i].type = TYPE_DEVICE_HDD;
-			}
-			if(i==3){
-				strcpy(files[i].name, "cdfs:");
-				files[i].type = TYPE_DEVICE_CD;
-			}
-			if(i==4){
-				strcpy(files[i].name, "mass:");
-				files[i].type = TYPE_DEVICE_MASS;
-			}
-			if(i==5&&boot==HOST_BOOT){
-				strcpy(files[i].name, "host:");
-				files[i].type = TYPE_DEVICE_HOST;
-			}
-			if((i>=5+(boot==HOST_BOOT)) && (i<5+(boot==HOST_BOOT)+setting->usbmdevs+(setting->usbmdevs==1)*3)){
-				sprintf(files[i].name, "mass%d:", i-5-(boot==HOST_BOOT));
-				files[i].type = TYPE_DEVICE_MASS;
-			}
+			strcpy(files[0].name, "mc0:");
+			strcpy(files[1].name, "mc1:");
+			strcpy(files[2].name, "mass:");
+			files[0].type = TYPE_DEVICE_MC;
+			files[1].type = TYPE_DEVICE_MC;
+			files[2].type = TYPE_DEVICE_MASS;
 		}
 		nfiles = i;
 		if(cnfmode==ELF_FILE){
@@ -3307,6 +3061,8 @@ void getFilePath(char *out, int cnfmode)
 		strcpy(ext, "jpg");
 	else if(cnfmode==TXT_FILE)
 		strcpy(ext, "txt");
+	else if(cnfmode==FMB_FILE)
+		strcpy(ext, "elf");
 
 	strcpy(path, LastDir);
 	mountedParty[0][0]=0;
@@ -3381,6 +3137,12 @@ void getFilePath(char *out, int cnfmode)
 							memset(marks, 0, MAX_ENTRY);
 						}
 					}//*/
+				}
+				else if(new_pad & PAD_UP) {
+					sel = 0;
+				}
+				else if(new_pad & PAD_DOWN) {
+					sel = MAX_ENTRY-1;
 				}
 			}
 			else{
@@ -3464,7 +3226,7 @@ void getFilePath(char *out, int cnfmode)
 					}
 				}
 				//ELF_FILE ELF選択時
-				if(cnfmode==ELF_FILE){
+				if(cnfmode==ELF_FILE||cnfmode==FMB_FILE){
 					if(new_pad & PAD_CIRCLE) {	//ファイルを決定
 						if(!(files[sel].attr & MC_ATTR_SUBDIR)){
 							char fullpath[MAX_PATH];
@@ -3929,7 +3691,7 @@ void getFilePath(char *out, int cnfmode)
 							} else {
 								// 複数のファイル
 								int k,m,o,r,l;
-								for (i=0; i<nfiles; i++) {
+								for (i=0,k=0,l=0; i<nfiles; i++) {
 									if (marks[i]) {
 										strcpy(fullpath, path);
 										strcat(fullpath, files[i].name);
@@ -4291,7 +4053,7 @@ void getFilePath(char *out, int cnfmode)
 					else
 						sprintf(msg1, lang->filer_anyfile_hint2);
 				}
-				else if(cnfmode==ELF_FILE){
+				else if(cnfmode==ELF_FILE||cnfmode==FMB_FILE){
 					if(!strcmp(ext, "*"))
 						sprintf(msg1, lang->filer_elffile_hint1);
 					else

@@ -883,6 +883,7 @@ int formatcheck(unsigned char *c, unsigned int size)
 		type = FT_EXE;
 	}
 	// BIN/ELF/JPG/PNG/GIF/BMP/MP3/AAC/AC3/PCM/TXT/ZIP/RAR/LZH/TEK/GZ/7Z
+	// todo: OGG SAR PSU PS1(SC/MC)
 	return type;
 }
 int formatcheckfile(char *file)

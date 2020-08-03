@@ -15,7 +15,7 @@ PS2_IP=192.168.0.10
 EE_BIN = LbFn.ELF
 
 EE_OBJS = main.o pad.o config.o elf.o draw.o loader.o  filer.o cd.o language.o\
-	cnf.o tek.o viewer.o shiftjis.o bmp.o jpeg.o gif.o fmcb_cfg.o\
+	cnf.o tek.o viewer.o shiftjis.o bmp.o jpeg.o gif.o fmcb_cfg.o misc.o\
 	poweroff.o iomanx.o filexio.o ps2atad.o ps2dev9.o ps2hdd.o ps2fs.o\
 	usbd.o usbhdfsd.o cdvd.o ps2ip.o ps2smap.o ps2ftpd.o fakehost.o
 
@@ -124,7 +124,7 @@ ps2mouse.s:
 icon.s:image/icon.iif
 	bin2s image/icon.iif icon.s icon_iif
 
-cd.o config.o draw.o elf.o filer.o main.o pad.o viewer.o language.o cnf.o:launchelf.h language.h
+cd.o config.o draw.o elf.o filer.o main.o pad.o viewer.o language.o cnf.o misc.o:launchelf.h language.h
 
 
 #------------------------------------

@@ -1,5 +1,5 @@
 --------------------------------------------
-LbFn version 0.70.12src by nika (2009/06/02)
+LbFn version 0.70.13src by nika (2009/08/19)
 --------------------------------------------
 
 ƒ\[ƒX‚ğ‰ü•Ï‚·‚é‚±‚Æ‚É§ŒÀ‚Í‚ ‚è‚Ü‚¹‚ñ
@@ -25,7 +25,10 @@ LbF‚ÆLbFn‚ª‚»‚ê‚¼‚êLaunchELF‚ÆLbF‚ğ‰ü•Ï‚µ‚½‚à‚Ì‚Æ‚¢‚¤‚±‚Æ‚ğ‚í‚©‚é‚æ‚¤‚É‚µ‚Ä‚­‚¾‚
 
 EUnofficial LaunchELF
   EP + dlanor + various contributors
-  http://www.ps2-scene.org/
+  http://psx-scene.com/forums/forumdisplay.php?f=113
+
+EFree McBoot (FreeVAST)
+  http://psx-scene.com/forums/forumdisplay.php?f=153
 
 EAltimit v0.1 (alpha test version)
   http://svn.ps2dev.org/listing.php?repname=ps2ware&path=%2Ftrunk%2Faltimit%2F&rev=0&sc=0

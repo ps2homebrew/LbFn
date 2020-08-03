@@ -3,6 +3,7 @@
 
 #define MAX_LANGUAGE_STR 64
 #define	MAX_MESSAGE_STR 256
+#define	MAX_FMCB_LANGS 64
 enum
 {
 	LANG_ENGLISH = 0,
@@ -89,7 +90,12 @@ typedef struct
 	char filer_l2popup_icon[MAX_LANGUAGE_STR];
 	char filer_l2popup_flicker[MAX_LANGUAGE_STR];
 	char filer_l2popup_sort[MAX_LANGUAGE_STR];
-	
+	char kbd_page[16][MAX_LANGUAGE_STR];
+	char kbd_enter[MAX_LANGUAGE_STR];
+	char kbd_abort[MAX_LANGUAGE_STR];
+	char kbd_helpl[MAX_LANGUAGE_STR];
+	char kbd_helpr[MAX_LANGUAGE_STR];
+
 	//editor
 	char editor_viewer_help[MAX_LANGUAGE_STR];
 	char editor_viewer_error1[MAX_LANGUAGE_STR];
@@ -303,6 +309,8 @@ typedef struct
 	char conf_detail[MAX_LANGUAGE_STR];
 	char conf_fast[MAX_LANGUAGE_STR];
 	char conf_default[MAX_LANGUAGE_STR];
+	
+	char fmcb[MAX_FMCB_LANGS][MAX_LANGUAGE_STR];
 } LANGUAGE;
 
 #endif
