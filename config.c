@@ -140,7 +140,7 @@ void saveConfig(char *mainMsg)
 	}
 	// LaunchELFのディレクトリにCNFがあったらLaunchELFのディレクトリにセーブ
 	strcpy(c, LaunchElfDir);
-	strcat(c, "LbF.CNF");
+	strcat(c, "LBF.CNF");
 	if((fd=fioOpen(c, O_RDONLY)) >= 0)
 		fioClose(fd);
 	else{
@@ -151,11 +151,11 @@ void saveConfig(char *mainMsg)
 		// SYS-CONFがあったらSYS-CONFにセーブ
 		if((fd=fioDopen(c)) >= 0){
 			fioDclose(fd);
-			strcat(c, "/LbF.CNF");
+			strcat(c, "/LBF.CNF");
 		// SYS-CONFがなかったらLaunchELFのディレクトリにセーブ
 		}else{
 			strcpy(c, LaunchElfDir);
-			strcat(c, "LbF.CNF");
+			strcat(c, "LBF.CNF");
 		}
 	}
 	strcpy(mainMsg,"Save Failed");
@@ -180,7 +180,7 @@ void loadConfig(char *mainMsg)
 	
 	setting = (SETTING*)malloc(sizeof(SETTING));
 	// LaunchELFが実行されたパスから設定ファイルを開く
-	sprintf(path, "%s%s", LaunchElfDir, "LbF.CNF");
+	sprintf(path, "%s%s", LaunchElfDir, "LBF.CNF");
 	if(!strncmp(path, "cdrom", 5)) strcat(path, ";1");
 	fd = fioOpen(path, O_RDONLY);
 	// 開けなかったら、SYS-CONFの設定ファイルを開く
@@ -190,7 +190,7 @@ void loadConfig(char *mainMsg)
 		else
 			mcport = CheckMC();
 		if(mcport==1 || mcport==0){
-			sprintf(path, "mc%d:/SYS-CONF/LbF.CNF", mcport);
+			sprintf(path, "mc%d:/SYS-CONF/LBF.CNF", mcport);
 			fd = fioOpen(path, O_RDONLY);
 		}
 	}

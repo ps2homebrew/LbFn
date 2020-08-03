@@ -2207,7 +2207,9 @@ void getFilePath(char *out, int cnfmode)
 			}
 			else
 				strcpy(tmp,files[top+i].name);	//ファイル名
-			if(strlen(tmp)>52){	//ファイル名が長いときは、短くする
+
+			//ファイル名が長いときは、短くする
+			if(strlen(tmp)>52){
 				tmp[50]='.';
 				tmp[51]='.';
 				tmp[52]='.';
@@ -2216,7 +2218,8 @@ void getFilePath(char *out, int cnfmode)
 
 			//マーク表示
 			if(marks[top+i]){
-				//drawChar('*', x+FONT_WIDTH, y, setting->color[3]);
+				drawChar('*', x+FONT_WIDTH, y, setting->color[3]);
+/*
 				//アルファブレンド有効
 				itoPrimAlphaBlending( TRUE );
 				itoSprite(setting->color[2]|0x10000000,
@@ -2224,12 +2227,15 @@ void getFilePath(char *out, int cnfmode)
 					x+FONT_WIDTH*57, y+FONT_HEIGHT-2, 0);
 				//アルファブレンド無効
 				itoPrimAlphaBlending(FALSE);
+*/
 			}
 
 			//
 			if(!setting->fileicon)
-				printXY(tmp, x+FONT_WIDTH*2, y, color, TRUE);	//ファイル名表示
+				//ファイル名のみ表示
+				printXY(tmp, x+FONT_WIDTH*2, y, color, TRUE);
 			else{
+				//ファイル名とアイコンを表示
 				if(files[top+i].type!=TYPE_OTHER){
 					if(files[top+i].type==TYPE_DIR) iconcolor=setting->color[4];
 					else if(files[top+i].type==TYPE_FILE) iconcolor=setting->color[5];

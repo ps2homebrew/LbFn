@@ -1,5 +1,6 @@
-EE_BIN = LbF.ELF
 #EE_BIN = LaunchELF.ELF
+EE_BIN = LbF.ELF
+
 EE_OBJS = main.o pad.o config.o elf.o draw.o loader.o  filer.o mass_rpc.o cd.o\
 	poweroff.o iomanx.o filexio.o ps2atad.o ps2dev9.o ps2hdd.o ps2fs.o ps2netfs.o\
 	usbd.o usb_mass.o cdvd.o ps2ip.o ps2smap.o ps2ftpd.o
@@ -9,6 +10,7 @@ EE_INCS := -I$(LIBITO)/include -I$(PS2DK)/sbv/include\
 
 EE_LDFLAGS := -L$(LIBITO)/lib -L$(PS2SDK)/sbv/lib\
 	-L$(PS2DEV)/libcdvd/lib -s
+
 EE_LIBS = -lpad -lito -lmc -lhdd -lcdvdfs -lfileXio -lpatches -lpoweroff  -ldebug -lc
 
 all: $(EE_BIN)
@@ -65,6 +67,9 @@ ps2ftpd.s:
 
 clean:
 	rm *.o *.s
+
+clean_:
+	rm cd.o config.o draw.o elf.o filer.o main.o pad.o
 
 include $(PS2SDK)/samples/Makefile.pref
 include $(PS2SDK)/samples/Makefile.eeglobal

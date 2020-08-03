@@ -53,6 +53,7 @@ enum
 int trayopen=FALSE;
 int selected=0;
 int timeout=0;
+int cancel=FALSE;
 int mode=BUTTON;
 char LaunchElfDir[MAX_PATH], mainMsg[MAX_PATH];
 
@@ -110,6 +111,9 @@ static void getIpConfig(void)
 	sprintf(netConfig, "Net Config:  %-15s %-15s %-15s", ip, netmask, gw);
 
 }
+//------------------------------
+//endfunc getIpConfig
+//--------------------------------------------------------------
 ////////////////////////////////////////////////////////////////////////
 // メイン画面の描画
 int drawMainScreen(void)
@@ -129,8 +133,14 @@ int drawMainScreen(void)
 	x = FONT_WIDTH*5;
 	y = SCREEN_MARGIN + FONT_HEIGHT*3;
 	if(setting->dirElf[0][0]){
-		if(mode==BUTTON)	sprintf(c, "TIMEOUT: %d", timeout/SCANRATE);
-		else				sprintf(c, "TIMEOUT: ");
+		if(mode==BUTTON){
+			if(cancel==FALSE)
+				sprintf(c, "TIMEOUT: %d", timeout/SCANRATE);
+			else
+				sprintf(c, "TIMEOUT: -");
+		}
+		else
+			sprintf(c, "TIMEOUT: -");
 		printXY(c, x, y, setting->color[3], TRUE);
 		y += FONT_HEIGHT;
 	}
@@ -200,8 +210,10 @@ int drawMainScreen(void)
 	// 操作説明
 	x = FONT_WIDTH*3;
 	y = SCREEN_MARGIN+FONT_HEIGHT*20;
-	if(mode==BUTTON)	sprintf(c, "PUSH ANY BUTTON or D-PAD!");
-	else				sprintf(c, "○:OK ×:Cancel");
+	if(mode==BUTTON)
+		sprintf(c, "PUSH ANY BUTTON or D-PAD!");
+	else
+		sprintf(c, "○:OK ×:Cancel");
 	
 	setScrTmp(mainMsg, c);
 	drawScr();
@@ -233,9 +245,6 @@ void initsbv_patches(void)
 	}
 }
 
-//------------------------------
-//endfunc getIpConfig
-//--------------------------------------------------------------
 void	load_iomanx(void)
 {
 	int ret;
@@ -662,7 +671,7 @@ int main(int argc, char *argv[])
 	Reset();
 	if(!strncmp(LaunchElfDir, "mass:", 5)){
 		initsbv_patches();
-		loadUsbModules();
+		loadUsbModules();	//CNFファイルを読み込むためにモジュールをロードする
 	}
 
 	loadModules();
@@ -694,7 +703,7 @@ int main(int argc, char *argv[])
 			}
 		}
 		
-		timeout--;
+		if(cancel==FALSE) timeout--;
 		nElfs = drawMainScreen();
 		
 		waitPadReady(0,0);
@@ -702,35 +711,63 @@ int main(int argc, char *argv[])
 			switch(mode){
 			case BUTTON:
 				if(new_pad & PAD_CIRCLE){
+					cancel=TRUE;
 					RunElf(setting->dirElf[1]);
-				}else if(new_pad & PAD_CROSS) 
+				}
+				else if(new_pad & PAD_CROSS){
+					cancel=TRUE;
 					RunElf(setting->dirElf[2]);
-				else if(new_pad & PAD_SQUARE) 
+				}
+				else if(new_pad & PAD_SQUARE){
+					cancel=TRUE;
 					RunElf(setting->dirElf[3]);
-				else if(new_pad & PAD_TRIANGLE) 
+				}
+				else if(new_pad & PAD_TRIANGLE){
+					cancel=TRUE;
 					RunElf(setting->dirElf[4]);
-				else if(new_pad & PAD_L1) 
+				}
+				else if(new_pad & PAD_L1){
+					cancel=TRUE;
 					RunElf(setting->dirElf[5]);
-				else if(new_pad & PAD_R1) 
+				}
+				else if(new_pad & PAD_R1){
+					cancel=TRUE;
 					RunElf(setting->dirElf[6]);
-				else if(new_pad & PAD_L2) 
+				}
+				else if(new_pad & PAD_L2){
+					cancel=TRUE;
 					RunElf(setting->dirElf[7]);
-				else if(new_pad & PAD_R2) 
+				}
+				else if(new_pad & PAD_R2){
+					cancel=TRUE;
 					RunElf(setting->dirElf[8]);
-				else if(new_pad & PAD_L3)
+				}
+				else if(new_pad & PAD_L3){
+					cancel=TRUE;
 					RunElf(setting->dirElf[9]);
-				else if(new_pad & PAD_R3)
+				}
+				else if(new_pad & PAD_R3){
+					cancel=TRUE;
 					RunElf(setting->dirElf[10]);
-				else if(new_pad & PAD_START)
+				}
+				else if(new_pad & PAD_START){
+					cancel=TRUE;
 					RunElf(setting->dirElf[11]);
+				}
 				else if(new_pad & PAD_SELECT){
+					cancel=TRUE;
 					config(mainMsg);
-					timeout = (setting->timeout+1)*SCANRATE;
+					//timeout = (setting->timeout+1)*SCANRATE;
 					if(setting->discControl)
 						loadCdModules();
-				}else if(new_pad & PAD_UP || new_pad & PAD_DOWN){
+				}
+				else if(new_pad & PAD_UP || new_pad & PAD_DOWN){
+					cancel=TRUE;
 					selected=0;
 					mode=DPAD;
+				}
+				else if(new_pad & PAD_LEFT || new_pad & PAD_RIGHT){
+					cancel=TRUE;
 				}
 				break;
 			
@@ -747,13 +784,13 @@ int main(int argc, char *argv[])
 				}
 				else if(new_pad & PAD_CROSS){
 					mode=BUTTON;
-					timeout = (setting->timeout+1)*SCANRATE;
+					//timeout = (setting->timeout+1)*SCANRATE;
 				}
 				else if(new_pad & PAD_CIRCLE){
 					if(selected==nElfs-1){
 						mode=BUTTON;
 						config(mainMsg);
-						timeout = (setting->timeout+1)*SCANRATE;
+						//timeout = (setting->timeout+1)*SCANRATE;
 						if(setting->discControl)
 							loadCdModules();
 					}else
@@ -762,9 +799,9 @@ int main(int argc, char *argv[])
 				break;
 			}
 		}
-		if(timeout/SCANRATE==0 && setting->dirElf[0][0] && mode==BUTTON){
+		if(timeout/SCANRATE==0 && setting->dirElf[0][0] && mode==BUTTON && cancel==FALSE){
 			RunElf(setting->dirElf[0]);
-			timeout = (setting->timeout+1)*SCANRATE;
+			//timeout = (setting->timeout+1)*SCANRATE;
 		}
 	}
 }

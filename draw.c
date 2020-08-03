@@ -1,6 +1,6 @@
 #include "launchelf.h"
 
-#define LBF_VER "LbF v0.42"
+#define LBF_VER "LbF v0.43"
 
 itoGsEnv screen_env;
 
@@ -291,7 +291,7 @@ void drawChar(unsigned char c, int x, int y, uint64 color)
 				}
 				//itoPoint(color, x+j, y+i, 0);
 				//itoPoint(color, x+j+1, y+i, 0);	//‘¾Žš‚É‚·‚é
-				itoLine(color, x+j, y+i, 0, color2, x+j+2, y+i, 0);
+				itoLine(color, x+j, y+i, 0, color, x+j+2, y+i, 0);
 			}
 			cc = cc << 1;
 		}
@@ -350,7 +350,7 @@ void drawChar_SJIS(unsigned int c, int x, int y, uint64 color)
 				}
 				//itoPoint(color, x+j, y+i, 0);
 				//itoPoint(color, x+j+1, y+i, 0);	//‘¾Žš‚É‚·‚é
-				itoLine(color, x+j, y+i, 0, color2, x+j+2, y+i, 0);
+				itoLine(color, x+j, y+i, 0, color, x+j+2, y+i, 0);
 			}
 			cc = cc << 1;
 		}
@@ -365,7 +365,7 @@ void drawChar_SJIS(unsigned int c, int x, int y, uint64 color)
 				}
 				//itoPoint(color, x+8+j, y+i, 0);
 				//itoPoint(color, x+8+j+1, y+i, 0);	//‘¾Žš‚É‚·‚é
-				itoLine(color, x+8+j, y+i, 0, color2, x+8+j+2, y+i, 0);
+				itoLine(color, x+8+j, y+i, 0, color, x+8+j+2, y+i, 0);
 			}
 			cc = cc << 1;
 		}
