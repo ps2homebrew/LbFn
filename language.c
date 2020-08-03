@@ -86,6 +86,10 @@ void SetLanguage(const int langID)
 		strcpy(lang->filer_export_header, " num: attr:     size: filename");
 		strcpy(lang->filer_import_files, "files");
 		strcpy(lang->filer_import_header, " num: attr:     size: filename");
+		strcpy(lang->filer_l2popup_detail, "Detail Mode");
+		strcpy(lang->filer_l2popup_dirsize, "Get DirSize");
+		strcpy(lang->filer_l2popup_icon, "Icon");
+		strcpy(lang->filer_l2popup_flicker, "Flicker Control");
 		}
 		//config
 		{
@@ -227,6 +231,10 @@ void SetLanguage(const int langID)
 		strcpy(lang->filer_export_header, "番号: 属性:   サイズ: ファイルの名前");
 		strcpy(lang->filer_import_files, "個のファイル");
 		strcpy(lang->filer_import_header, "番号: 属性:   サイズ: ファイルの名前");
+		strcpy(lang->filer_l2popup_detail, "詳細表\示 切り替え");
+		strcpy(lang->filer_l2popup_dirsize, "フォルダサイズ表\示");
+		strcpy(lang->filer_l2popup_icon, "アイコン表\示");
+		strcpy(lang->filer_l2popup_flicker, "フリッカーコントロール");
 		}
 		//config
 		{

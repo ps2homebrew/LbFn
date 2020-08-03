@@ -2,6 +2,15 @@
 LIBITO=$(PS2DEV)\libito
 PS2ETH=$(PS2DEV)\ps2eth
 
+
+#------------------------------------
+#psbファイル実行機能の有無
+#PSB = yes
+#アイコンの有無
+#ICON = yes
+
+
+#------------------------------------
 EE_BIN = LbF.ELF
 
 EE_OBJS = main.o pad.o config.o elf.o draw.o loader.o  filer.o cd.o language.o cnf.o\
@@ -14,9 +23,27 @@ EE_LDFLAGS := -L$(LIBITO)/lib -L$(PS2DEV)/libcdvd/lib -s
 
 EE_LIBS = -lpad -lito -lmc -lhdd -lcdvd -lcdvdfs -lfileXio -lpatches -lpoweroff -ldebug\
 
+
+ifeq ($(PSB), yes)
+EE_CFLAGS += -DENABLE_PSB
+EE_CXXFLAGS += -DENABLE_PSB
+endif
+
+ifeq ($(ICON), yes)
+EE_OBJS += icon.o
+EE_CFLAGS += -DENABLE_ICON
+EE_CXXFLAGS += -DENABLE_ICON
+endif
+
+
 #------------------------------------
 all: $(EE_BIN)
 
+clean:
+	rm -f $(EE_BIN) *.o *.s
+
+
+#------------------------------------
 usbd.s:
 	bin2s $(PS2SDK)/iop/irx/usbd.irx usbd.s usbd_irx
 
@@ -65,12 +92,11 @@ ps2ftpd.s:
 loader.s:
 	bin2s loader/loader.elf loader.s loader_elf
 
-#------------------------------------
-clean:
-	rm -f $(EE_BIN) *.o *.s
+icon.s:image/icon.iif
+	bin2s image/icon.iif icon.s icon_iif
 
-#------------------------------------
 cd.o config.o draw.o elf.o filer.o main.o pad.o language.o cnf.o:launchelf.h language.h cnf.h
+
 
 #------------------------------------
 include $(PS2SDK)/samples/Makefile.pref

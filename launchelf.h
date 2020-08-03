@@ -25,15 +25,12 @@
 #include <cdvd_rpc.h>
 #include <smod.h>
 
-//psbファイル実行機能の有無
-//#define ENABLE_PSB
-
 #include "cd.h"
 #include "language.h"
 #include "cnf.h"
 
 // バージョン
-#define LBF_VER "LbF v0.64"
+#define LBF_VER "LbF v0.65"
 
 // 垂直スキャンレート
 #define SCANRATE (ITO_VMODE_AUTO==ITO_VMODE_NTSC ? 60:50)
@@ -149,12 +146,18 @@ int GetFontBold(void);
 int checkFONTX2header(const char *path);
 void drawChar(unsigned char c, int x, int y, uint64 colour);
 int printXY(const unsigned char *s, int x, int y, uint64 colour, int draw);
+#ifdef ENABLE_ICON
+void loadIcon(void);
+int drawIcon(int x, int y, int w, int h, int id);
+#endif
 //int SetCurrentPos(int x, int y);
 //int GetCurrentPos(int type);
 //int printXY2(const unsigned char *s, uint64 color, int draw);
 
 /* pad.c */
+extern struct padButtonStatus buttons;
 extern u32 new_pad;
+extern u32 paddata;
 int setupPad(void);
 int readpad(void);
 void waitPadReady(int port, int slot);

@@ -69,6 +69,10 @@ typedef struct
 	char filer_export_header[MAX_LANGUAGE_STR];
 	char filer_import_files[MAX_LANGUAGE_STR];
 	char filer_import_header[MAX_LANGUAGE_STR];
+	char filer_l2popup_detail[MAX_LANGUAGE_STR];
+	char filer_l2popup_dirsize[MAX_LANGUAGE_STR];
+	char filer_l2popup_icon[MAX_LANGUAGE_STR];
+	char filer_l2popup_flicker[MAX_LANGUAGE_STR];
 
 	//config
 	char conf_savefailed[MAX_LANGUAGE_STR];

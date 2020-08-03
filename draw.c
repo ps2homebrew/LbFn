@@ -23,6 +23,11 @@ typedef struct {
 	int offset;
 } FONTX_DATA;
 
+#ifdef ENABLE_ICON
+extern uint8 *icon_iif[];
+extern int size_icon_iif;
+#endif
+
 //----------------------------------------------------------
 itoGsEnv screen_env;
 uint16 buffer_width;
@@ -214,6 +219,10 @@ void setupito(int tvmode)
 		ITO_ALPHA_VALUE_SRC, // C = ALPHA VALUE SOURCE
 		ITO_ALPHA_COLOR_DST, // C = COLOR DEST
 		0x80);				 // Fixed Value
+
+	itoZBufferUpdate(FALSE);
+	itoZBufferTest(FALSE, 0);
+	itoSetTextureBufferBase( itoGetZBufferBase() );
 }
 
 //-------------------------------------------------
@@ -975,6 +984,38 @@ int printXY(const unsigned char *s, int x, int y, uint64 color, int draw)
 
 	return x;
 }
+
+#ifdef ENABLE_ICON
+//-------------------------------------------------
+void loadIcon(void)
+{
+	itoLoadIIF(icon_iif, 0, 256, 0, 0);
+
+	return;
+}
+
+//-------------------------------------------------
+int drawIcon(int x, int y, int w, int h, int id)
+{
+	//アルファブレンド有効
+	itoPrimAlphaBlending( TRUE );
+
+	itoSetTexture(0, 256, ITO_RGBA32, ITO_TEXTURE_256, ITO_TEXTURE_32);
+	itoTextureSprite(
+		ITO_RGBA(0x80,0x80,0x80,0xFF),
+		x, y,
+		id*16, 0, 
+		x+16*w/16, y+16*h/16,
+		id*16+16, 16,
+		0);
+
+	//アルファブレンド無効
+	itoPrimAlphaBlending( FALSE );
+
+	return 0;
+}
+#endif
+
 /*
 //int CurrentPos_x;	//カレントポジションx
 //int CurrentPos_y;	//カレントポジションy

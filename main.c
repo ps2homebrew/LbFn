@@ -644,14 +644,25 @@ void showinfo(void)
 	int fd;
 	char romver[16];
 
+	//build info
+	strcpy(info[nList], "BUILD INFO  : ");
+#ifdef ENABLE_PSB
+	strcat(info[nList], "PSB ");
+#endif
+#ifdef ENABLE_ICON
+	strcat(info[nList], "ICON ");
+#endif
+	nList++;
 	//ROM Version
 	fd = fioOpen("rom0:ROMVER", O_RDONLY);
 	fioRead(fd, romver, sizeof(romver));
 	fioClose(fd);
 	romver[15] = 0;
-	sprintf(info[0], "ROM VERSION : %s", romver);
+	sprintf(info[nList], "ROM VERSION : %s", romver);
+	nList++;
 	//LaunchElfDir
-	sprintf(info[1], "ELF DIR     : %s", LaunchElfDir);
+	sprintf(info[nList], "ELF DIR     : %s", LaunchElfDir);
+	nList++;
 	//boot
 	if(boot==UNK_BOOT)
 		strcpy(bootdevice, "UNK_BOOT");
@@ -669,25 +680,26 @@ void showinfo(void)
 		strcpy(bootdevice, "HDD_BOOT");
 	else if(boot==MASS_BOOT)
 		strcpy(bootdevice, "MASS_BOOT");
-	sprintf(info[2], "BOOT        : %s", bootdevice);
+	sprintf(info[nList], "BOOT        : %s", bootdevice);
+	nList++;
 	//reset
-	strcpy(info[3], "RESET IOP   : ");
+	strcpy(info[nList], "RESET IOP   : ");
 	if(reset)
-		strcat(info[3], "YES");
+		strcat(info[nList], "YES");
 	else
-		strcat(info[3], "NO");
-	nList=4;
+		strcat(info[nList], "NO");
+	nList++;
 
 	//
 	if(usbmass){
-		strcpy(info[4], "USB_MASS.IRX: ");
-		if(usbmass==-1) strcat(info[4], "loaded default USBHDFSD.IRX");
+		strcpy(info[nList], "USB_MASS.IRX: ");
+		if(usbmass==-1) strcat(info[nList], "loaded default USBHDFSD.IRX");
 		if(usbmass==1){
-			strcat(info[4], LaunchElfDir);
-			strcat(info[4], "USB_MASS.IRX");
+			strcat(info[nList], LaunchElfDir);
+			strcat(info[nList], "USB_MASS.IRX");
 		}
-		if(usbmass==2) strcat(info[4], "loaded mc0:/SYS-CONF/USB_MASS.IRX");
-		if(usbmass==3) strcat(info[4], "loaded mc1:/SYS-CONF/USB_MASS.IRX");
+		if(usbmass==2) strcat(info[nList], "loaded mc0:/SYS-CONF/USB_MASS.IRX");
+		if(usbmass==3) strcat(info[nList], "loaded mc1:/SYS-CONF/USB_MASS.IRX");
 		nList++;
 	}
 
@@ -699,14 +711,18 @@ void showinfo(void)
 				sel--;
 			else if(new_pad & PAD_DOWN)
 				sel++;
-			else if(new_pad & PAD_CROSS)
-				break;
-			else if(new_pad & PAD_CIRCLE)
-				break;
 			else if(new_pad & PAD_LEFT)
 				sel-=MAX_ROWS/2;
 			else if(new_pad & PAD_RIGHT)
 				sel+=MAX_ROWS/2;
+			else if(new_pad & PAD_SELECT)
+				break;
+			else if(new_pad & PAD_CROSS)
+				break;
+			else if(new_pad & PAD_CIRCLE)
+				break;
+			else if(new_pad & PAD_TRIANGLE)
+				break;
 		}
 
 		//リスト表示用変数の正規化

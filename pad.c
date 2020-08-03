@@ -1,6 +1,5 @@
 #include "launchelf.h"
 
-static char padBuf[256] __attribute__((aligned(64)));
 struct padButtonStatus buttons;
 u32 paddata;
 u32 old_pad = 0;
@@ -15,7 +14,6 @@ int readpad(void)
 	
 	ret = padRead(0, 0, &buttons);
 	if (ret != 0){
-		//paddata = 0xffff ^ ((buttons.btns[0] << 8) | buttons.btns[1]);
 		paddata = 0xffff ^ buttons.btns;
 		new_pad = paddata & ~old_pad;
 		if(old_pad==paddata){
@@ -26,14 +24,16 @@ int readpad(void)
 					if(nn++ < 20)	n=20;
 					else			n=23;
 				}
-			}else{
+			}
+			else{
 				if(n>=21){
 					new_pad=paddata;
 					if(nn++ < 20)	n=17;
 					else			n=19;
 				}
 			}
-		}else{
+		}
+		else{
 			n=0;
 			nn=0;
 			old_pad = paddata;
@@ -47,16 +47,16 @@ int readpad(void)
 // Wait PAD
 void waitPadReady(int port, int slot)
 {
-	int state, lastState;
-	char stateString[16];
+	int state;//, lastState;
+//	char stateString[16];
 
 	state = padGetState(port, slot);
-	lastState = -1;
+//	lastState = -1;
 	while((state != PAD_STATE_STABLE) && (state != PAD_STATE_FINDCTP1)){
-		if (state != lastState)
-			padStateInt2String(state, stateString);
-		lastState = state;
-		state=padGetState(port, slot);
+//		if (state != lastState)
+//			padStateInt2String(state, stateString);
+//		lastState = state;
+		state = padGetState(port, slot);
 	}
 }
 
@@ -64,6 +64,7 @@ void waitPadReady(int port, int slot)
 // setup PAD
 int setupPad(void)
 {
+	static char padBuf[256] __attribute__((aligned(64)));
 	int ret, i, modes;
 	
 	padInit(0);
