@@ -613,19 +613,14 @@ int readHDD(const char *path, FILEINFO *info, int max)
 
 //-------------------------------------------------
 // USBマスストレージ読み込み
-int readMASS(const char *pathsjis, FILEINFO *info, int max)
+int readMASS(const char *path, FILEINFO *info, int max)
 {
 	fio_dirent_t record;
 	int n=0, dd=-1;
-	char path[770];
 
 	loadUsbModules();
 	
-	if(setting->usbmass_char)
-		sjistoutf((unsigned char*) pathsjis, (unsigned char*) path, 768);
-	else
-		strcpy(path, pathsjis);
-	
+
 	if ((dd = fioDopen(path)) < 0) goto exit;
 
 	while(fioDread(dd, &record) > 0){
@@ -642,11 +637,7 @@ int readMASS(const char *pathsjis, FILEINFO *info, int max)
 		else
 			continue;
 
-		if(setting->usbmass_char)
-			utftosjis((unsigned char*) record.name, (unsigned char*) info[n].name, 768);
-		else
-			strcpy(info[n].name, record.name);
-		//strcpy(info[n].name, path);
+		strcpy(info[n].name, record.name);
 		strncpy(info[n].name, info[n].name, 32);
 		memset(&info[n].createtime, 0, sizeof(PS2TIME)); //取得しない
 		info[n].modifytime.unknown = 0;
@@ -719,9 +710,6 @@ int getGameTitlePsu(const char *path, const FILEINFO *file, char *out)
 	else{
 		sprintf(dir, "%s%s", path, file->name);
 		if(file->attr & MC_ATTR_SUBDIR) strcat(dir, "/");
-	}
-	if(setting->usbmass_char && !strncmp(path, "mass", 4)){
-		sjistoutf(dir, dir, 768);
 	}
 
 	//psuファイルオープンとサイズ取得
@@ -1993,9 +1981,6 @@ int psuImport(const char *path, const FILEINFO *file, int outmc)
 			//psuファイルのフルパス
 			sprintf(inpath, "%s%s", path, file->name);
 		}
-		if(setting->usbmass_char && !strncmp(path, "mass", 4))
-			sjistoutf(inpath, inpath, MAX_PATH-2);
-		
 
 		//psuファイルオープンとサイズ取得
 		if(hddin){
@@ -2109,8 +2094,6 @@ int psuImport(const char *path, const FILEINFO *file, int outmc)
 			//psuファイルのフルパス
 			sprintf(inpath, "%s%s", path, file->name);
 		}
-		if(setting->usbmass_char && !strncmp(path, "mass", 4))
-			sjistoutf(inpath, inpath, MAX_PATH-2);
 
 		//セーブデータのフォルダ作成
 		r = newdir(outpath, psu_header_dir.name);
@@ -2401,8 +2384,6 @@ int psuExport(const char *path, const FILEINFO *file, int sjisout)
 		}
 		else if(!strncmp(outpath, "mass", 4)){
 			loadUsbModules();
-			if(setting->usbmass_char)
-				sjistoutf(outpath, outpath, MAX_PATH-2);
 		}
 
 		//psuファイルオープン 新規作成

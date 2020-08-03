@@ -16,6 +16,7 @@ enum
 	DEF_COLOR9 = ITO_RGBA(0,128,255,0),		//PS1saveフォルダ
 	DEF_COLOR10 = ITO_RGBA(64,64,80,0),		//無効の文字色
 	DEF_COLOR11 = ITO_RGBA(192,96,0,0),		//psuファイル
+	DEF_FLICKER_ALPHA = 0x10,
 	DEF_SCREEN_X_D1 = 639,
 	DEF_SCREEN_Y_D1 = 50,
 	DEF_SCREEN_X_D2 = 310,
@@ -56,7 +57,6 @@ enum
 	DEF_FILEPS2SAVECHECK = TRUE,
 	DEF_FILEELFCHECK = TRUE,
 	DEF_LANGUAGE = LANG_ENGLISH,
-	DEF_USBMASS_CHAR = TRUE,	// 0:Shift_JIS, !0:UTF-8
 	DEF_USBMASS_FLAG = FALSE,	// 0:Inside Only
 };
 
@@ -106,6 +106,7 @@ enum
 	COLOR9,
 	COLOR10,
 	COLOR11,
+	FLICKER_ALPHA,
 	PRESETCOLOR,
 };
 
@@ -165,7 +166,6 @@ enum
 	EXPORTDIR,
 	DEFAULTTITLE,
 	DEFAULTDETAIL,
-	USBMASS_CHAR,
 	USBMASS_FLAG,
 	USBMASS_PATH,
 	MISCINIT,
@@ -349,6 +349,7 @@ void InitColorSetting(void)
 	setting->color[COLOR_PS1SAVE] = DEF_COLOR9;
 	setting->color[COLOR_GRAYTEXT] = DEF_COLOR10;
 	setting->color[COLOR_PSU] = DEF_COLOR11;
+	setting->flicker_alpha = DEF_FLICKER_ALPHA;
 }
 
 //-------------------------------------------------
@@ -411,7 +412,6 @@ void InitMiscSetting(void)
 	setting->language = DEF_LANGUAGE;
 	setting->defaulttitle = DEF_DEFAULTTITLE;
 	setting->defaultdetail = DEF_DEFAULTDETAIL;
-	setting->usbmass_char = DEF_USBMASS_CHAR;
 	setting->usbmass_flag = DEF_USBMASS_FLAG;
 	setting->usbmass_path[0] = 0;
 }
@@ -526,6 +526,8 @@ void saveConfig(char *mainMsg)
 	if(cnf_setstr("color_disable_text", tmp)<0) goto error;
 	sprintf(tmp, "%08lX", setting->color[COLOR_PSU]);
 	if(cnf_setstr("color_psu_file", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->flicker_alpha);
+	if(cnf_setstr("flicker_alpha", tmp)<0) goto error;
 	//font
 	strcpy(tmp, setting->AsciiFont);
 	if(cnf_setstr("ascii_font", tmp)<0) goto error;
@@ -624,8 +626,6 @@ void saveConfig(char *mainMsg)
 	if(cnf_setstr("default_title", tmp)<0) goto error;
 	sprintf(tmp, "%d", setting->defaultdetail);
 	if(cnf_setstr("default_detail", tmp)<0) goto error;
-	sprintf(tmp, "%d", setting->usbmass_char);
-	if(cnf_setstr("usbmass_charset", tmp)<0) goto error;
 	sprintf(tmp, "%d", setting->usbmass_flag);
 	if(cnf_setstr("usbmass_use_ext", tmp)<0) goto error;
 	strcpy(tmp, setting->usbmass_path);
@@ -804,6 +804,11 @@ void loadConfig(char *mainMsg)
 				setting->color[COLOR_GRAYTEXT] = strtoul(tmp, NULL, 16);
 			if(cnf_getstr("color_psu_file", tmp, "")>=0)
 				setting->color[COLOR_PSU] = strtoul(tmp, NULL, 16);
+			if(cnf_getstr("flicker_alpha", tmp, "")>=0){
+				setting->flicker_alpha = atoi(tmp);
+				if(setting->flicker_alpha<0 || setting->flicker_alpha>255)
+					setting->flicker_alpha = DEF_FLICKER_ALPHA;
+			}
 			//font
 			if(cnf_getstr("ascii_font", tmp, "")>=0)
 				strcpy(setting->AsciiFont, tmp);
@@ -979,11 +984,6 @@ void loadConfig(char *mainMsg)
 				setting->defaultdetail = atoi(tmp);
 				if(setting->defaultdetail<0 || setting->defaultdetail>2)
 					setting->defaultdetail = DEF_DEFAULTDETAIL;
-			}
-			if(cnf_getstr("usbmass_charset", tmp, "")>=0){
-				setting->usbmass_char = atoi(tmp);
-				if(setting->usbmass_char<0 || setting->usbmass_char>1)
-					setting->usbmass_char = DEF_USBMASS_CHAR;
 			}
 			if(cnf_getstr("usbmass_use_ext", tmp, "")>=0){
 				setting->usbmass_flag = atoi(tmp);
@@ -1213,6 +1213,8 @@ void config_color(SETTING *setting)
 						sel--;
 					}
 				}
+				else if (sel>FLICKER_ALPHA)
+					sel=FLICKER_ALPHA;
 				else
 					sel=0;
 			}
@@ -1224,6 +1226,8 @@ void config_color(SETTING *setting)
 						sel++;
 					}
 				}
+				else if (sel == 0)
+					sel=FLICKER_ALPHA;
 				else
 					sel=PRESETCOLOR;
 			}
@@ -1252,6 +1256,13 @@ void config_color(SETTING *setting)
 					if(sel_x==1 && g<255) g++;
 					if(sel_x==2 && b<255) b++;
 					setting->color[colorid] = ITO_RGBA(r, g, b, 0);
+				} else if (sel == FLICKER_ALPHA) {
+					if (paddata & PAD_SQUARE)
+						setting->flicker_alpha+=8;
+					else
+						setting->flicker_alpha++;
+					if (setting->flicker_alpha>255)
+						setting->flicker_alpha=255;
 				}
 			}
 			else if(new_pad & PAD_CROSS){	//×
@@ -1276,6 +1287,13 @@ void config_color(SETTING *setting)
 					if(sel_x==1 && g>0) g--;
 					if(sel_x==2 && b>0) b--;
 					setting->color[colorid] = ITO_RGBA(r, g, b, 0);
+				} else if (sel == FLICKER_ALPHA) {
+					if (paddata & PAD_SQUARE)
+						setting->flicker_alpha-=8;
+					else
+						setting->flicker_alpha--;
+					if (setting->flicker_alpha<0)
+						setting->flicker_alpha=0;
 				}
 			}
 			else if((new_pad & PAD_L3)||((new_pad & PAD_CIRCLE)&&(sel=PRESETCOLOR))){
@@ -1362,11 +1380,12 @@ void config_color(SETTING *setting)
 				if(i==COLOR10) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_elffile, r, g, b);
 				if(i==COLOR11) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_psufile, r, g, b);
 			}
-			else if(i==PRESETCOLOR){	//INIT
+			else if(i==FLICKER_ALPHA)
+				sprintf(config[i], "%s: %02X", lang->conf_flicker_alpha, setting->flicker_alpha);
+			else if(i==PRESETCOLOR)	//INIT
 				strcpy(config[i], lang->conf_presetcolor);
-			}
 		}
-		nList=13;
+		nList=14;
 
 		// リスト表示用変数の正規化
 		if(top > nList-MAX_ROWS)	top=nList-MAX_ROWS;
@@ -1440,6 +1459,8 @@ void config_color(SETTING *setting)
 			sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
 		else if(sel>=COLOR1 && sel<=COLOR11)
 			sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_add, lang->conf_away, lang->conf_up);
+		else if(sel==FLICKER_ALPHA)
+			sprintf(msg1, "○:%s ×:%s +□:%s △:%s", lang->conf_add, lang->conf_away, lang->conf_fast, lang->conf_up);
 		else if(sel==PRESETCOLOR)
 			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
 		setScrTmp(msg0, msg1);
@@ -2296,8 +2317,6 @@ void config_misc(SETTING *setting)
 					setting->defaultdetail++;
 					if(setting->defaultdetail>2) setting->defaultdetail = 0;
 				}
-				else if(sel==USBMASS_CHAR)
-					setting->usbmass_char = !setting->usbmass_char;
 				else if(sel==USBMASS_FLAG)
 					setting->usbmass_flag = !setting->usbmass_flag;
 				else if(sel==USBMASS_PATH){
@@ -2406,13 +2425,6 @@ void config_misc(SETTING *setting)
 				else if(setting->defaultdetail==2)
 					strcat(config[i], lang->conf_defaultdetail_modifytime);
 			}
-			else if(i==USBMASS_CHAR){	//USBMASS_CHAR
-				sprintf(config[i], "%s: ", lang->conf_usbmass_charset);
-				if(setting->usbmass_char)
-					strcat(config[i], "UTF-8");
-				else
-					strcat(config[i], "Shift_JIS");
-			}
 			else if(i==USBMASS_FLAG){	//USBMASS_USE
 				sprintf(config[i], "%s: ", lang->conf_usbmass_use);
 				if(setting->usbmass_flag)
@@ -2426,7 +2438,7 @@ void config_misc(SETTING *setting)
 				strcpy(config[i], lang->conf_miscsettinginit);
 			}
 		}
-		nList=17;
+		nList=16;
 
 		// リスト表示用変数の正規化
 		if(top > nList-MAX_ROWS)	top=nList-MAX_ROWS;
@@ -2498,8 +2510,6 @@ void config_misc(SETTING *setting)
 		else if(sel==DEFAULTTITLE)
 			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
 		else if(sel==DEFAULTDETAIL)
-			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
-		else if(sel==USBMASS_CHAR)
 			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
 		else if(sel==USBMASS_FLAG)
 			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);

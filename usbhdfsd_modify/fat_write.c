@@ -62,118 +62,173 @@ int clStackIndex = 0;
 unsigned int clStackLast = 0; // last free cluster of the fat table
 
 //---------------------------------------------------------------------------
-// utf-8 to utf-16 conversion
-void utftoucs(unsigned char* src, unsigned char* dst) {
-	unsigned int t1,t2,t3,t4;// char?
-	unsigned int b,c;
-	unsigned int sp=0,dp=0;
-	
-	while(src[sp] != 0) {
-		t1 = src[sp++] & 0xff;
-		t2 = src[sp] & 0xff;
-		t3 = src[sp+1] & 0xff;	// ...
-		t4 = src[sp+2] & 0xff;
-		if (t1 < 0x80) {
-			// ASCII
-			c = t1;
-		} else if ((t1 >= 0xc0) && (t1 < 0xe0) && (t2 >= 0x80) && (t2 < 0xc0)) {
-			// U+0080 - U+07FF
-			c = ((t1 & 0x1f) << 6) | (t2 & 0x3f);
-			if (c < 0x0080) c = 0x003f;
-			sp++;
-		} else if ((t1 >= 0xe0) && (t1 < 0xf0) && (t2 >= 0x80) && (t2 < 0xc0) && (t3 >= 0x80) && (t3 < 0xc0)) {
-			// U+0800 - U+FFFF
-			c = ((t1 & 0x0f) << 12) | ((t2 & 0x3f) << 6) | (t3 & 0x3f);
-			if (c < 0x0800) c = 0x003f;
-			if ((c >= 0xd800) && (c <= 0xdfff)) c = 0x003f;
-			if (c != 0x003f) sp+= 2;
-		} else if ((t1 >= 0xf0) && (t1 < 0xf8) && (t2 >= 0x80) && (t2 < 0xc0) && (t3 >= 0x80) && (t3 < 0xc0) && (t4 >= 0x80) && (t4 < 0xc0)) {
-			// U+010000 - U+10FFFF
-			c = ((t1 & 0x07) << 18) | ((t2 & 0x3f) << 12) | ((t3 & 0x3f) << 6) | (t4 & 0x3f);
-			if (c < 0x010000) c = 0x003f;
-			if (c > 0x10ffff) c = 0x003f;
-			if (c != 0x003f) sp+= 3;
-		} else {
-			c = 0x003f;
-		}
-		if (c > 0xffff) {
-			// surrogate pair
-			c-= 0x010000;
-			b = (c >> 10) | 0xd800;
-			c = (c & 0x3ff) | 0xdc00;
-			dst[dp++] = b & 0xff;
-			dst[dp++] = (b >> 8) & 0xff;
-		}
-		// null and unknown char skip for filename string
-		if ((c > 0) && ((c != 0x3f) || (t1 == 0x3f))) {
-			dst[dp++] = c & 0xff;
-			dst[dp++] = (c >> 8) & 0xff;
-		}
-		// '\0'
-		dst[dp] = 0; dst[dp+1] = 0;
+// unicode convert table init
+#define	MAX_UCS_CODE	0x010000
+extern unsigned short sjistable[];
+static int ucstabled=0;
+static unsigned short ANKTable[256]; 			//    256 chars,    512 bytes
+//static unsigned short EUCTable[11280];			// 120*94 chars,  22560 bytes
+#define EUCTable	sjistable
+static unsigned short UCSTable[MAX_UCS_CODE];	//  65536 chars, 131072 bytes
+// total conversiontable size: 308288 bytes (is not 154144?).
+int ucstableinit()
+{	// UCS convert table init
+	unsigned int c, u=-1;
+	if (ucstabled) return !0;
+	// init all charactors to default charactor
+	for (c = 0; c < MAX_UCS_CODE; c++) {
+		UCSTable[c] = 0x3F;	// question mark
 	}
+	// making ASCII <-> Unicode convert table
+	for (c = 0; c < 128; c++) {
+		ANKTable[c] = c;	// ANKËUnicode
+		ANKTable[c + 128] = c + 128; // for latin-1 compatible (maybe)
+		UCSTable[c] = c;	// UnicodeËANK (it is init, override the next steps)
+	}
+	// making ANK(HALF WIDTH KATAKANA) <-> Unicode convert table
+	for (c = 1; c < 64; c++) {
+		ANKTable[c + 0xA0] = c + 0xFF60;
+		UCSTable[c + 0xFF60] = c + 0xA0;
+	}
+	// making japanese <-> Unicode convert table
+	for (c = 0; c < 11280; c++) {
+		u = sjistable[c];
+		if ((u > 0x10FFFF) || ((u >= 0xD800) && (u <= 0xDFFF)) || (u == 0)) u = 0x3F;
+		if (u >= MAX_UCS_CODE) u = 0x3F;
+		EUCTable[c] = u;	// jis codepoint number -> Unicode
+		if ((u != 0x3F) && (UCSTable[u] == 0x3F))
+			UCSTable[u] = c + 256;	// Unicode -> codepoint number + 256
+	}
+	// making user defined charactors (GAIJI) <-> Unicode convert table (JIS X 0213:2004 is not present)
+	//	for (c = 0; c < 1880; c++) {
+	//		EUCTable[c + 8836] = c + 0xE000;
+	//		UCSTable[c + 0xE000] = c + 8836;
+	//	}
+	// making IBM extend charactors <-> Unicode convert table (JIS X 0213:2004 is not present)
+	// making korean <-> Unicode convert table (KS X 1001 / KS C 5601 for)
+	// making composite charactor support flag table (25 charactors)
+	// making JIS X 0213:2004 support patch (over U+10000, Surrogate Pair Area in UTF-16) table (303 charactors)
+	// making composite charactor convert 2nd table
+	// --> skip here all steps (PS2 is not in use).
+	ucstabled = !0;
+	return !0;
 }
 
 //---------------------------------------------------------------------------
-// utf-16 to utf-8 conversion
-void ucstoutf(unsigned char* src, unsigned char* dst) {
-	unsigned int t1,t2,t3,t4;// char?
-	unsigned int c,d;
-	unsigned int sp=0,dp=0;
+// unicode to sjis convert
+int ucstosjis(unsigned char *dst, const unsigned char *src, int maxdst)
+{
+	int sp=0, dp=0;
+	unsigned int t1, t2, t3, t4;//char?
+	//unsigned char src[522];
+	int c,u;
 	
-	while((src[sp] != 0) || (src[sp+1] != 0)) {
-		t1 = src[sp++] & 0xff; t2 = src[sp++] & 0xff;
-		c = (t2 << 8) | t1;
-		t3 = src[sp] & 0xff; t4 = src[sp+1] & 0xff;
-		d = (t4 << 8) | t3;
-		if ((c >= 0xd800) && (c <= 0xdbff) &&
-			(d >= 0xdc00) && (d <= 0xdfff)) {
-			c = ((((c & 0x3ff) << 10) | (d & 0x3ff))) + 0x010000;
+	//if (!ucstabled) 
+		ucstableinit();
+	
+	//strcpy(src, source);
+
+	dst[0] = 0;
+	while(src[sp]|src[sp+1]) {
+		t1 = src[sp++]; // LSB
+		t2 = src[sp++]; // MSB
+		t3 = src[sp];	// 2nd LSB
+		t4 = src[sp+1];	// 2nd MSB
+		u = 256 * t2 + t1;
+		c = 256 * t4 + t3;
+		if ((u >= 0xD800) && (u <= 0xDBFF) && (c >= 0xDC00) && (c <= 0xDFFF)) {
+			u = (((u & 0x3ff) << 10) | (c & 0x3ff)) + 0x10000;
 			sp+= 2;
-		} else if ((c >= 0xd800) && (c <= 0xdfff)) {
-			c = 0x3f;
 		}
-		// null skip for filename string
-		if ((t1 == 0x3f) || ((t1 != 0x3f) && (c != 0x3f))) {
-			if (c <= 0x7f) {
-				dst[dp++] = c & 0x7f;
-			} else if (c <= 0x07ff) {
-				dst[dp++] = ((c >> 6) & 0x1f) | 0xc0;
-				dst[dp++] = (      c  & 0x3f) | 0x80;
-			} else if (c <= 0xffff) {
-				dst[dp++] = ((c >> 12) & 0x0f) | 0xe0;
-				dst[dp++] = ((c >>  6) & 0x3f) | 0x80;
-				dst[dp++] = (       c  & 0x3f) | 0x80;
-			} else if (c <= 0x10ffff) {
-				dst[dp++] = ((c >> 18) & 0x07) | 0xf0;
-				dst[dp++] = ((c >> 12) & 0x3f) | 0x80;
-				dst[dp++] = ((c >>  6) & 0x3f) | 0x80;
-				dst[dp++] = (       c  & 0x3f) | 0x80;
+		
+		//if ((t1 == 0x3f) || ((t1 != 0x3f) && (u != 0x003f))) {
+		if (u > 0) {
+			if (u >= MAX_UCS_CODE) {
+				// not support over MAX_UCS_CODE
+			} else {
+				c = UCSTable[u];
+				if (c < 256) {
+					// ANK
+					dst[dp++] = c;
+				} else {
+					c-= 256;
+					t1 = (c / 188) + 0x81;
+					t2 = (c % 188) + 0x40;
+					if (t1 >= 0xa0) t1+= 0x40;
+					if (t2 >= 0x7f) t2++;
+					dst[dp++] = t1;
+					dst[dp++] = t2;
+				}
+				dst[dp] = 0;
+				if (dp >= maxdst-1) break;
 			}
 		}
-		// '\0'
-		dst[dp] = 0;
 	}
+	return dp;
+}
+
+//--------------------------------------------------------------
+// sjis to unicode convert
+int sjistoucs(unsigned char *dst, const unsigned char *src, int maxdst)
+{
+	int sp=0, dp=0;
+	unsigned int t1, t2;//, t3, t4;//char?
+	//unsigned char src[520];
+	int c,u;
+	
+	//if (!ucstable_loaded) 
+		ucstableinit();
+
+	//strcpy(src, source);
+	
+	dst[0] = 0; dst[1] = 0;
+	while(src[sp]) {
+		t1 = src[sp++];
+		t2 = src[sp];
+		//t3 = t1;
+		if ((((t1 >= 0x81) && (t1 < 0xa0)) || ((t1 >= 0xe0) && (t1 < 0xfd))) && (t2 >= 0x40) && (t2 != 0x7f) && (t2 < 0xfd)) {
+			// DBCS (SJIS)
+			if (t1 > 0xa0) t1-= 0x40;
+			if (t2 > 0x7f) t2--;
+			c = ((int) t1 - 0x81) * 188 + (t2 - 0x40);
+			u = EUCTable[c];
+			sp++;
+		} else {
+			// ANK (ASCII and HALF WIDTH KATAKANA (+ Latin1 compatible))
+			u = ANKTable[t1];
+		}
+		//if ((t3 = 0x3f) || ((t3 != 0x3f) && (u != 0x003f))) {
+		//if (u == 0) u = 0x003f;
+		if (u > 0) {
+			if (u >= 0x10000) {
+				u-= 0x10000;
+				c = (u >> 10)   | 0xD800;
+				u = (u & 0x3ff) | 0xDC00;
+				dst[dp++] = c & 0xff;
+				dst[dp++] = c >> 8;
+			}
+			dst[dp++] = u & 0xff;
+			dst[dp++] = u >> 8;
+			dst[dp] = 0;
+			dst[dp+1] = 0;
+			if (dp >= maxdst-3) break;
+		}
+	}
+	return dp;
 }
 
 //---------------------------------------------------------------------------
-//strlen for UTF-8
-int utfstrlen(const unsigned char* src) {
-	int i,c=0;
-	for (i = 0; src[i] != 0; i++) {
-		if (src[i] < 0x80) {
-			// U+0000 - U+007f
-			c++;
-		} else if ((src[i] >= 0xc0) && (src[i] < 0xe0) && (src[i+1] >= 0x80) && (src[i+1] < 0xc0)) {
-			// U+0080 - U+07ff
-			c++;
-		} else if ((src[i] >= 0xe0) && (src[i] < 0xf0) && (src[i+1] >= 0x80) && (src[i+1] < 0xc0) && (src[i+2] >= 0x80) && (src[i+2] < 0xc0)) {
-			// U+0800 - U+ffff;
-			c++;
-		} else if ((src[i] >= 0xf0) && (src[i] < 0xf8) && (src[i+1] >= 0x80) && (src[i+1] < 0xc0) && (src[i+2] >= 0x80) && (src[i+2] < 0xc0) && (src[i+3] >= 0x80) && (src[i+3] < 0xc0)) {
-			// U+10000 - U+10ffff
-			c++;
+// sjis charactors count (DBCS count is 1 char, too.)
+int sjisstrlen(const unsigned char* src) {
+	int t1, t2;
+	int sp=0, c=0;
+	while(src[sp]) {
+		t1 = src[sp++];
+		t2 = src[sp];
+		if ((((t1 >= 0x81) && (t1 < 0xa0)) || ((t1 >= 0xe0) && (t1 < 0xfd))) && (t2 >= 0x40) && (t2 != 0x7f) && (t2 < 0xfd)) {
+			sp++;
 		}
+		c++;
 	}
 	return c;
 }
@@ -768,7 +823,7 @@ returns number of direntry positions that the name takes
 int getDirentrySize(unsigned char* lname) {
 	int len;
 	int result;
-	len = utfstrlen((const unsigned char*)lname);
+	len = sjisstrlen((const unsigned char*)lname);
 	result = len / 13;
 	if (len % 13 > 0) result++;
 	return result;
@@ -969,33 +1024,40 @@ int createShortNameMask(unsigned char* lname, unsigned char* sname) {	// remaked
 	}
 	
 	// init the short name area
-	for (j = 0; j < 11; j++)  sname[j] = 32;
+	for (j = 0; j < 11; j++) {
+		sname[j] = 32;
+	}
 	
 	// search the rightest extension mark and first not it.
 	for (i = 0; lname[i] != 0; i++) {
 		if (lname[i] == 0x2e) ext = i;
-		if ((lname[i] != 0x2e) && (st < 0)) st = i;
+		if ((st == -1) && (lname[i] != 0x2e)) st = i;
 	}
 	if (st < 0) st = 0;
 	if (ext < st) ext = -1;
-	// convert from long name (UTF-8) to short name (ASCII)
-	// note: DBCS charactor(over 0x7f byte) is always skip...
+	// convert from long name to short name (SJIS)
 	j = 0; k = 0; a = 0;
-	for (i = st; lname[i] != 0; i++) {
+	for (i = st; lname[i]; i++) {
+		if (i >= 11) break;
 		if ((j == 8) && (i < ext)) i = ext;
-		if (lname[i] == 0x2e) {	// extension mark
+		if ((((lname[i] > 0x80) && (lname[i] <= 0x9F)) || ((lname[i] >= 0xE0) && (lname[i] < 0xFD))) && (lname[i+1] >= 0x40) && (lname[i+1] != 0x7F) && (lname[i+1] < 0xFD)) {
+			if (j < 3*a+7) {
+				sname[j++] = lname[i++];
+				sname[j++] = lname[i];
+			} else {
+				sname[j++] = 0x5F;	// j == 8 or 11
+				k = 1;
+			}
+		} else if (lname[i] == 0x2E) {
 			if (i == ext) {
 				j = 8;
 				a++;
-			} else {
+			} else
 				k = 1;
-			}
-		} else if ((j < (8 + a * 3)) && (lname[i] != 0x20) && (lname[i] < 0x80)) {
+		} else if ((j < 3*a+8) && (lname[i] != 0x20))
 			sname[j++] = toUpperChar(lname[i]);
-		} else {
+		else
 			k = 1;
-		}
-		if (i == 11) break;
 	}
 	if (sname[0] == 0xe5) sname[0] = 0x05;
 	if (sname[0] == 32) {
@@ -1414,8 +1476,8 @@ int createDirentry(unsigned char* lname, unsigned char* sname, char directory, u
 
 	lsize = getDirentrySize(lname) - 1;
 	chsum = computeNameChecksum(sname);
-	nameSize = utfstrlen((const unsigned char*) lname);
-	utftoucs(lname, uname);
+	nameSize = sjisstrlen((const unsigned char*) lname);
+	sjistoucs(uname, lname, 260);
 	for (i = 0; i <= lsize; i++) {
 		setLfnEntry(uname, nameSize, chsum, buffer, lsize-i, lsize);
 	}

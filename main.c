@@ -1,6 +1,5 @@
 #include "launchelf.h"
-#define	MAX_UCS_CODE	0x10000
-
+//#define	MAX_UCS_CODE	0x10000
 extern u8 *iomanx_irx;
 extern int size_iomanx_irx;
 extern u8 *filexio_irx;
@@ -31,8 +30,6 @@ extern u8 *ps2smap_irx;
 extern int size_ps2smap_irx;
 extern u8 *ps2ftpd_irx;
 extern int size_ps2ftpd_irx;
-extern unsigned char osaskeuc_bin[];
-extern int size_osaskeuc_bin;
 
 //#define DEBUG
 #ifdef DEBUG
@@ -57,22 +54,6 @@ int boot;
 
 int reset=FALSE;
 int usbmass=0;
-
-/* typedef struct
-{
-	int	EUC;	// 16bit:面区点連続コード
-	int UCS;	// 32bit:UCSコード
-} EUC2UCS; */
-int UCSTable[MAX_UCS_CODE];	// 0x110000 * 4 = 約4.4MB
-//char UCSTableExt[MAX_UCS_CODE];// 0x110000 = 約1.1MB
-int ANKTable[0x100];	// 0x400 bytes
-int EUCTable[94*94];
-//int EUCTable[94*94*2];	// 2面94区94点まで(約70KB)
-//EUC2UCS EUCTableUCS[1024];	// 総合コード元フラグ
-//EUC2UCS EUCTable2004[1024];	// サロゲート用プライベートUCSコード
-//EUC2UCS EUCTablePair[1024];	// 総合用プライベートUCSコード
-// 簡易版のためU+FFFFまでに制限＆合成文字には対応しない
-int ucstable_loaded=0;
 
 //--------------------------------------------------------------
 #define IPCONF_MAX_LEN  (3*16)
@@ -316,6 +297,60 @@ static void getIpConfig(void)
 }
 
 //--------------------------------------------------------------
+// SifLoader/SifExecModule トラップ
+int X_SifLoadModule(const char *path, int arg_len, const char *args)
+{
+	int fd, ssize, dsize, ret;
+	char *src=NULL;
+	char *dst=NULL;
+	char header[32];
+	
+	fd = fioOpen(path, O_RDONLY);
+	if(fd>=0){
+		fioRead(fd, header, 32);
+		ssize = fioLseek(fd, 0, SEEK_END);
+		if ((dsize = tek_getsize(header))>=0) {
+			fioLseek(fd, 0, SEEK_SET);
+			src = (char*)malloc(ssize);
+			if (src != NULL) {
+				dst = (char*)malloc(dsize);
+				if (dst == NULL) {
+					free(src);
+					src = NULL;
+				}
+			}
+			if (src != NULL) fioRead(fd, src, (size_t)ssize);
+			fioClose(fd);
+			tek_decomp(src, dst, ssize);
+			free(src);
+			ret = SifExecModuleBuffer(dst, dsize, arg_len, args, &ret);
+			free(dst);
+			return ret;
+		} else {
+			fioClose(fd);
+		}
+	}
+	return SifLoadModule(path, arg_len, args);
+}
+
+int X_SifExecModuleBuffer(void *ptr, u32 size, u32 arg_len, const char *args, int *mod_res)
+{
+	int dsize, ret;
+	char *dst=NULL;
+	
+	if ((dsize = tek_getsize(ptr)) >= 0) {
+		dst = (char*)malloc(dsize);
+		if (dst != NULL) {
+			tek_decomp(ptr, dst, size);
+			ret = SifExecModuleBuffer(dst, dsize, arg_len, args, mod_res);
+			free(dst);
+			return ret;
+		}
+	}
+	return SifExecModuleBuffer(ptr, size, arg_len, args, mod_res);
+}
+
+//--------------------------------------------------------------
 void initsbv_patches(void)
 {
 	static int SbvPatchesInited=FALSE;
@@ -344,6 +379,7 @@ int load_irxfile(char *filename, int arg_len, char *args)
 {
 	int fd, size;
 	char path[MAX_PATH];
+	//int header[32]=NULL;
 	int ret=-1;
 
 	if(boot == HOST_BOOT) goto mc;
@@ -355,7 +391,7 @@ int load_irxfile(char *filename, int arg_len, char *args)
 		size = fioLseek(fd, 0, SEEK_END);
 		fioClose(fd);
 		if(size>=0){
-			ret = SifLoadModule(path, arg_len, args);
+			ret = X_SifLoadModule(path, arg_len, args);
 			if(ret>=0) return 1;
 		}
 	}
@@ -367,7 +403,7 @@ mc:
 		size = fioLseek(fd, 0, SEEK_END);
 		fioClose(fd);
 		if(size>=0){
-			ret = SifLoadModule(path, arg_len, args);
+			ret = X_SifLoadModule(path, arg_len, args);
 			if(ret>=0) return 2;
 		}
 	}
@@ -378,7 +414,7 @@ mc:
 		size = fioLseek(fd, 0, SEEK_END);
 		fioClose(fd);
 		if(size>=0){
-			ret = SifLoadModule(path, arg_len, args);
+			ret = X_SifLoadModule(path, arg_len, args);
 			if(ret>=0) return 3;
 		}
 	}
@@ -395,7 +431,7 @@ int load_irxdriver(char *path, int arg_len, char *args)
 		size = fioLseek(fd, 0, SEEK_END);
 		fioClose(fd);
 		if(size>=0){
-			ret = SifLoadModule(path, arg_len, args);
+			ret = X_SifLoadModule(path, arg_len, args);
 			if(ret>=0) return 1;
 		}
 	}
@@ -412,7 +448,7 @@ void	load_iomanx(void)
 
 	if(!loaded){
 		if(smod_get_mod_by_name( "IOX/File_Manager", &mod_t )==0)
-			SifExecModuleBuffer(&iomanx_irx, size_iomanx_irx, 0, NULL, &ret);
+			X_SifExecModuleBuffer(&iomanx_irx, size_iomanx_irx, 0, NULL, &ret);
 		loaded=TRUE;
 	}
 }
@@ -426,7 +462,7 @@ void	load_filexio(void)
 
 	if(!loaded){
 		if(smod_get_mod_by_name( "IOX/File_Manager_Rpc", &mod_t )==0)
-			SifExecModuleBuffer(&filexio_irx, size_filexio_irx, 0, NULL, &ret);
+			X_SifExecModuleBuffer(&filexio_irx, size_filexio_irx, 0, NULL, &ret);
 		loaded=TRUE;
 	}
 }
@@ -440,7 +476,7 @@ void	load_ps2dev9(void)
 
 	if(!loaded){
 		if(smod_get_mod_by_name( "dev9", &mod_t )==0)
-			SifExecModuleBuffer(&ps2dev9_irx, size_ps2dev9_irx, 0, NULL, &ret);
+			X_SifExecModuleBuffer(&ps2dev9_irx, size_ps2dev9_irx, 0, NULL, &ret);
 		loaded=TRUE;
 	}
 }
@@ -454,7 +490,7 @@ void	load_ps2atad(void)
 
 	if(!loaded){
 		if(smod_get_mod_by_name( "atad", &mod_t )==0)
-			SifExecModuleBuffer(&ps2atad_irx, size_ps2atad_irx, 0, NULL, &ret);
+			X_SifExecModuleBuffer(&ps2atad_irx, size_ps2atad_irx, 0, NULL, &ret);
 		loaded=TRUE;
 	}
 }
@@ -469,7 +505,7 @@ void	load_ps2hdd(void)
 
 	if(!loaded){
 		if(smod_get_mod_by_name( "hdd", &mod_t )==0)
-			SifExecModuleBuffer(&ps2hdd_irx, size_ps2hdd_irx, sizeof(hddarg), hddarg, &ret);
+			X_SifExecModuleBuffer(&ps2hdd_irx, size_ps2hdd_irx, sizeof(hddarg), hddarg, &ret);
 		loaded=TRUE;
 	}
 }
@@ -484,7 +520,7 @@ void	load_ps2fs(void)
 
 	if(!loaded){
 		if(smod_get_mod_by_name( "pfs_driver", &mod_t )==0)
-			SifExecModuleBuffer(&ps2fs_irx, size_ps2fs_irx, sizeof(pfsarg), pfsarg, &ret);
+			X_SifExecModuleBuffer(&ps2fs_irx, size_ps2fs_irx, sizeof(pfsarg), pfsarg, &ret);
 		loaded=TRUE;
 	}
 }
@@ -498,7 +534,7 @@ void	load_ps2ip(void)
 
 	if(!loaded){
 		if(smod_get_mod_by_name( "TCP/IP Stack", &mod_t )==0)
-			SifExecModuleBuffer(&ps2ip_irx, size_ps2ip_irx, 0, NULL, &ret);
+			X_SifExecModuleBuffer(&ps2ip_irx, size_ps2ip_irx, 0, NULL, &ret);
 		loaded=TRUE;
 	}
 }
@@ -512,7 +548,7 @@ void	load_ps2smap(void)
 
 	if(!loaded){	
 		if(smod_get_mod_by_name( "INET_SMAP_driver", &mod_t )==0)
-			SifExecModuleBuffer(&ps2smap_irx, size_ps2smap_irx, if_conf_len, &if_conf[0], &ret);
+			X_SifExecModuleBuffer(&ps2smap_irx, size_ps2smap_irx, if_conf_len, &if_conf[0], &ret);
 		loaded=TRUE;
 	}
 }
@@ -531,7 +567,7 @@ void	load_ps2ftpd(void)
 
 	if(!loaded){
 		//if( smod_get_mod_by_name( "???" )==0 )
-			SifExecModuleBuffer(&ps2ftpd_irx, size_ps2ftpd_irx, arglen, arg_p, &ret);
+			X_SifExecModuleBuffer(&ps2ftpd_irx, size_ps2ftpd_irx, arglen, arg_p, &ret);
 		loaded=TRUE;
 	}
 }
@@ -545,7 +581,7 @@ void	load_poweroff(void)
 
 	if(!loaded){
 		if(smod_get_mod_by_name( "Poweroff_Handler", &mod_t )==0)
-			SifExecModuleBuffer(&poweroff_irx, size_poweroff_irx, 0, NULL, &ret);
+			X_SifExecModuleBuffer(&poweroff_irx, size_poweroff_irx, 0, NULL, &ret);
 		loaded=TRUE;
 	}
 }
@@ -625,7 +661,7 @@ void loadUsbModules(void)
 
 	if(!loaded){
 		//usbd.irx
-		SifExecModuleBuffer(&usbd_irx, size_usbd_irx, 0, NULL, &ret);
+		X_SifExecModuleBuffer(&usbd_irx, size_usbd_irx, 0, NULL, &ret);
 		//usbhdfsd.irx
 		if (setting->usbmass_flag && (strlen(setting->usbmass_path) > 5))
 			ret = load_irxdriver(setting->usbmass_path, 0, NULL);
@@ -634,7 +670,7 @@ void loadUsbModules(void)
 		//ret = load_irxfile("USB_MASS.IRX", 0, NULL);
 		usbmass=ret;
 		if(ret<0)
-			SifExecModuleBuffer(&usbhdfsd_irx, size_usbhdfsd_irx, 0, NULL, &ret);
+			X_SifExecModuleBuffer(&usbhdfsd_irx, size_usbhdfsd_irx, 0, NULL, &ret);
 		delay(3);
 		loaded=TRUE;
 	}
@@ -649,7 +685,7 @@ void loadCdModules(void)
 	
 	if(!loaded){
 		initsbv_patches();
-		SifExecModuleBuffer(&cdvd_irx, size_cdvd_irx, 0, NULL, &ret);
+		X_SifExecModuleBuffer(&cdvd_irx, size_cdvd_irx, 0, NULL, &ret);
 		cdInit(CDVD_INIT_INIT);
 		CDVD_Init();
 		loaded=TRUE;
@@ -675,290 +711,6 @@ void loadModules(void)
 		SifLoadModule("rom0:PADMAN", 0, NULL);
 }
 
-//--------------------------------------------------------------
-void sjistoeuc(const char *src, char *dst, int dstmax)
-{	// Shift_JISからEUC-JPへ変換
-	//char dst[MAX_PATH];
-	int sp=0, dp=0;
-	unsigned char t1, t2;
-	int i;
-	while(1) {
-		t1 = src[sp++];
-		t2 = src[sp];
-		if ( (((t1 > 0x80) && (t1 < 0xA0)) || ((t1 >= 0xE0) && (t1 <= 0xFC)))&&
-			((t2 >= 0x40) && (t2 <= 0xFC) && (t2 != 0x7F)) ) {
-			// Shift_JIS 2バイト文字
-			if (t1 >= 0xE0) t1-= 0x40;
-			if (t2 > 0x7F) t2-= 1;
-			i = ((int) t1 - 0x81) * 188 + ((int) t2 - 0x40);
-			dst[dp++] = (unsigned char) ((i / 94) + 0xA1);
-			dst[dp++] = (unsigned char) ((i % 94) + 0xA1);
-			sp++;
-		} else if ((t1 > 0xA0) && (t1 < 0xE0)) {
-			// Shift_JIS 半角カタカナ
-			dst[dp++] = 0x8E;
-			dst[dp++] = t1;
-		} else if (t1 == 0) {
-			break;
-		} else if (t1 < 0x80) {
-			// ASCII
-			dst[dp++] = t1;
-		} else {
-			// 不正な文字コード
-		}
-		if (dp >= dstmax-1) break;
-	}
-	dst[dp] = 0;
-}
-
-//--------------------------------------------------------------
-void euctosjis(const char *src, char *dst, int dstmax)
-{	// EUC-JPからShift_JISへ変換
-	//char dst[MAX_PATH];
-	int sp=0, dp=0;
-	unsigned char t1, t2, t3;
-	int i;
-	while(1) {
-		t1 = src[sp++];
-		t2 = src[sp];
-		t3 = src[sp+1];	// 不正な処理で止まる可能性ありそう
-		if (t1 == 0) {
-			break;
-		} else if (t1 < 0x80) {
-			// ASCII
-			dst[dp++] = t1;
-		} else if ((t1 == 0x8E) && (t2 > 0xA0) && (t2 < 0xE0)) {
-			// 半角カタカナ
-			dst[dp++] = t2;
-			sp++;
-		} else if ((t1 > 0xA0) && (t1 < 0xFF) && (t2 > 0xA0) && (t2 < 0xFF)) {
-			// 2バイト文字
-			i = ((int) t1 - 0xA1) * 94 + ((int) t2 - 0xA1);
-			t1 = (unsigned char) (i / 188) + 0x81;
-			t2 = (unsigned char) (i % 188) + 0x40;
-			if (t1 > 0x9F) t1+= 0x40;
-			if (t2 >= 0x7F) t2+= 1;
-			dst[dp++] = t1;
-			dst[dp++] = t2;
-			sp++;
-		} else if ((t1 == 0x8F) && (t2 > 0xA0) && (t2 < 0xFF) && (t3 > 0xA0) && (t3 < 0xFF)) {
-			// 3バイト文字
-			// (Shift_JISには相当する文字はない)
-			sp+=2;
-		} else {
-			// 不正な文字コード
-		}
-		if (dp >= dstmax-1) break;
-	}
-	dst[dp] = 0;
-}
-
-//--------------------------------------------------------------
-int utftoucs(unsigned char *utfchr)
-{	// UTF-8 一文字をUNICODE番号へ変換
-	int i=-1;
-	unsigned char t, t2, t3, t4;
-	t = utfchr[0];
-	if (t < 0x80) {
-		// ASCII
-		i = (int) t;
-	} else if (t < 0xC0) {
-		// 不正なバイト(マルチバイト文字の2バイト目以降)
-	} else if (t < 0xE0) {
-		// 2バイト文字
-		t2 = utfchr[1];
-		if ((t2 >= 0x80) && (t2 < 0xC0)) {
-			i = (((int) t & 0x1f) << 6) | ((int) t2 & 0x3f);
-			if (i < 0x80) i = -1;
-		}
-	} else if (t < 0xF0) {
-		// 3バイト文字
-		t2 = utfchr[1]; t3 = utfchr[2];
-		if ((t2 >= 0x80) && (t2 < 0xC0) && (t3 >= 0x80) && (t3 < 0xC0)) {
-			i = (((int) t & 0x0f) << 12) | (((int) t2 & 0x3f) << 6) | ((int) t3 & 0x3f);
-			if ((i < 0x800) || ((i >= 0xD800) && (i <= 0xDFFF))) i = -1;
-		}
-	} else if (t < 0xF8) {
-		// 4バイト文字
-		t2 = utfchr[1]; t3 = utfchr[2]; t4 = utfchr[3];
-		if ((t2 >= 0x80) && (t2 < 0xC0) && (t3 >= 0x80) && (t3 < 0xC0) && (t4 >= 0x80) && (t4 < 0xC0)) {
-			i = (((int) t & 0x07) << 18) | (((int) t2 & 0x3f) << 12) | (((int) t3 & 0x3f) << 6) | ((int) t4 & 0x3f);
-			if ((i < 0x10000) || (i > 0x10FFFF)) i = -1;
-		}
-	} else {
-		// 不正なバイト
-	}
-	return i;
-}
-
-//--------------------------------------------------------------
-int ucstableinit(void)
-{	// UCS変換テーブルの初期化
-	int c, u=-1;
-	if (ucstable_loaded) return !0;
-	// デフォルトキャラクタで初期化
-	for (c = 0; c < MAX_UCS_CODE; c++) {
-		UCSTable[c] = 0x3F;
-	}
-	// ANK⇔Unicode変換テーブルの構築
-	for (c = 0; c < 0x100; c++) {
-		if (c < 32) 
-			u = c;
-		else
-			//u = (unsigned char *(osaskeuc_bin+c*2+0x200)) | ((int) (unsigned char *(osaskeuc_bin+c*2+0x201)) << 8);
-			u = osaskeuc_bin[c*2+0x200] + 256*osaskeuc_bin[c*2+0x201];
-		if (u >= MAX_UCS_CODE) u = 0x3F;
-		ANKTable[c] = u;	// ANK⇒Unicode
-		if ((c == 0x3F) || ((c != 0x3F) && (u != 0x3F)))
-			UCSTable[u] = c;	// Unicode⇒ANK
-	}
-	// 日本語⇔UCS変換テーブルの構築
-	for (c = 0; c < 94*94; c++) {
-		u = osaskeuc_bin[c*2+0x400] + 256*osaskeuc_bin[c*2+0x401];
-		if ((u > 0x10FFFF) || ((u >= 0xD800) && (u <= 0xDFFF))) u = 0x3F;
-		if (u >= MAX_UCS_CODE) u = 0x3F;
-		EUCTable[c] = u;	// 面区点連続コード⇒Unicode
-		if ((u != 0x3F) && (UCSTable[u] == 0x3F))
-			UCSTable[u] = c + 256;	// Unicode⇒面区点連続コード+256
-	}
-	// 韓国(ハングル)/朝鮮(漢字)語⇔Unicode変換テーブルの構築
-	// 合成文字フラグの構築(25文字)
-	// JIS X 0213:2004改訂版(字形変更)への差分テーブルの構築(303字形)
-	// 合成文字変換テーブルの構築(25文字)
-	// └→PS2では不必要
-	ucstable_loaded = !0;
-	return !0;
-}
-
-//--------------------------------------------------------------
-void utftosjis(const unsigned char *src_, unsigned char *dst, int maxdst)
-{	// UTF-8からShift_JIS-2004へ変換
-	int sp=0, dp=0;
-	unsigned int t1, t2, t3, t4;//char?
-	unsigned char src[770];
-	int c,u;
-	
-	//if (!ucstable_loaded) 
-		ucstableinit();
-	
-	strcpy(src, src_);
-
-	dst[0] = 0;
-	while(src[sp]) {
-		t1 = src[sp++];
-		t2 = src[sp];
-		t3 = src[sp+1];
-		t4 = src[sp+2];
-		if (t1 < 0x80) {
-			// ASCII
-			u = t1;
-		} else if ((t1 >= 0xc0) && (t1 < 0xe0) && (t2 >= 0x80) && (t2 < 0xc0)) {
-			// U+0080～U+07FF
-			u = ((t1 & 0x1f) << 6) | (t2 & 0x3f);
-			if (u < 0x0080) u = 0x003f;
-			if (u != 0x003f) sp++;
-		} else if ((t1 >= 0xe0) && (t1 < 0xf0) && (t2 >= 0x80) && (t2 < 0xc0) && (t3 >= 0x80) && (t3 < 0xc0)) {
-			// U+0800～U+FFFF
-			u = ((t1 & 0x0f) << 12) | ((t2 & 0x3f) << 6) | (t3 & 0x3f);
-			if (u < 0x0800) u = 0x003f;
-			if ((u >= 0xd800) && (u <= 0xdfff)) u = 0x003f;
-			if (u != 0x003f) sp+=2;
-		} else if ((t1 >= 0xf0) && (t1 < 0xf8) && (t2 >= 0x80) && (t2 < 0xc0) && (t3 >= 0x80) && (t3 < 0xc0) && (t4 >= 0x80) && (t4 < 0xc0)) {
-			// U+10000～U+10FFFF
-			u = ((t1 & 0x07) << 18) | ((t2 & 0x3f) << 12) | ((t3 & 0x3f) << 6) | (t4 & 0x3f);
-			if (u < 0x10000) u = 0x003f;
-			if (u > 0x10ffff) u = 0x003f;
-			if (u != 0x003f) sp+=3;
-		} else {
-			u = 0x003f;
-		}
-		//if ((t1 == 0x3f) || ((t1 != 0x3f) && (u != 0x003f))) {
-		if (u > 0) {
-			if (u >= MAX_UCS_CODE) {
-				// 範囲外には非対応
-			} else {
-				c = UCSTable[u];
-				if (c < 256) {
-					// ANK
-					dst[dp++] = c;
-				} else {
-					c-= 256;
-					t1 = (c / 188) + 0x81;
-					t2 = (c % 188) + 0x40;
-					if (t1 >= 0xa0) t1+= 0x40;
-					if (t2 >= 0x7f) t2++;
-					dst[dp++] = t1;
-					dst[dp++] = t2;
-				}
-				dst[dp] = 0;
-				if (dp >= maxdst-1) break;
-			}
-		}
-	}
-}
-
-//--------------------------------------------------------------
-void sjistoutf(const unsigned char *src_, unsigned char *dst, int maxdst)
-{	// Shift_JIS-2004からUTF-8へ変換
-	int sp=0, dp=0;
-	unsigned int t1, t2, t3, t4;//char?
-	unsigned char src[770];
-	int c,u;
-	
-	//if (!ucstable_loaded) 
-		ucstableinit();
-
-	strcpy(src, src_);
-	
-	dst[0] = 0;
-	while(src[sp]) {
-		t1 = src[sp++];
-		t2 = src[sp];
-		t3 = t1;
-		if ((t1 < 0x80) || ((t1 > 0xa0) && (t1 < 0xe0))) {
-			// ANK
-			u = ANKTable[t1];
-		} else if ((((t1 >= 0x81) && (t1 < 0xa0)) || ((t1 >= 0xe0) && (t1 < 0xfd))) && (t2 >= 0x40) && (t2 != 0x7f) && (t2 < 0xfd)) {
-			// マルチバイト文字
-			if (t1 > 0xa0) t1-= 0x40;
-			if (t2 > 0x7f) t2--;
-			c = ((int) t1 - 0x81) * 188 + (t2 - 0x40);
-			u = EUCTable[c];
-			sp++;
-		} else {
-			u = 0x003f;
-		}
-		//if ((t3 = 0x3f) || ((t3 != 0x3f) && (u != 0x003f))) {
-		if (u > 0) {
-			if (u < 0x80) {
-				dst[dp++] = u & 0x7f;
-			} else if (u < 0x0800) {
-				t1 = ((u >> 6) & 0x1f) | 0xc0;
-				t2 = ( u       & 0x3f) | 0x80;
-				dst[dp++] = t1;
-				dst[dp++] = t2;
-			} else if (u < 0x10000) {
-				t1 = ((u >> 12) & 0x0f) | 0xe0;
-				t2 = ((u >>  6) & 0x3f) | 0x80;
-				t3 = ( u        & 0x3f) | 0x80;
-				dst[dp++] = t1;
-				dst[dp++] = t2;
-				dst[dp++] = t3;
-			} else if (u <= 0x10ffff) {
-				t1 = ((u >> 18) & 0x07) | 0xf0;
-				t2 = ((u >> 12) & 0x3f) | 0x80;
-				t3 = ((u >>  6) & 0x3f) | 0x80;
-				t4 = ( u        & 0x3f) | 0x80;
-				dst[dp++] = t1;
-				dst[dp++] = t2;
-				dst[dp++] = t3;
-				dst[dp++] = t4;
-			}
-			dst[dp] = 0;
-			if (dp >= maxdst-3) break;
-		}
-	}
-}
 
 //--------------------------------------------------------------
 void showinfo(void)

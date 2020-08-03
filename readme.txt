@@ -1,5 +1,5 @@
 -------------------------------------------
-LbFn version 0.70.5src by nika (2008/12/21)
+LbFn version 0.70.6src by nika (2008/12/29)
 -------------------------------------------
 
 ƒ\[ƒX‚ğ‰ü•Ï‚·‚é‚±‚Æ‚É§ŒÀ‚Í‚ ‚è‚Ü‚¹‚ñ
@@ -13,6 +13,7 @@ LbF‚ÆLbFn‚ª‚»‚ê‚¼‚êLaunchELF‚ÆLbF‚ğ‰ü•Ï‚µ‚½‚à‚Ì‚Æ‚¢‚¤‚±‚Æ‚ğ‚í‚©‚é‚æ‚¤‚É‚µ‚Ä‚­‚¾‚
 Eƒ‰ƒCƒZƒ“ƒX‚ÍALaunchELF‚Æ“¯‚¶
 E©ŒÈÓ”C‚Åg‚Á‚Ä‚­‚¾‚³‚¢B”z•z©—RB
 ELbFn‚Å‰ü•Ï‚µ‚½•”•ª‚ğyi‚É–â‚¢‡‚í‚¹‚½‚è‚µ‚È‚¢‚Å‚­‚¾‚³‚¢B
+Etek“WŠJƒ‹[ƒ`ƒ“(tek.c)‚Ìƒ‰ƒCƒZƒ“ƒX‚ÍKL-01‚Å‚·B
 
 œÓ«
 ELbF
@@ -34,6 +35,7 @@ LbF‚ÆLbFn‚ª‚»‚ê‚¼‚êLaunchELF‚ÆLbF‚ğ‰ü•Ï‚µ‚½‚à‚Ì‚Æ‚¢‚¤‚±‚Æ‚ğ‚í‚©‚é‚æ‚¤‚É‚µ‚Ä‚­‚¾‚
   http://svn.pspdev.org/listing.php?repname=ps2ware&path=%2Ftrunk%2Fps2menu%2F&rev=0&sc=0
 
 EOSASK (tekˆ³k)
+  ì‡ GÀ 
   http://osask.jp/
-  http://wiki.osask.jp/?tek/rjc
+  http://community.osdev.info/index.php?tek
 

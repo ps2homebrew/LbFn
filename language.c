@@ -127,6 +127,7 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_ps1save, "PS1 SAVE      ");
 		strcpy(lang->conf_elffile, "ELF FILE      ");
 		strcpy(lang->conf_psufile, "PSU FILE      ");
+		strcpy(lang->conf_flicker_alpha, "FLICKER ALPHA");
 		strcpy(lang->conf_presetcolor, "LOAD PRESET COLOR");
 		//screen
 		strcpy(lang->conf_tvmode, "TV MODE");
@@ -180,7 +181,6 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_defaultdetail_none, "NONE");
 		strcpy(lang->conf_defaultdetail_size, "SIZE");
 		strcpy(lang->conf_defaultdetail_modifytime, "MODIFYTIME");
-		strcpy(lang->conf_usbmass_charset, "USB_MASS LFN CHARSET");
 		strcpy(lang->conf_usbmass_use, "USE EXTEND USB_MASS");
 		strcpy(lang->conf_usbmass_path, "USB_MASS.IRX");
 		strcpy(lang->conf_miscsettinginit, "MISC SETTING INIT");
@@ -190,10 +190,11 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_edit, "Edit");
 		strcpy(lang->conf_clear, "Clear");
 		strcpy(lang->conf_add, "Add");
-		strcpy(lang->conf_away, "Away");
+		strcpy(lang->conf_away, "Sub");
 		strcpy(lang->conf_change, "Change");
 		strcpy(lang->conf_up, "Up");
 		strcpy(lang->conf_horizontalresolution, "Resolution ");
+		strcpy(lang->conf_fast, "Fast");
 		}
 	}
 	if(l==LANG_JAPANESE){
@@ -298,6 +299,7 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_ps1save,       "PS1 セーブ    ");
 		strcpy(lang->conf_elffile,       "ELF ファイル  ");
 		strcpy(lang->conf_psufile,       "PSU ファイル  ");
+		strcpy(lang->conf_flicker_alpha, "フリッカー調整の不透明度");
 		strcpy(lang->conf_presetcolor,   "配色設定の初期化");
 		//screen
 		strcpy(lang->conf_tvmode, "TV MODE");
@@ -351,7 +353,6 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_defaultdetail_none, "なし");
 		strcpy(lang->conf_defaultdetail_size, "サイズ");
 		strcpy(lang->conf_defaultdetail_modifytime, "更新日時");
-		strcpy(lang->conf_usbmass_charset, "USB_MASS ファイル名の文字コード");
 		strcpy(lang->conf_usbmass_use, "外部USB_MASSドライバを使用する");
 		strcpy(lang->conf_usbmass_path, "USB_MASS.IRX");
 		strcpy(lang->conf_miscsettinginit, "「その他設定」を初期化する");
@@ -365,6 +366,7 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_change, "変更");
 		strcpy(lang->conf_up, "上へ");
 		strcpy(lang->conf_horizontalresolution, "水平解像度");
+		strcpy(lang->conf_fast, "高速");
 		}
 	}
 }

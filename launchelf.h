@@ -30,7 +30,7 @@
 #include "cnf.h"
 
 // バージョン
-#define LBF_VER "LbFn v0.70.5"
+#define LBF_VER "LbFn v0.70.6"
 
 // 垂直スキャンレート
 #define SCANRATE (ITO_VMODE_AUTO==ITO_VMODE_NTSC ? 60:50)
@@ -74,6 +74,7 @@ typedef struct
 	int timeout;
 	int filename;
 	uint64 color[NUM_COLOR];
+	int flicker_alpha;
 	int screen_x_480i;
 	int screen_y_480i;
 	int screen_x_480p;
@@ -119,7 +120,6 @@ typedef struct
 	int AsciiMarginLeft;
 	int KanjiMarginTop;
 	int KanjiMarginLeft;
-	int usbmass_char;
 	int usbmass_flag;
 	char usbmass_path[MAX_PATH];
 } SETTING;
@@ -127,19 +127,9 @@ typedef struct
 /* main.c */
 extern char LaunchElfDir[MAX_PATH], LastDir[MAX_NAME];
 extern int boot;
-extern int ucstable_loaded;
 void loadCdModules(void);
 void loadUsbModules(void);
 void loadHddModules(void);
-void sjistoeuc(const char *src, char *dst, int dstmax);
-void euctosjis(const char *src, char *dst, int dstmax);
-int utftoucs(unsigned char *utfchr);
-int utflen(unsigned char *utfchr);
-int ucstableinit(void);
-void utftosjis(const unsigned char *src, unsigned char *dst, int maxdst);
-void sjistoutf(const unsigned char *src, unsigned char *dst, int maxdst);
-void ucstosjis(const unsigned char *src, unsigned char *dst, int maxsrc, int maxdst);
-void sjistoucs(const unsigned char *src, unsigned char *dst, int maxdst);
 
 /* elf.c */
 int checkELFheader(const char *filename);

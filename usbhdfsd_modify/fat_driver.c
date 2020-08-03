@@ -20,8 +20,8 @@
 #include "mass_debug.h"
 
 // added by nika
-extern void utftoucs(unsigned char* src, unsigned char* dst);
-extern void ucstoutf(unsigned char* src, unsigned char* dst);
+extern void sjistoucs(unsigned char* dst, unsigned char* src, int maxdstsize);
+extern void ucstosjis(unsigned char* dst, unsigned char* src, int maxdstsize);
 
 // Added by Hermes
 extern unsigned Size_Sector; // store size of sector from usb mass
@@ -548,8 +548,8 @@ int fat_getDirentry(fat_direntry_sfn* dsfn, fat_direntry_lfn* dlfn, fat_direntry
 		}
 		dir->sname[i+j] = 0; //terminate
 		
-		// UTF-16 to UTF-8 convert
-		ucstoutf(uname, dir->name);
+		// UTF-16 to SJIS convert
+		ucstosjis(dir->name, uname, FAT_MAX_NAME);
 		uname[0] = 0;
 		uname[1] = 0;
 		

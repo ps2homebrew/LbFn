@@ -325,6 +325,36 @@ void setupito(int tvmode)
 }
 
 //-------------------------------------------------
+// 半透過カラー取得用 
+uint64 half(uint64 color1, uint64 color2, int blend) {
+	unsigned int l3,l2,l1,la;
+	unsigned int r3,r2,r1,ra;
+	unsigned int t3,t2,t1,ta;
+	uint64 lz,rz,tz;
+	unsigned int lb,rb;
+	if (blend <= 0) return color1;
+	if (blend > 0xff) return color2;
+	l3 = (color1 >> 16) & 0xff;
+	l2 = (color1 >>  8) & 0xff;
+	l1 =  color1        & 0xff;
+	la = (color1 >> 24) & 0xff;
+	lz =  color1 >> 32;
+	r3 = (color2 >> 16) & 0xff;
+	r2 = (color2 >>  8) & 0xff;
+	r1 =  color2        & 0xff;
+	ra = (color2 >> 24) & 0xff;
+	rz =  color2 >> 32;
+	rb = blend & 0xff;
+	lb = 0x100 - rb;
+	t3 = (l3 * lb + r3 * rb) >> 8;
+	t2 = (l2 * lb + r2 * rb) >> 8;
+	t1 = (l1 * lb + r1 * rb) >> 8;
+	ta = (la * lb + ra * rb) >> 8;
+	tz = (lz * lb + rz * rb) >> 8;
+	return (tz<<32)|(ta<<24)|(t3<<16)|(t2<<8)|t1;
+}
+
+//-------------------------------------------------
 // 暗くする(半透明の黒い四角)
 void drawDark(void)
 {
@@ -351,12 +381,13 @@ void drawDialogTmp(int x1, int y1, int x2, int y2, uint64 color1, uint64 color2)
 // 画面表示のテンプレート
 void setScrTmp(const char *msg0, const char *msg1)
 {
-	uint64 color;
+	uint64 color1,color;
 	uint64 color2;	//アルファ付き
 
 	color = setting->color[COLOR_FRAME]&0x00FFFFFF;	//透明度を除外
-	color = color|0x80000000;	//不透明
-	color2 = color|0x10000000;	//半透明
+	color1 = color|0x80000000;	//不透明
+	color2 = color|(setting->flicker_alpha << 24);	//半透明
+	//color2 = half(color, setting->color[COLOR_BACKGROUND], 0x80);
 
 	// バージョン表記
 	printXY(LBF_VER, FONT_WIDTH*2, SCREEN_MARGIN, setting->color[COLOR_TEXT], TRUE);
@@ -365,11 +396,11 @@ void setScrTmp(const char *msg0, const char *msg1)
 	printXY(msg0, FONT_WIDTH*2, SCREEN_MARGIN+FONT_HEIGHT, setting->color[COLOR_TEXT], TRUE);
 
 	//上の横線
-	itoLine(color, 0, SCREEN_MARGIN+FONT_HEIGHT*2.5, 0,
-		color, SCREEN_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*2.5, 0);	
+	itoLine(color1, 0, SCREEN_MARGIN+FONT_HEIGHT*2.5, 0,
+		color1, SCREEN_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*2.5, 0);	
 	//下の横線
-	itoLine(color, 0, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3.5), 0,
-		color, SCREEN_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3.5), 0);	
+	itoLine(color1, 0, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3.5), 0,
+		color1, SCREEN_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3.5), 0);	
 
 	//FLICKER CONTROL: ON
 	if(setting->flickerControl==TRUE && setting->interlace==TRUE){
@@ -421,11 +452,12 @@ void drawScr(void)
 // 枠の描画
 void drawFrame(int x1, int y1, int x2, int y2, uint64 color)
 {
-	uint64 color2;	//アルファ付き
+	uint64 color0,color1,color2;	//アルファ付き
 
-	color = color&0x00FFFFFF;	//透明度を除外
-	color = color|0x80000000;	//不透明
-	color2 = color|0x10000000;	//半透明
+	color0 = color&0x00FFFFFF;	//透明度を除外
+	color1 = color0|0x80000000;	//不透明
+	color2 = color0|(setting->flicker_alpha << 24);	//半透明
+	//color2 = half(color, setting->color[COLOR_BACKGROUND], 0x80);
 
 	//FLICKER CONTROL: ON
 	if(setting->flickerControl==TRUE && setting->interlace==TRUE){
@@ -440,13 +472,13 @@ void drawFrame(int x1, int y1, int x2, int y2, uint64 color)
 	}
 
 	//上の横線
-	itoLine(color, x1, y1, 0, color, x2, y1, 0);
+	itoLine(color1, x1, y1, 0, color, x2, y1, 0);
 	//右の縦線
-	itoLine(color, x2, y1, 0, color, x2, y2, 0);	
+	itoLine(color1, x2, y1, 0, color, x2, y2, 0);	
 	//下の横線
-	itoLine(color, x2, y2, 0, color, x1, y2, 0);
+	itoLine(color1, x2, y2, 0, color, x1, y2, 0);
 	//左の縦線
-	itoLine(color, x1, y2, 0, color, x1, y1, 0);
+	itoLine(color1, x1, y2, 0, color, x1, y1, 0);
 }
 
 //-------------------------------------------------
@@ -698,8 +730,6 @@ int InitFontAscii(const char *path)
 					fullpath[0]=0;
 			}
 		}
-		else if(setting->usbmass_char && !strncmp(path, "mass", 4))
-			sjistoutf(path, fullpath, MAX_PATH-2);
 		else
 			strcpy(fullpath, path);
 
@@ -851,8 +881,6 @@ int InitFontKnaji(const char *path)
 					fullpath[0]=0;
 			}
 		}
-		else if(setting->usbmass_char && !strncmp(path, "mass", 4))
-			sjistoutf(path, fullpath, MAX_PATH-2);
 		else
 			strcpy(fullpath, path);
 
@@ -1056,7 +1084,7 @@ int GetFontBold(void)
 }
 
 //------------------------------------------------------------
-//フォントテストを設定
+//水平フォントサイズ補正を設定
 void SetFontHalf(int flag)
 {
 	font_half = flag;
@@ -1070,7 +1098,7 @@ void SetFontHalf(int flag)
 }
 
 //------------------------------------------------------------
-//フォントテストの取得
+//水平フォントサイズ補正値の取得
 int GetFontHalf(void)
 {
 	return font_half;
@@ -1107,10 +1135,7 @@ int checkFONTX2header(const char *path)
 	char buf[32];
 	FONTX_HEADER *fontx_header;
 
-	if(setting->usbmass_char && !strncmp(path, "mass", 4))
-		sjistoutf(path, fullpath, MAX_PATH-2);
-	else
-		strcpy(fullpath,path);
+	strcpy(fullpath,path);
 
 	if(!strncmp(fullpath, "hdd0", 4)) {
 		sprintf(tmp, "hdd0:%s", &path[6]);
@@ -1365,13 +1390,14 @@ void drawChar_SJIS(unsigned int c, int x, int y, uint64 color)
 // 座標を指定して文字列を表示
 int printXY(const unsigned char *s, int x, int y, uint64 color, int draw)
 {
-	uint64 color2;	//アルファ付き
+	uint64 color0,color1,color2;	//アルファ付き
 	uint16 code;
 	int i;
 
-	color = color&0x00FFFFFF;	//透明度を除外
-	color = color|0x80000000;	//不透明
-	color2 = color|0x10000000;	//半透明
+	color0 = color&0x00FFFFFF;	//透明度を除外
+	color1 = color0|0x80000000;	//不透明
+	color2 = color0|(setting->flicker_alpha << 24);	//半透明
+	//color2 = half(color0, setting->color[COLOR_BACKGROUND], 0x80);
 
 	i=0;
 	while(s[i]){
@@ -1386,7 +1412,7 @@ int printXY(const unsigned char *s, int x, int y, uint64 color, int draw)
 					//アルファブレンド無効
 					itoPrimAlphaBlending( FALSE );
 				}
-				drawChar_SJIS(code, x+kanji_MarginLeft, y+kanji_MarginTop, color);
+				drawChar_SJIS(code, x+kanji_MarginLeft, y+kanji_MarginTop, color1);
 			}
 			if (font_half > 0)
 				x += (kanji_data.width+font_half) / (font_half+1) + char_Margin * 2;
@@ -1404,7 +1430,7 @@ int printXY(const unsigned char *s, int x, int y, uint64 color, int draw)
 					//アルファブレンド無効
 					itoPrimAlphaBlending( FALSE );
 				}
-				drawChar(s[i], x+ascii_MarginLeft, y+ascii_MarginTop, color);
+				drawChar(s[i], x+ascii_MarginLeft, y+ascii_MarginTop, color1);
 			}
 			i++;
 			if (font_half > 0)
@@ -1478,7 +1504,7 @@ int GetCurrentPos(int type)
 // カレントポジションの座標に文字列を表示
 int printXY2(const unsigned char *s, uint64 color, int draw)
 {
-	uint64 color2;	//アルファ付き
+	uint64 color0,color1,color2;	//アルファ付き
 	uint16 code;
 	int i;
 	int x,y;
@@ -1486,9 +1512,10 @@ int printXY2(const unsigned char *s, uint64 color, int draw)
 	x=CurrentPos_x;
 	y=CurrentPos_y;
 
-	color = color&0x00FFFFFF;	//透明度を除外
-	color = color|0x80000000;	//不透明
-	color2 = color|0x10000000;	//半透明
+	color0 = color&0x00FFFFFF;	//透明度を除外
+	color1 = color0|0x80000000;	//不透明
+	color2 = color0|(setting->flicker_alpha << 24);	//半透明
+	//color2 = half(color0, setting->color[COLOR_BACKGROUND], 0x80);
 
 	i=0;
 	while(s[i]){
@@ -1503,7 +1530,7 @@ int printXY2(const unsigned char *s, uint64 color, int draw)
 					//アルファブレンド無効
 					itoPrimAlphaBlending( FALSE );
 				}
-				drawChar_SJIS(code, x+kanji_MarginLeft, y+kanji_MarginTop, color);
+				drawChar_SJIS(code, x+kanji_MarginLeft, y+kanji_MarginTop, color1);
 			}
 			x += kanji_data.width + char_Margin * 2;
 		}
@@ -1516,7 +1543,7 @@ int printXY2(const unsigned char *s, uint64 color, int draw)
 					//アルファブレンド無効
 					itoPrimAlphaBlending( FALSE );
 				}
-				drawChar(s[i], x+ascii_MarginLeft, y+ascii_MarginTop, color);
+				drawChar(s[i], x+ascii_MarginLeft, y+ascii_MarginTop, color1);
 			}
 			i++;
 			x += ascii_data.width + char_Margin;

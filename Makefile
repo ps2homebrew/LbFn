@@ -16,7 +16,7 @@ EE_BIN = LbFn.ELF
 
 EE_OBJS = main.o pad.o config.o elf.o draw.o loader.o  filer.o cd.o language.o cnf.o tek.o\
 	poweroff.o iomanx.o filexio.o ps2atad.o ps2dev9.o ps2hdd.o ps2fs.o\
-	usbd.o usbhdfsd.o cdvd.o ps2ip.o ps2smap.o ps2ftpd.o fakehost.o osaskeuc.o
+	usbd.o usbhdfsd.o cdvd.o ps2ip.o ps2smap.o ps2ftpd.o fakehost.o
 
 EE_INCS := -I$(LIBITO)/include -I$(PS2DEV)/libcdvd/ee
 
@@ -52,48 +52,61 @@ reset: clean
 
 #------------------------------------
 usbd.s:
-	bin2s $(PS2SDK)/iop/irx/usbd.irx usbd.s usbd_irx
+	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:$(PS2SDK)/iop/irx/usbd.irx out:usbd.ir5
+	bin2s usbd.ir5 usbd.s usbd_irx
 
 usbhdfsd.s:
-	bin2s $(PS2DEV)/usbhdfsd/bin/usbhdfsd.irx usbhdfsd.s usbhdfsd_irx
+	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:$(PS2DEV)/usbhdfsd/bin/usbhdfsd.irx out:usbhdfsd.ir5
+	bin2s usbhdfsd.ir5 usbhdfsd.s usbhdfsd_irx
 
 #cdvd.irx ulaunchELF 4.01
 cdvd.s:
-	bin2s modules/cdvd.irx cdvd.s cdvd_irx
+	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:modules/cdvd.irx out:cdvd.ir5
+	bin2s cdvd.ir5 cdvd.s cdvd_irx
 
 poweroff.s:
-	bin2s $(PS2SDK)/iop/irx/poweroff.irx poweroff.s poweroff_irx
+	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:$(PS2SDK)/iop/irx/poweroff.irx out:poweroff.ir5
+	bin2s poweroff.ir5 poweroff.s poweroff_irx
 
 iomanx.s:
-	bin2s $(PS2SDK)/iop/irx/iomanX.irx iomanx.s iomanx_irx
+	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:$(PS2SDK)/iop/irx/iomanx.irx out:iomanx.ir5
+	bin2s iomanX.ir5 iomanx.s iomanx_irx
 
 filexio.s:
-	bin2s $(PS2SDK)/iop/irx/fileXio.irx filexio.s filexio_irx
+	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:$(PS2SDK)/iop/irx/filexio.irx out:filexio.ir5
+	bin2s fileXio.ir5 filexio.s filexio_irx
 
 ps2dev9.s:
-	bin2s $(PS2SDK)/iop/irx/ps2dev9.irx ps2dev9.s ps2dev9_irx
+	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:$(PS2SDK)/iop/irx/ps2dev9.irx out:ps2dev9.ir5
+	bin2s ps2dev9.ir5 ps2dev9.s ps2dev9_irx
 
 ps2atad.s:
-	bin2s $(PS2SDK)/iop/irx/ps2atad.irx ps2atad.s ps2atad_irx
+	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:$(PS2SDK)/iop/irx/ps2atad.irx out:ps2atad.ir5
+	bin2s ps2atad.ir5 ps2atad.s ps2atad_irx
 
 ps2hdd.s:
-	bin2s $(PS2SDK)/iop/irx/ps2hdd.irx ps2hdd.s ps2hdd_irx
+	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:$(PS2SDK)/iop/irx/ps2hdd.irx out:ps2hdd.ir5
+	bin2s ps2hdd.ir5 ps2hdd.s ps2hdd_irx
 
 ps2fs.s:
-	bin2s $(PS2SDK)/iop/irx/ps2fs.irx ps2fs.s ps2fs_irx
+	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:$(PS2SDK)/iop/irx/ps2fs.irx out:ps2fs.ir5
+	bin2s ps2fs.ir5 ps2fs.s ps2fs_irx
 
 fakehost.s:
 	bin2s $(PS2SDK)/iop/irx/fakehost.irx fakehost.s fakehost_irx
 
 ps2smap.s:
-	bin2s $(PS2ETH)/smap/ps2smap.irx ps2smap.s ps2smap_irx
+	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:$(PS2ETH)/smap/ps2smap.irx out:ps2smap.ir5
+	bin2s ps2smap.ir5 ps2smap.s ps2smap_irx
 
 ps2ip.s:
-	bin2s $(PS2SDK)/iop/irx/ps2ip.irx ps2ip.s ps2ip_irx
+	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:$(PS2SDK)/iop/irx/ps2ip.irx out:ps2ip.ir5
+	bin2s ps2ip.ir5 ps2ip.s ps2ip_irx
 
-#ps2ftpd.irx uLaunchELF 4.01
+#ps2ftpd.ir5 uLaunchELF 4.01
 ps2ftpd.s:
-	bin2s modules/ps2ftpd.irx ps2ftpd.s ps2ftpd_irx
+	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:modules/ps2ftpd.irx out:ps2ftpd.ir5
+	bin2s ps2ftpd.ir5 ps2ftpd.s ps2ftpd_irx
 
 #loader.elf uLaunchELF 4.12
 loader.s:
@@ -101,9 +114,6 @@ loader.s:
 
 icon.s:image/icon.iif
 	bin2s image/icon.iif icon.s icon_iif
-
-osaskeuc.s:
-	bin2s OSASKEUC.BIN osaskeuc.s osaskeuc_bin
 
 cd.o config.o draw.o elf.o filer.o main.o pad.o language.o cnf.o:launchelf.h language.h cnf.h
 

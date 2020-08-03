@@ -111,6 +111,7 @@ typedef struct
 	char conf_ps1save[MAX_LANGUAGE_STR];
 	char conf_elffile[MAX_LANGUAGE_STR];
 	char conf_psufile[MAX_LANGUAGE_STR];
+	char conf_flicker_alpha[MAX_LANGUAGE_STR];
 	char conf_presetcolor[MAX_LANGUAGE_STR];
 	//screen
 	char conf_screen_x[MAX_LANGUAGE_STR];
@@ -168,7 +169,6 @@ typedef struct
 	char conf_defaultdetail_none[MAX_LANGUAGE_STR];
 	char conf_defaultdetail_size[MAX_LANGUAGE_STR];
 	char conf_defaultdetail_modifytime[MAX_LANGUAGE_STR];
-	char conf_usbmass_charset[MAX_LANGUAGE_STR];
 	char conf_usbmass_use[MAX_LANGUAGE_STR];
 	char conf_usbmass_path[MAX_LANGUAGE_STR];
 	char conf_auto_decompression[MAX_LANGUAGE_STR];
@@ -185,7 +185,7 @@ typedef struct
 	char conf_change[MAX_LANGUAGE_STR];
 	char conf_up[MAX_LANGUAGE_STR];
 	char conf_horizontalresolution[MAX_LANGUAGE_STR];
-
+	char conf_fast[MAX_LANGUAGE_STR];
 } LANGUAGE;
 
 #endif
