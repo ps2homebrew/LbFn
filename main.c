@@ -892,7 +892,7 @@ void RunElf(const char *path)
 		p = strchr(party, '/');
 		sprintf(fullpath, "pfs0:%s", p);
 		*p = 0;
-		if(checkELFheader(fullpath)!=1){
+		if(checkELFheader(path)!=1){
 			sprintf(mainMsg, "%s%s", path, lang->main_notfound);
 			return;
 		}

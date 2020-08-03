@@ -302,9 +302,9 @@ void InitScreenSetting(void)
 	setting->screen_x_1080i = DEF_SCREEN_X_D3;
 	setting->screen_y_1080i = DEF_SCREEN_Y_D3;
 	setting->screen_scan_480i = DEF_SCREEN_SCAN;
-	setting->screen_scan_480i = DEF_SCREEN_SCAN;
-	setting->screen_scan_480i = DEF_SCREEN_SCAN;
-	setting->screen_scan_480i = DEF_SCREEN_SCAN;
+	setting->screen_scan_480p = DEF_SCREEN_SCAN;
+	setting->screen_scan_720p = DEF_SCREEN_SCAN;
+	setting->screen_scan_1080i = DEF_SCREEN_SCAN;
 	setting->flickerControl = DEF_FLICKERCONTROL;
 	setting->tvmode = DEF_TVMODE;
 	setting->interlace = DEF_INTERLACE;

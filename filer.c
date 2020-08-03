@@ -2789,7 +2789,7 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 		}
 	}
 	else if(!strcmp(path, "MISC/")){
-		for(i=0;i<8;i++){
+		for(i=0;i<10;i++){
 			memset(&files[i].createtime, 0, sizeof(PS2TIME));
 			memset(&files[i].modifytime, 0, sizeof(PS2TIME));
 			files[i].fileSizeByte = 0;
@@ -2802,16 +2802,18 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 			if(i==2) strcpy(files[i].name, "PS2Browser");
 			if(i==3) strcpy(files[i].name, "PS2Disc");
 			if(i==4) strcpy(files[i].name, "PS2Ftpd");
-			if(i==5) strcpy(files[i].name, "PowerOff");
-			if(i==6) strcpy(files[i].name, "INFO");
-			if(i==7) strcpy(files[i].name, "CONFIG");
+			if(i==5) strcpy(files[i].name, "DiscStop");
+			if(i==6) strcpy(files[i].name, "McFormat");
+			if(i==7) strcpy(files[i].name, "PowerOff");
+			if(i==8) strcpy(files[i].name, "INFO");
+			if(i==9) strcpy(files[i].name, "CONFIG");
 			files[i].title[0] = 0;
 			if(i==0)
 				files[i].type = TYPE_OTHER;
 			else
 				files[i].type = TYPE_MISC;
 		}
-		nfiles = 8;
+		nfiles = 10;
 	}
 	else{
 		//files[0]‚ð‰Šú‰»
