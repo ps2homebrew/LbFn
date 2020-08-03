@@ -30,7 +30,7 @@
 #include "cnf.h"
 
 // バージョン
-#define LBF_VER "LbF v0.54"
+#define LBF_VER "LbF v0.55"
 
 // 垂直スキャンレート
 #define SCANRATE (ITO_VMODE_AUTO==ITO_VMODE_NTSC ? 60:50)
@@ -178,8 +178,11 @@ enum	//getFilePath
 	DIR,
 	FNT_FILE
 };
+char* getExtension(const char *path);
+int ynDialog(const char *message, int defaultsel);
 void MessageDialog(const char *message);
 int newdir(const char *path, const char *name);
+int psb(const char *psbpath);
 int keyboard(char *out, int max);
 void getFilePath(char *out, const int cnfmode);
 

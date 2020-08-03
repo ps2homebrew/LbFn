@@ -107,6 +107,17 @@ char clipPath[MAX_PATH], LastDir[MAX_NAME], marks[MAX_ENTRY];
 FILEINFO clipFiles[MAX_ENTRY];
 int fileMode =  FIO_S_IRUSR | FIO_S_IWUSR | FIO_S_IXUSR | FIO_S_IRGRP | FIO_S_IWGRP | FIO_S_IXGRP | FIO_S_IROTH | FIO_S_IWOTH | FIO_S_IXOTH;
 
+#define MAX_ARGC 3
+int psb_argc;
+char psb_argv[MAX_ARGC][MAX_PATH+2];
+
+//-------------------------------------------------
+//拡張子を取得
+char* getExtension(const char *path)
+{
+	return strrchr(path,'.');
+}
+
 //-------------------------------------------------
 // HDDのパーティションとパスを取得
 int getHddParty(const char *path, const FILEINFO *file, char *party, char *dir)
@@ -145,9 +156,9 @@ int mountParty(const char *party)
 
 //-------------------------------------------------
 // 確認ダイアログ
-int ynDialog(const char *message)
+int ynDialog(const char *message, int defaultsel)
 {
-	char msg[512];
+	char msg[2048];
 	int dh, dw, dx, dy;
 	int sel=0, n, tw;//, a=6, b=4, c=2;
 	int i, x, len, ret;
@@ -155,6 +166,7 @@ int ynDialog(const char *message)
 	int y_margin;
 	char tmp[MAX_PATH];
 
+	sel=defaultsel;
 	strcpy(msg, message);
 
 	//\n区切りを\0区切りに変換 n:改行の数
@@ -240,7 +252,7 @@ int ynDialog(const char *message)
 // メッセージダイアログ
 void MessageDialog(const char *message)
 {
-	char msg[512];
+	char msg[2048];
 	int dh, dw, dx, dy;
 	int n, tw;
 	int i, x, len, ret;
@@ -732,14 +744,26 @@ int menu(const char *path, const char *file)
 				return -1;
 			else if(new_pad & PAD_CIRCLE)
 				break;
+			else if(new_pad & PAD_SQUARE){
+				if(enable[COPY]){
+					sel=COPY;
+					break;
+				}
+			}
+			else if(new_pad & PAD_TRIANGLE){
+				if(enable[PASTE]){
+					sel=PASTE;
+					break;
+				}
+			}
 		}
 		
 		// 描画開始
 		drawDialogTmp(menu_x, menu_y, menu_x+menu_w, menu_y+menu_h, setting->color[0], setting->color[1]);
 		for(i=0,y=74; i<NUM_MENU; i++){
-			if(i==COPY)          strcpy(tmp, lang->filer_menu_copy);
+			if(i==COPY)          sprintf(tmp, "%s(□)", lang->filer_menu_copy);
 			else if(i==CUT)     strcpy(tmp, lang->filer_menu_cut);
-			else if(i==PASTE)   strcpy(tmp, lang->filer_menu_paste);
+			else if(i==PASTE)   sprintf(tmp, "%s(△)", lang->filer_menu_paste);
 			else if(i==DELETE)  strcpy(tmp, lang->filer_menu_delete);
 			else if(i==RENAME)  strcpy(tmp, lang->filer_menu_rename);
 			else if(i==NEWDIR)  strcpy(tmp, lang->filer_menu_newdir);
@@ -1024,7 +1048,7 @@ int copy(const char *outPath, const char *inPath, FILEINFO file, int n)
 			if(ret<0) sprintf(tmp, "%s%s/", outPath, file.name);
 			strcat(tmp, "\n");
 			strcat(tmp, lang->filer_overwrite);
-			if(ynDialog(tmp)<0) return -1;
+			if(ynDialog(tmp,0)<0) return -1;
 			drawMsg(lang->filer_pasting);
 		}
 		else if(ret < 0)
@@ -1142,6 +1166,395 @@ int paste(const char *path)
 		fileXioUmount("pfs1:"); mountedParty[1][0]=0;
 	}
 	
+	return ret;
+}
+
+//-------------------------------------------------
+//psbCommand psbコマンド実行
+int psbCommand(void)
+{
+	char path[2][MAX_PATH];
+	char dir[MAX_PATH];
+	char pathtmp[MAX_PATH];
+	int len;
+	FILEINFO file;
+	char *p;
+	int fd;
+	int ret=0;
+	char message[2048];
+	FILEINFO clipFilesBackup;
+	int nclipFilesBackup;
+
+	//引数が足りない
+	if(psb_argc<2)
+		return 0;
+
+	strcpy(path[0], psb_argv[1]);
+	strcpy(path[1], psb_argv[2]);
+
+	//コメント
+	if(!strnicmp(psb_argv[0], "rem",3))
+		return 0;
+
+	//Module
+	if(!strncmp(path[0], "cdfs", 4)||!strncmp(path[1], "cdfs", 4))
+		loadCdModules();
+	else if(!strncmp(path[0], "hdd", 3)||!strncmp(path[1], "hdd", 3)){
+		if(nparties==0){
+			loadHddModules();
+			setPartyList();
+		}
+	}
+	else if(!strncmp(path[0], "mass", 4)||!strncmp(path[1], "mass", 4))
+		loadUsbModules();
+
+	//psb_argv[1]の最後がスラッシュのとき削除
+	len = strlen(path[0]);
+	if(len>0){
+		if(path[0][len-1]=='/')
+			path[0][len-1]='\0';
+	}
+	if(psb_argc>1){
+		//psb_argv[2]の最後にスラッシュ無いときつける
+		len = strlen(path[1]);
+		if(len>0){
+			if(path[1][len-1]!='/')
+				strcat(path[1], "/");
+		}
+	}
+	//
+	strcpy(dir, path[0]);
+	if((p=strrchr(dir, '/'))){
+		p++;
+		*p=0;
+	}
+
+	//psb_argv[1]からFILEINFOを作成する
+	//file.name
+	if((p = strrchr(path[0], '/')))
+		strcpy(file.name, p+1);
+	//file.attr
+	if(!strncmp(path[0], "mc", 2)){
+		mcTable mcDir __attribute__((aligned(64)));
+		int mcret;
+		//フォルダとしてオープンしてみる
+		strcpy(pathtmp, path[0]+4); strcat(pathtmp,"/*");
+		mcGetDir(path[0][2]-'0', 0, pathtmp, 0, 1, &mcDir);
+		mcSync(0, NULL, &mcret);
+		if(mcret<0){
+			//失敗したらファイルとしてオープンしてみる
+			fd = fioOpen(path[0], O_RDONLY);
+			if(fd<0)
+				file.attr=0;	//失敗
+			else{
+				fioClose(fd);
+				file.attr=FIO_S_IFREG;	//ファイル
+			}
+		}
+		else{
+		
+			file.attr=FIO_S_IFDIR;	//フォルダ
+		}
+	}
+	else if(!strncmp(path[0], "cdfs", 4)){
+		//フォルダとしてオープンしてみる
+		struct TocEntry TocEntryList;
+		char cdfsdir[MAX_PATH];
+		int n;
+		strcpy(cdfsdir, path[0]+5);
+		CDVD_FlushCache();
+		n = CDVD_GetDir(cdfsdir, NULL, CDVD_GET_FILES_AND_DIRS, &TocEntryList, 1, cdfsdir);
+		if(n<0){
+			//失敗したらファイルとしてオープンしてみる
+			fd = fioOpen(path[0], O_RDONLY);
+			if(fd<0)
+				file.attr=0;	//失敗
+			else{
+				fioClose(fd);
+				file.attr=FIO_S_IFREG;	//ファイル
+			}
+		}
+		else{
+		
+			file.attr=FIO_S_IFDIR;	//フォルダ
+		}
+		if(setting->discControl) CDVD_Stop();
+	}
+	else if(!strncmp(path[0], "hdd", 3)){
+		char party[MAX_NAME];
+		int r;
+		//ファイルがhddにあるときパスを変更
+		getHddParty(path[0], NULL, party, pathtmp);
+		//マウント
+		r = mountParty(party);
+		pathtmp[3] = r+'0';
+
+		//フォルダとしてオープンしてみる
+		fd = fileXioDopen(pathtmp);
+		if(fd<0){
+			//失敗したらファイルとしてオープンしてみる
+			fd = fileXioOpen(pathtmp, O_RDONLY, fileMode);
+			if(fd<0){
+				file.attr=0;	//失敗
+			}
+			else{
+				fileXioClose(fd);
+				file.attr=FIO_S_IFREG;	//ファイル
+			}
+		}
+		else{
+			fileXioDclose(fd);
+			file.attr=FIO_S_IFDIR;
+		}
+	}
+	else if(!strncmp(path[0], "mass", 4)){
+		//フォルダとしてオープンしてみる
+		strcpy(pathtmp, path[0]);
+		fd = fioDopen(pathtmp);
+		if(fd<0){
+			//失敗したらファイルとしてオープンしてみる
+			fd = fioOpen(path[0], O_RDONLY);
+			if(fd<0)
+				file.attr=0;	//失敗
+			else{
+				fioClose(fd);
+				file.attr=FIO_S_IFREG;	//ファイル
+			}
+		}
+		else{
+		
+			file.attr=FIO_S_IFDIR;	//フォルダ
+			fioDclose(fd);
+		}
+	}
+
+	//コマンド
+	if(!stricmp(psb_argv[0], "copy")){	//コピー
+		if(psb_argc<3){
+			ret=-1;
+		}
+		else{
+			if(file.attr==0){
+				//コピーするものが無かった
+				ret=-1;
+			}
+			else{
+				//バックアップ
+				clipFilesBackup = clipFiles[0];
+				nclipFilesBackup = nclipFiles;
+				//
+				clipFiles[0]=file;
+				nclipFiles = 1;
+				//コピー元のディレクトリ名(clipPath)
+				strcpy(clipPath, dir);
+				//
+				cut=FALSE;	//コピー
+				//ペースト開始
+				ret=paste(path[1]);
+				//元に戻す
+				clipFiles[0] = clipFilesBackup;
+				nclipFiles = nclipFilesBackup;
+			}
+		}
+		if(ret) MessageDialog("copy Failed");
+	}
+	else if(!stricmp(psb_argv[0], "move")){	//移動
+		if(psb_argc<3){
+			ret=-1;
+		}
+		else{
+			if(file.attr==0){
+				//コピーするものが無かった
+				ret=-1;
+			}
+			else{
+				//バックアップ
+				clipFilesBackup = clipFiles[0];
+				nclipFilesBackup = nclipFiles;
+				//
+				clipFiles[0]=file;
+				nclipFiles = 1;
+				//コピー元のディレクトリ名(clipPath)
+				strcpy(clipPath, dir);
+				//
+				cut=TRUE;	//移動
+				//ペースト開始
+				ret=paste(path[1]);
+				//元に戻す
+				clipFiles[0] = clipFilesBackup;
+				nclipFiles = nclipFilesBackup;
+			}
+		}
+		if(ret) MessageDialog("move Failed");
+	}
+	else if(!stricmp(psb_argv[0], "del")){	//削除
+		if(file.attr==0){
+			//削除するものが無かった
+			ret=-1;
+		}
+		else{
+			int ynret;
+			sprintf(message, "%s", file.name);
+			if(file.attr & FIO_S_IFDIR) strcat(message, "/");
+			strcat(message, "\n");
+			strcat(message, lang->filer_delete);
+			ynret = ynDialog(message,0);
+			if(ynret>0){
+				//削除開始
+				ret=delete(dir, &file);
+			}
+		}
+		if(ret) MessageDialog("del Failed");
+	}
+	else if(!stricmp(psb_argv[0], "mkdir")){	//フォルダ作成
+		//作成開始
+		ret=newdir(dir, file.name);
+		if(ret) MessageDialog("mkdir Failed");
+	}
+	else if(!stricmp(psb_argv[0], "rmdir")){	//フォルダ削除
+		if(file.attr==0){
+			//削除するものが無かった
+			ret=-1;
+		}
+		else{
+			int ynret;
+			//ディレクトリ削除
+			if(file.attr==FIO_S_IFDIR){
+				sprintf(message, "%s", file.name);
+				if(file.attr & FIO_S_IFDIR) strcat(message, "/");
+				strcat(message, "\n");
+				strcat(message, lang->filer_delete);
+				ynret = ynDialog(message,0);
+				if(ynret>0){
+					//削除開始
+					ret=delete(dir, &file);
+				}
+			}
+			else{
+				ret=-1;
+			}
+		}
+		if(ret) MessageDialog("rmdir Failed");
+	}
+	return ret;
+}
+
+//-------------------------------------------------
+//psbParse psbファイルパース
+void psbParse(const char *str)
+{
+	char *p;
+	int len;
+	int i;
+	int flag;
+	int l;
+	char strtmp[(MAX_PATH+2)*MAX_ARGC];
+	char tmp[MAX_PATH+2];
+
+	strcpy(strtmp, str);
+
+	//初期化
+	psb_argc=0;
+	memset(psb_argv, 0, sizeof(psb_argv));
+
+	//改行コードを消す
+	p=strrchr(strtmp,'\n');
+	if(p!=NULL) *p='\0';
+	p=strrchr(strtmp,'\r');
+	if(p!=NULL) *p='\0';
+
+	len=strlen(strtmp);
+
+	//
+	if(len==0) return;
+
+	//スペースを\0に変換
+	flag=0;
+	for(i=0;i<len;i++){
+		if(strtmp[i]=='\"')	//ダブルクォーテーションフラグ
+			flag=1-flag;
+		else if((strtmp[i]==' ')&&(flag==0))
+			strtmp[i]='\0';
+	}
+
+	//\0区切りを読みとる
+	for(i=0;i<len;i++){
+		if(strtmp[i]=='\0'){
+			//何もしない
+		}
+		else{
+			l=strlen(strtmp+i);
+			if(psb_argc<MAX_ARGC){
+				if(l<MAX_PATH+2)
+					strcpy(psb_argv[psb_argc], strtmp+i);
+				psb_argc++;
+			}
+			i+=l;
+		}
+	}
+
+	//ダブルクォーテーションを消す
+	for(i=0;i<psb_argc;i++){
+		if(psb_argv[i][0]=='\"'){
+			//前のダブルクォーテーションを消す
+			strcpy(tmp, &psb_argv[i][1]);
+			strcpy(psb_argv[i],tmp);
+			//後ろのダブルクォーテーションを消す
+			p=strrchr(psb_argv[i],'\"');
+			if(p!=NULL) *p='\0';
+		}
+	}
+}
+
+//-------------------------------------------------
+//psbファイル実行
+//戻り値     0:成功
+//          -1:ファイルオープン失敗
+//       0以上:エラーが出た行番号
+int psb(const char *psbpath)
+{
+	int fd;
+	char buffer[(MAX_PATH+2)*MAX_ARGC];
+	int lineno;
+	int ret;
+
+	//
+	if(!strncmp(psbpath, "hdd", 3)){
+		if(nparties==0){
+			loadHddModules();
+			setPartyList();
+		}
+	}
+	else if(!strncmp(psbpath, "cdfs", 4))
+		loadCdModules();
+	else if(!strncmp(psbpath, "mass", 4))
+		loadUsbModules();
+
+	//
+	fd=fioOpen(psbpath, O_RDONLY);
+	if(fd<0) return -1;
+
+	lineno=0;
+	while(1){
+		memset(buffer, 0, sizeof(buffer));
+		if(fioGets(fd, buffer, (MAX_PATH+2)*MAX_ARGC)==0)
+			break;
+		if(buffer[0]=='\n'){
+		}
+		else{
+			lineno++;
+			//パース
+			psbParse(buffer);
+			//実行
+			if(psbCommand()<0){
+				ret=lineno;
+				goto psberror;	//エラーでたら停止
+			}
+		}
+	}
+	ret=0;	//エラーなし
+psberror:
+	fioClose(fd);
 	return ret;
 }
 
@@ -1499,7 +1912,7 @@ int psuImport(const char *path, const FILEINFO *file)
 			itoSwitchFrameBuffers();
 			drawDark();
 			sprintf(tmp, "%s%s/\n%s", outpath, outdir, lang->filer_overwrite);
-			if(ynDialog(tmp)<0){	//キャンセル
+			if(ynDialog(tmp,0)<0){	//キャンセル
 				ret = -7;
 				goto error;
 			}
@@ -2430,20 +2843,31 @@ void getFilePath(char *out, int cnfmode)
 			}
 			//ELF_FILE ELF選択時
 			if(cnfmode==ELF_FILE){
-				if(new_pad & PAD_CIRCLE) {	//FNTファイルを決定
+				if(new_pad & PAD_CIRCLE) {	//ファイルを決定
 					if(files[sel].attr & FIO_S_IFREG){
+						int ret;
 						sprintf(out, "%s%s", path, files[sel].name);
-						//ヘッダチェック
-						if(checkELFheader(out)<0){
-							mountedParty[0][0]=0;
-							pushed=FALSE;
-							sprintf(msg0, lang->filer_not_elf);
-							out[0] = 0;
-						}
-						else{
+						ret = checkELFheader(out);	//ヘッダチェック
+						mountedParty[0][0]=0;
+						if(ret==1){
+							//ELFファイル選択
 							strcpy(LastDir, path);
 							break;
 						}
+						else{
+							//ELFファイルではないとき
+							char *extension;
+							extension = getExtension(files[sel].name);
+							if(extension!=NULL){
+								if(!stricmp(extension, ".psb")){
+									strcpy(LastDir, path);
+									break;
+								}
+							}
+						}
+						pushed=FALSE;
+						sprintf(msg0, lang->filer_not_elf);
+						out[0] = 0;
 					}
 				}
 				else if(new_pad & PAD_SQUARE) {	// ファイルマスク切り替え
@@ -2496,19 +2920,45 @@ void getFilePath(char *out, int cnfmode)
 			}
 			//ANY_FILE	ファイラーモード	すべてのファイルが対象
 			else if(cnfmode==ANY_FILE){
-				if(new_pad & PAD_CIRCLE) {	//ELFファイルを実行
-					if(files[sel].attr & FIO_S_IFREG){
-						sprintf(out, "%s%s", path, files[sel].name);
-						//ヘッダチェック
-						if(checkELFheader(out)<0){
-							mountedParty[0][0]=0;
-							pushed=FALSE;
-							sprintf(msg0, lang->filer_not_elf);
-							out[0] = 0;
-						}
-						else{
+				if(new_pad & PAD_CIRCLE) {
+					if(files[sel].attr & FIO_S_IFREG){	//ファイル
+						char fullpath[MAX_PATH];
+						int ret;
+						sprintf(fullpath, "%s%s", path, files[sel].name);
+						ret = checkELFheader(fullpath);
+						mountedParty[0][0]=0;
+						if(ret==1){
+							//ELFファイル選択
+							strcpy(out, fullpath);
 							strcpy(LastDir, path);
 							break;
+						}
+						else{
+							//ELFファイルではないとき
+							char *extension;
+							pushed=FALSE;
+							sprintf(msg0, lang->filer_not_elf);
+							extension = getExtension(fullpath);
+							if(extension!=NULL){
+								if(!stricmp(extension, ".psb")){	//psbファイルを実行
+									int ynret;
+									int psbret;
+									ynret = ynDialog(lang->filer_execute_psb, 0);
+									if(ynret>0){
+										psbret = psb(fullpath);
+										if(psbret==0){
+											pushed=TRUE;
+											cd=TRUE;	//空きスペース再計算
+										}
+										else if(psbret>0){
+											sprintf(msg0, "error line no = %d", psbret);
+										}
+										else if(psbret<0){
+											strcpy(msg0, "psb open error");
+										}
+									}
+								}
+							}
 						}
 					}
 				}
@@ -2552,10 +3002,10 @@ void getFilePath(char *out, int cnfmode)
 							}
 							strcat(tmp, "\n");
 							strcat(tmp, lang->filer_delete);
-							ret = ynDialog(tmp);
+							ret = ynDialog(tmp,0);
 						}
 						else
-							ret = ynDialog(lang->filer_deletemarkfiles);
+							ret = ynDialog(lang->filer_deletemarkfiles,0);
 
 						if(ret>0){
 							if(nmarks==0){

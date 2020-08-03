@@ -54,6 +54,7 @@ void SetLanguage(const int langID)
 		strcpy(lang->filer_menu_importpsu, "Import psu");
 		strcpy(lang->filer_overwrite, "Overwrite?");
 		strcpy(lang->filer_not_elf, "This file isn't ELF.");
+		strcpy(lang->filer_execute_psb, "Execute?");
 		strcpy(lang->filer_not_fnt, "This file isn't FNT.");
 		strcpy(lang->filer_copy_to_clip, "Copied to the Clipboard");
 		strcpy(lang->filer_delete, "Delete?");
@@ -148,7 +149,6 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_disc_ps2save_check, "DISC PS2SAVE CHECK");
 		strcpy(lang->conf_disc_elf_check, "DISC ELF CHECK");
 		strcpy(lang->conf_export_dir, "EXPORT DIR");
-		strcpy(lang->conf_mass_filesize_check, "MASS FILESIZE CHECK");
 		strcpy(lang->conf_miscsettinginit, "MISC SETTING INIT");
 
 		strcpy(lang->conf_on, "ON");
@@ -190,6 +190,7 @@ void SetLanguage(const int langID)
 		strcpy(lang->filer_menu_importpsu, "インポート");
 		strcpy(lang->filer_overwrite, "上書きしますか?");
 		strcpy(lang->filer_not_elf, "ELFファイルではありません");
+		strcpy(lang->filer_execute_psb, "実行しますか?");
 		strcpy(lang->filer_not_fnt, "FNTファイルではありません");
 		strcpy(lang->filer_copy_to_clip, "クリップボードへコピーしました");
 		strcpy(lang->filer_delete, "削除しますか?");
@@ -284,7 +285,6 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_disc_ps2save_check, "CD/DVDのときセーブデータか調べる");
 		strcpy(lang->conf_disc_elf_check, "CD/DVDのときELFか調べる");
 		strcpy(lang->conf_export_dir, "エクスポートフォルダ");
-		strcpy(lang->conf_mass_filesize_check, "massのときファイルサイズを調べる");
 		strcpy(lang->conf_miscsettinginit, "「その他設定」を初期化する");
 
 		strcpy(lang->conf_on, "ON");
