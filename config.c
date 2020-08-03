@@ -16,10 +16,16 @@ enum
 	DEF_COLOR9 = ITO_RGBA(0,128,255,0),		//PS1saveフォルダ
 	DEF_COLOR10 = ITO_RGBA(64,64,80,0),		//無効の文字色
 	DEF_COLOR11 = ITO_RGBA(192,96,0,0),		//psuファイル
-	DEF_SCREEN_X = 160,
-	DEF_SCREEN_Y = 55,
+	DEF_SCREEN_X_D1 = 638,
+	DEF_SCREEN_Y_D1 = 50,
+	DEF_SCREEN_X_D2 = 310,
+	DEF_SCREEN_Y_D2 = 50,
+	DEF_SCREEN_X_D3 = 283,
+	DEF_SCREEN_Y_D3 = 66,
+	DEF_SCREEN_X_D4 = 331,
+	DEF_SCREEN_Y_D4 = 42,
 	DEF_FLICKERCONTROL = TRUE,
-	DEF_TVMODE = 0,	//0=auto 1=ntsc 2=pal 3=480p 4=720p
+	DEF_TVMODE = 0,	//0=auto 1=ntsc 2=pal 3=480p 4=720p 5=1080i
 	DEF_INTERLACE = TRUE,	//FALSE=ITO_NON_INTERLACE TRUE=ITO_INTERLACE
 	DEF_FFMODE = FALSE,	//FALSE=ITO_FIELD TRUE=ITO_FRAME
 	DEF_DEFAULTTITLE = 0,
@@ -33,10 +39,11 @@ enum
 	DEF_KANJI_MARGINTOP = 0,
 	DEF_KANJI_MARGINLEFT = 0,
 
-	DEF_DISCCONTROL = TRUE,
+	DEF_DISCCONTROL = FALSE,
 	DEF_FILEICON = TRUE,
 	DEF_DISCPS2SAVECHECK = FALSE,
 	DEF_DISCELFCHECK = FALSE,
+	DEF_FILEELFCHECK = TRUE,
 	DEF_LANGUAGE = LANG_ENGLISH,
 };
 
@@ -129,6 +136,7 @@ enum
 	FILEICON,
 	PS2SAVECHECK,
 	ELFCHECK,
+	FILEELFCHECK,
 	EXPORTDIR,
 	DEFAULTTITLE,
 	DEFAULTDETAIL,
@@ -137,6 +145,82 @@ enum
 
 SETTING *setting, *tmpsetting;
 
+//-------------------------------------------------
+//スクリーンXY反映用
+void SetScreenPosVM()
+{
+	switch(setting->tvmode)
+	{
+		case 0:	//AUTO
+		case 1:
+		case 2:
+		{
+			SCREEN_LEFT = setting->screen_x_480i;
+			SCREEN_TOP = setting->screen_y_480i;
+			interlace = setting->interlace;
+			ffmode = setting->ffmode_480i;
+			break;
+		}
+		case 3:	//480p
+		{
+			SCREEN_LEFT = setting->screen_x_480p;
+			SCREEN_TOP = setting->screen_y_480p;
+			interlace = ITO_NON_INTERLACE;
+			ffmode = ITO_FIELD;
+			break;
+		}
+		case 4:	//720p
+		{
+			SCREEN_LEFT = setting->screen_x_720p;
+			SCREEN_TOP = setting->screen_y_720p;
+			interlace = ITO_NON_INTERLACE;
+			ffmode = ITO_FIELD;
+			break;
+		}
+		case 5:	//1080i
+		{
+			SCREEN_LEFT = setting->screen_x_1080i;
+			SCREEN_TOP = setting->screen_y_1080i;
+			interlace = ITO_INTERLACE;
+			ffmode = setting->ffmode_1080i;
+			break;
+		}
+	}
+}
+//-------------------------------------------------
+//スクリーンXY変更用
+void SetScreenPosXY()
+{
+	switch(setting->tvmode)
+	{
+		case 0:	//AUTO
+		case 1:
+		case 2:
+		{
+			setting->screen_x_480i = SCREEN_LEFT;
+			setting->screen_y_480i = SCREEN_TOP;
+			break;
+		}
+		case 3:	//480p
+		{
+			setting->screen_x_480p = SCREEN_LEFT;
+			setting->screen_y_480p = SCREEN_TOP;
+			break;
+		}
+		case 4:	//720p
+		{
+			setting->screen_x_720p = SCREEN_LEFT;
+			setting->screen_y_720p = SCREEN_TOP;
+			break;
+		}
+		case 5:	//1080i
+		{
+			setting->screen_x_1080i = SCREEN_LEFT;
+			setting->screen_y_1080i = SCREEN_TOP;
+			break;
+		}
+	}
+}
 //-------------------------------------------------
 //メモリーカードの種類を取得
 int GetMcType(int port, int slot)
@@ -197,12 +281,19 @@ void InitScreenSetting(void)
 	setting->color[COLOR_PS1SAVE] = DEF_COLOR9;
 	setting->color[COLOR_GRAYTEXT] = DEF_COLOR10;
 	setting->color[COLOR_PSU] = DEF_COLOR11;
-	setting->screen_x = DEF_SCREEN_X;
-	setting->screen_y = DEF_SCREEN_Y;
+	setting->screen_x_480i = DEF_SCREEN_X_D1;
+	setting->screen_y_480i = DEF_SCREEN_Y_D1;
+	setting->screen_x_480p = DEF_SCREEN_X_D2;
+	setting->screen_y_480p = DEF_SCREEN_Y_D2;
+	setting->screen_x_720p = DEF_SCREEN_X_D4;
+	setting->screen_y_720p = DEF_SCREEN_Y_D4;
+	setting->screen_x_1080i = DEF_SCREEN_X_D3;
+	setting->screen_y_1080i = DEF_SCREEN_Y_D3;
 	setting->flickerControl = DEF_FLICKERCONTROL;
 	setting->tvmode = DEF_TVMODE;
 	setting->interlace = DEF_INTERLACE;
-	setting->ffmode = DEF_FFMODE;
+	setting->ffmode_480i = DEF_FFMODE;
+	setting->ffmode_1080i = DEF_FFMODE;
 }
 
 //-------------------------------------------------
@@ -230,6 +321,7 @@ void InitMiscSetting(void)
 	setting->fileicon = DEF_FILEICON;
 	setting->discPs2saveCheck = DEF_DISCPS2SAVECHECK;
 	setting->discELFCheck = DEF_DISCELFCHECK;
+	setting->fileELFCheck = DEF_FILEELFCHECK;
 	setting->Exportdir[0] = 0;
 	setting->language = DEF_LANGUAGE;
 	setting->defaulttitle = DEF_DEFAULTTITLE;
@@ -365,10 +457,22 @@ void saveConfig(char *mainMsg)
 	sprintf(tmp, "%d", setting->KanjiMarginLeft);
 	if(cnf_setstr("kanji_margin_left", tmp)<0) goto error;
 	//
-	sprintf(tmp, "%d", setting->screen_x);
+	sprintf(tmp, "%d", setting->screen_x_480i);
 	if(cnf_setstr("screen_pos_x", tmp)<0) goto error;
-	sprintf(tmp, "%d", setting->screen_y);
+	sprintf(tmp, "%d", setting->screen_y_480i);
 	if(cnf_setstr("screen_pos_y", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->screen_x_480p);
+	if(cnf_setstr("screen_pos_x_480p", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->screen_y_480p);
+	if(cnf_setstr("screen_pos_y_480p", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->screen_x_720p);
+	if(cnf_setstr("screen_pos_x_720p", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->screen_y_720p);
+	if(cnf_setstr("screen_pos_y_720p", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->screen_x_1080i);
+	if(cnf_setstr("screen_pos_x_1080i", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->screen_y_1080i);
+	if(cnf_setstr("screen_pos_y_1080i", tmp)<0) goto error;
 	sprintf(tmp, "%d", setting->flickerControl);
 	if(cnf_setstr("flicker_control", tmp)<0) goto error;
 	sprintf(tmp, "%d", setting->language);
@@ -385,14 +489,18 @@ void saveConfig(char *mainMsg)
 	if(cnf_setstr("ps2save_check", tmp)<0) goto error;
 	sprintf(tmp, "%d", setting->discELFCheck);
 	if(cnf_setstr("elf_check", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->fileELFCheck);
+	if(cnf_setstr("file_elf_check", tmp)<0) goto error;
 	strcpy(tmp, setting->Exportdir);
 	if(cnf_setstr("export_dir", tmp)<0) goto error;
 	sprintf(tmp, "%d", setting->tvmode);
 	if(cnf_setstr("tvmode", tmp)<0) goto error;
 	sprintf(tmp, "%d", setting->interlace);
 	if(cnf_setstr("interlace", tmp)<0) goto error;
-	sprintf(tmp, "%d", setting->ffmode);
+	sprintf(tmp, "%d", setting->ffmode_480i);
 	if(cnf_setstr("ffmode", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->ffmode_1080i);
+	if(cnf_setstr("ffmode_1080i", tmp)<0) goto error;
 	sprintf(tmp, "%d", setting->defaulttitle);
 	if(cnf_setstr("default_title", tmp)<0) goto error;
 	sprintf(tmp, "%d", setting->defaultdetail);
@@ -594,9 +702,21 @@ void loadConfig(char *mainMsg)
 				setting->KanjiMarginLeft = atoi(tmp);
 			//
 			if(cnf_getstr("screen_pos_x", tmp, "")>=0)
-				setting->screen_x = atoi(tmp);
+				setting->screen_x_480i = atoi(tmp);
 			if(cnf_getstr("screen_pos_y", tmp, "")>=0)
-				setting->screen_y = atoi(tmp);
+				setting->screen_y_480i = atoi(tmp);
+			if(cnf_getstr("screen_pos_x_480p", tmp, "")>=0)
+				setting->screen_x_480p = atoi(tmp);
+			if(cnf_getstr("screen_pos_y_480p", tmp, "")>=0)
+				setting->screen_y_480p = atoi(tmp);
+			if(cnf_getstr("screen_pos_x_720p", tmp, "")>=0)
+				setting->screen_x_720p = atoi(tmp);
+			if(cnf_getstr("screen_pos_y_720p", tmp, "")>=0)
+				setting->screen_y_720p = atoi(tmp);
+			if(cnf_getstr("screen_pos_x_1080i", tmp, "")>=0)
+				setting->screen_x_1080i = atoi(tmp);
+			if(cnf_getstr("screen_pos_y_1080i", tmp, "")>=0)
+				setting->screen_y_1080i = atoi(tmp);
 			if(cnf_getstr("flicker_control", tmp, "")>=0){
 				setting->flickerControl = atoi(tmp);
 				if(setting->flickerControl<0 || setting->flickerControl>1)
@@ -637,11 +757,16 @@ void loadConfig(char *mainMsg)
 				if(setting->discELFCheck<0 || setting->discELFCheck>1)
 					setting->discELFCheck = DEF_DISCELFCHECK;
 			}
+			if(cnf_getstr("file_elf_check", tmp, "")>=0){
+				setting->fileELFCheck = atoi(tmp);
+				if(setting->fileELFCheck<0 || setting->fileELFCheck>1)
+					setting->fileELFCheck = DEF_FILEELFCHECK;
+			}
 			if(cnf_getstr("export_dir", tmp, "")>=0)
 				strcpy(setting->Exportdir, tmp);
 			if(cnf_getstr("tvmode", tmp, "")>=0){
 				setting->tvmode = atoi(tmp);
-				if(setting->tvmode<0 || setting->tvmode>4)
+				if(setting->tvmode<0 || setting->tvmode>5)
 					setting->tvmode = DEF_TVMODE;
 			}
 			if(cnf_getstr("interlace", tmp, "")>=0){
@@ -650,9 +775,14 @@ void loadConfig(char *mainMsg)
 					setting->interlace = DEF_INTERLACE;
 			}
 			if(cnf_getstr("ffmode", tmp, "")>=0){
-				setting->ffmode = atoi(tmp);
-				if(setting->ffmode<0 || setting->ffmode>1)
-					setting->ffmode = DEF_FFMODE;
+				setting->ffmode_480i = atoi(tmp);
+				if(setting->ffmode_480i<0 || setting->ffmode_480i>1)
+					setting->ffmode_480i = DEF_FFMODE;
+			}
+			if(cnf_getstr("ffmode_1080i", tmp, "")>=0){
+				setting->ffmode_1080i = atoi(tmp);
+				if(setting->ffmode_1080i<0 || setting->ffmode_1080i>1)
+					setting->ffmode_1080i = DEF_FFMODE;
 			}
 			if(cnf_getstr("default_title", tmp, "")>=0){
 				setting->defaulttitle = atoi(tmp);
@@ -926,27 +1056,10 @@ void config_screen(SETTING *setting)
 				else if(sel==TVMODE){	//TVMODE
 					//tvmode変更
 					setting->tvmode++;
-					if(setting->tvmode==2){	//NTSCからPALへ変更
-						setting->screen_x += 5;
-						setting->screen_y += 10;
-					}
-					//
-					if(setting->tvmode==3){	//PALから480pへ変更
-						if(setting->interlace)
-							setting->screen_y -= 30;
-						setting->ffmode = ITO_FIELD;
-						setting->interlace = ITO_NON_INTERLACE;
-						setting->screen_y += 15;
-					}
-					if(setting->tvmode==4)	//480pから720pへ変更
-						setting->screen_x += 170;
-					if(setting->tvmode==5){	//720pからautoへ変更
-						setting->screen_x -= 175;
-						setting->screen_y += 5;
+					if(setting->tvmode==6)
 						setting->tvmode = 0;
-						setting->interlace = ITO_INTERLACE;
-					}
 					//
+					SetScreenPosVM();
 					itoGsReset();
 					setupito(setting->tvmode);
 					SetHeight();
@@ -954,10 +1067,12 @@ void config_screen(SETTING *setting)
 				else if(sel==INTERLACE){	//インターレース
 					if(setting->tvmode<3){
 						if(setting->interlace)
-							setting->screen_y-=30;
+							SCREEN_TOP = SCREEN_TOP>>1;
 						else
-							setting->screen_y+=30;
+							SCREEN_TOP = SCREEN_TOP<<1;
 						setting->interlace = !setting->interlace;
+						interlace = !interlace;
+						SetScreenPosXY();
 						//
 						itoGsReset();
 						setupito(setting->tvmode);
@@ -965,28 +1080,35 @@ void config_screen(SETTING *setting)
 					}
 				}
 				else if(sel==FFMODE){	//ffmode
-					if(setting->tvmode<3){
-						setting->ffmode = !setting->ffmode;
+					if((setting->tvmode<3)||(setting->tvmode==5)){
+						if(setting->tvmode<3)
+							setting->ffmode_480i = !setting->ffmode_480i;
+						else
+							setting->ffmode_1080i = !setting->ffmode_1080i;
+						ffmode = !ffmode;
 						itoGsReset();
 						setupito(setting->tvmode);
 						SetHeight();
 					}
 				}
 				else if(sel==SCREEN_X){	//SCREEN X
-					setting->screen_x++;
-					screen_env.screen.x = setting->screen_x;
-					itoSetScreenPos(setting->screen_x, setting->screen_y);
+					SCREEN_LEFT++;
+					screen_env.screen.x = SCREEN_LEFT;
+					SetScreenPosXY();
+					itoSetScreenPos(SCREEN_LEFT, SCREEN_TOP);
 				}
 				else if(sel==SCREEN_Y){	//SCREEN Y
-					setting->screen_y++;
-					screen_env.screen.y = setting->screen_y;
-					itoSetScreenPos(setting->screen_x, setting->screen_y);
+					SCREEN_TOP++;
+					screen_env.screen.y = SCREEN_TOP;
+					SetScreenPosXY();
+					itoSetScreenPos(SCREEN_LEFT, SCREEN_TOP);
 				}
 				else if(sel==FLICKERCONTROL)	//フリッカーコントロール
 					setting->flickerControl = !setting->flickerControl;
 				else if(sel==SCREENINIT){	//SCREEN SETTING INIT
 					//init
 					InitScreenSetting();
+					SetScreenPosVM();
 					itoGsReset();
 					setupito(setting->tvmode);
 					SetHeight();
@@ -1018,17 +1140,19 @@ void config_screen(SETTING *setting)
 					setting->color[colorid] = ITO_RGBA(r, g, b, 0);
 				}
 				else if(sel==SCREEN_X){	//SCREEN X
-					if(setting->screen_x > 0){
-						setting->screen_x--;
-						screen_env.screen.x = setting->screen_x;
-						itoSetScreenPos(setting->screen_x, setting->screen_y);
+					if(SCREEN_LEFT > 0){
+						SCREEN_LEFT--;
+						screen_env.screen.x = SCREEN_LEFT;
+						SetScreenPosXY();
+						itoSetScreenPos(SCREEN_LEFT, SCREEN_TOP);
 					}
 				}
 				else if(sel==SCREEN_Y){	//SCREEN Y
-					if(setting->screen_y > 0){
-						setting->screen_y--;
-						screen_env.screen.y = setting->screen_y;
-						itoSetScreenPos(setting->screen_x, setting->screen_y);
+					if(SCREEN_TOP > 0){
+						SCREEN_TOP--;
+						screen_env.screen.y = SCREEN_TOP;
+						SetScreenPosXY();
+						itoSetScreenPos(SCREEN_LEFT, SCREEN_TOP);
 					}
 				}
 			}
@@ -1127,26 +1251,28 @@ void config_screen(SETTING *setting)
 					sprintf(config[i],"%s: %s", lang->conf_tvmode, "480p");
 				else if(setting->tvmode==4)
 					sprintf(config[i],"%s: %s", lang->conf_tvmode, "720p");
+				else if(setting->tvmode==5)
+					sprintf(config[i],"%s: %s", lang->conf_tvmode, "1080i");
 			}
 			else if(i==INTERLACE){	//INTERLACE
 				sprintf(config[i], "%s: ", lang->conf_interlace);
-				if(setting->interlace)
+				if(interlace)
 					strcat(config[i], lang->conf_on);
 				else
 					strcat(config[i], lang->conf_off);
 			}
 			else if(i==FFMODE){	//FFMODE
 				sprintf(config[i],"%s: ", lang->conf_ffmode);
-				if(setting->ffmode)
+				if(ffmode)
 					strcat(config[i], lang->conf_ffmode_frame);
 				else
 					strcat(config[i], lang->conf_ffmode_field);
 			}
 			else if(i==SCREEN_X){	//SCREEN X
-				sprintf(config[i],"%s: %3d", lang->conf_screen_x, setting->screen_x);
+				sprintf(config[i],"%s: %3d", lang->conf_screen_x, SCREEN_LEFT);
 			}
 			else if(i==SCREEN_Y){	//SCREEN Y
-				sprintf(config[i],"%s: %3d", lang->conf_screen_y, setting->screen_y);
+				sprintf(config[i],"%s: %3d", lang->conf_screen_y, SCREEN_TOP);
 			}
 			else if(i==FLICKERCONTROL){	//FLICKER CONTROL
 				sprintf(config[i],"%s: ", lang->conf_flickercontrol);
@@ -1733,6 +1859,8 @@ void config_misc(SETTING *setting)
 					setting->discPs2saveCheck = !setting->discPs2saveCheck;
 				else if(sel==ELFCHECK)
 					setting->discELFCheck = !setting->discELFCheck;
+				else if(sel==FILEELFCHECK)
+					setting->fileELFCheck = !setting->fileELFCheck;
 				else if(sel==EXPORTDIR){
 					getFilePath(setting->Exportdir, DIR);
 					if(!strncmp(setting->Exportdir, "cdfs", 2))
@@ -1810,6 +1938,13 @@ void config_misc(SETTING *setting)
 				else
 					strcat(config[i], lang->conf_off);
 			}
+			else if(i==FILEELFCHECK){	// FILE ELF CHECK
+				sprintf(config[i], "%s: ", lang->conf_file_elf_check);
+				if(setting->fileELFCheck)
+					strcat(config[i], lang->conf_on);
+				else
+					strcat(config[i], lang->conf_off);
+			}
 			else if(i==EXPORTDIR){	//EXPORT DIR
 				sprintf(config[i], "%s: %s", lang->conf_export_dir, setting->Exportdir);
 			}
@@ -1833,7 +1968,7 @@ void config_misc(SETTING *setting)
 				strcpy(config[i], lang->conf_miscsettinginit);
 			}
 		}
-		nList=12;
+		nList=13;
 
 		// リスト表示用変数の正規化
 		if(top > nList-MAX_ROWS)	top=nList-MAX_ROWS;
@@ -1895,6 +2030,8 @@ void config_misc(SETTING *setting)
 		else if(sel==PS2SAVECHECK)
 			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
 		else if(sel==ELFCHECK)
+			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
+		else if(sel==FILEELFCHECK)
 			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
 		else if(sel==EXPORTDIR)
 			sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_edit, lang->conf_clear, lang->conf_up);
@@ -1983,6 +2120,7 @@ void config(char *mainMsg)
 					SetFontMargin(ASCII_FONT_MARGIN_LEFT, setting->AsciiMarginLeft);
 					SetFontMargin(KANJI_FONT_MARGIN_TOP, setting->KanjiMarginTop);
 					SetFontMargin(KANJI_FONT_MARGIN_LEFT, setting->KanjiMarginLeft);
+					SetScreenPosVM();
 					itoGsReset();
 					setupito(setting->tvmode);
 					mainMsg[0] = 0;

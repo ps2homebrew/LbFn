@@ -30,7 +30,7 @@
 #include "cnf.h"
 
 // バージョン
-#define LBF_VER "LbF v0.70"
+#define LBF_VER "LbFn v0.69.1"
 
 // 垂直スキャンレート
 #define SCANRATE (ITO_VMODE_AUTO==ITO_VMODE_NTSC ? 60:50)
@@ -74,16 +74,24 @@ typedef struct
 	int timeout;
 	int filename;
 	uint64 color[NUM_COLOR];
-	int screen_x;
-	int screen_y;
+	int screen_x_480i;
+	int screen_y_480i;
+	int screen_x_480p;
+	int screen_y_480p;
+	int screen_x_1080i;
+	int screen_y_1080i;
+	int screen_x_720p;
+	int screen_y_720p;
 	int discControl;
 	int flickerControl;
 	int tvmode;
 	int interlace;
-	int ffmode;
+	int ffmode_480i;
+	int ffmode_1080i;
 	int fileicon;
 	int discPs2saveCheck;
 	int discELFCheck;
+	int fileELFCheck;
 	char Exportdir[MAX_PATH];
 	int defaulttitle;
 	int defaultdetail;
@@ -137,6 +145,10 @@ enum	//GetCurrentPos
 };
 */
 extern itoGsEnv screen_env;
+extern int SCREEN_LEFT;
+extern int SCREEN_TOP;
+extern int interlace;
+extern int ffmode;
 extern int SCREEN_WIDTH;
 extern int SCREEN_HEIGHT;
 extern int SCREEN_MARGIN;
@@ -183,6 +195,7 @@ void waitPadReady(int port, int slot);
 
 /* config.c */
 extern SETTING *setting;
+void SetScreenPosVM();
 void InitScreenSetting(void);
 void loadConfig(char *);
 void config(char *);

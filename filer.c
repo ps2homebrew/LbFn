@@ -1857,8 +1857,8 @@ psberror:
 #endif
 
 //-------------------------------------------------
-//windowsでファイル名に使えない文字は「_」に変換
-void filenameFix(const unsigned char *in, unsigned char *out)
+//ゲームタイトルをファイル名に変換
+void title2filename(const unsigned char *in, unsigned char *out)
 {
 	int len;
 	int i=0;
@@ -1866,6 +1866,7 @@ void filenameFix(const unsigned char *in, unsigned char *out)
 	len = strlen(in);
 	memcpy(out, in, len);
 	for(i=0;i<len;i++){
+		//windowsでファイル名に使えない文字は「_」に変換
 		if(out[i]==0x22) out[i]='_';	// '"'
 		if(out[i]==0x2A) out[i]='_';	// '*'
 		if(out[i]==0x2C) out[i]='_';	// ','
@@ -2324,14 +2325,12 @@ int psuExport(const char *path, const FILEINFO *file, int sjisout)
 			strcpy(outpath, path);
 
 		//出力するpsuファイル名
-		if(sjisout==TRUE){
-			if(file->title[0])
-				filenameFix(file->title, tmp);	//ファイル名に使えない文字を変換
-			else
-				filenameFix(file->name, tmp);
-		}
-		else{
-			filenameFix(file->name, tmp);
+		strcpy(tmp, file->name);
+		if(sjisout){
+			if(file->title[0]){
+				//ファイル名に使えない文字を変換
+				title2filename(file->title, tmp);
+			}
 		}
 
 		//出力先がmcのときにファイル名の文字数を調べる
@@ -2885,21 +2884,36 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 							files[i].type=TYPE_FILE;
 					}
 					else{
-						files[i].type=TYPE_FILE;
+						char *ext;
+						ext = getExtension(files[i].name);
+						if(ext!=NULL&&!stricmp(ext, ".elf"))
+							files[i].type=TYPE_ELF;
+						else
+							files[i].type=TYPE_FILE;
 					}
 				}
 				else{
-					checkELFret = checkELFheader(fullpath);
-					//mountedParty[0][0]=0;
-					if(checkELFret==1)
-						files[i].type=TYPE_ELF;
-					else
-						files[i].type=TYPE_FILE;
-					if(!strncmp(path, "hdd", 3)){
-						//HDDのとき再マウント
-						mountedParty[0][0]=0;
-						getHddParty(path, NULL, party, NULL);
-						mountParty(party);
+					if (setting->fileELFCheck){
+						checkELFret = checkELFheader(fullpath);
+						//mountedParty[0][0]=0;
+						if(checkELFret==1)
+							files[i].type=TYPE_ELF;
+						else
+							files[i].type=TYPE_FILE;
+						if(!strncmp(path, "hdd", 3)){
+							//HDDのとき再マウント
+							mountedParty[0][0]=0;
+							getHddParty(path, NULL, party, NULL);
+							mountParty(party);
+						}
+					}
+					else{
+						char *ext;
+						ext = getExtension(files[i].name);
+						if(ext!=NULL&&!stricmp(ext, ".elf"))
+							files[i].type=TYPE_ELF;
+						else
+							files[i].type=TYPE_FILE;
 					}
 				}
 				//psuファイルか調べる

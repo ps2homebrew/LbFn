@@ -1,20 +1,24 @@
 -------------------------------------------
-LbF version 0.70src by yi (2008/11/03)
-http://yi-ps2.hp.infoseek.co.jp/
+LbFn version 0.69.1src by nika (2008/11/01)
 -------------------------------------------
 
 ソースを改変することに制限はありません
-LbFを改変したものを公開するときは、
-LbFを改変したことをわかるようにしてください
-LbFがLaunchELFの改変したものということをわかるようにしてください
+LbF/LbFnを改変したものを公開するときは、
+LbF/LbFnを改変したことをわかるようにしてください
+LbFとLbFnがそれぞれLaunchELFとLbFを改変したものということをわかるようにしてください
 改変後のソース公開は任意です
 
 
 ●免責
 ・ライセンスは、LaunchELFと同じ
 ・自己責任で使ってください。配布自由。
+・LbFnで改変した部分をyi氏に問い合わせたりしないで下さい。
 
 ●謝辞
+・LbF
+  yi氏
+  http://yi-ps2.hp.infoseek.co.jp/
+
 ・LaunchELF
   みらきち氏
   http://mirakichi.hp.infoseek.co.jp/software/

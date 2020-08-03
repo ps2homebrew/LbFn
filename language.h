@@ -146,6 +146,7 @@ typedef struct
 	char conf_fileicon[MAX_LANGUAGE_STR];
 	char conf_disc_ps2save_check[MAX_LANGUAGE_STR];
 	char conf_disc_elf_check[MAX_LANGUAGE_STR];
+	char conf_file_elf_check[MAX_LANGUAGE_STR];
 	char conf_export_dir[MAX_LANGUAGE_STR];
 	char conf_defaulttitle[MAX_LANGUAGE_STR];
 	char conf_defaultdetail[MAX_LANGUAGE_STR];

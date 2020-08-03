@@ -91,6 +91,11 @@ void itoGsEnvSubmit(itoGsEnv* env)
 					ito.screen.mag_x = 3; 
 					break;
 				}
+				case 720:
+				{
+					ito.screen.mag_x = 3;
+					break;
+				}
 				//-----------------------------------------------------------------
 				// default width to 640 
 				//-----------------------------------------------------------------
@@ -113,7 +118,7 @@ void itoGsEnvSubmit(itoGsEnv* env)
 			//env->screen.psm = ITO_RGBA16;
 			//env->interlace = ITO_INTERLACE;
 			//env->ffmode = ITO_FIELD;
-			ito.screen.mag_x = 0; 
+			ito.screen.mag_x = 1; 
 		}
 		else if(env->vmode==0x52)	//720p
 		{
@@ -132,7 +137,7 @@ void itoGsEnvSubmit(itoGsEnv* env)
 		ito.screen.mag_y = 0; // Do not magnify in vertical direction.
 
 		ito.screen.psm = env->screen.psm;
-		ito.screen.x = env->screen.x  * (ito.screen.mag_x+1);
+		ito.screen.x = env->screen.x;//  * (ito.screen.mag_x+1);
 		ito.screen.y = env->screen.y;
 		ito.screen.height = env->screen.height;
 		ito.screen.width = env->screen.width;
@@ -1084,7 +1089,7 @@ void itoSetPrimXY(uint16 x, uint16 y)
 
 void itoSetScreenPos(uint16 x, uint16 y)
 {
-	x = x * (ito.screen.mag_x+1);
+	x = x;// * (ito.screen.mag_x+1);
 	//-----------------------------------------------------------------
 	// using global vars
 	//-----------------------------------------------------------------

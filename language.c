@@ -162,6 +162,7 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_fileicon, "FILEICON");
 		strcpy(lang->conf_disc_ps2save_check, "DISC PS2SAVE CHECK");
 		strcpy(lang->conf_disc_elf_check, "DISC ELF CHECK");
+		strcpy(lang->conf_file_elf_check, "FILE ELF CHECK");
 		strcpy(lang->conf_export_dir, "EXPORT DIR");
 		strcpy(lang->conf_defaulttitle, "DEFAULT SHOW TITLE");
 		strcpy(lang->conf_defaultdetail, "DEFAULT SHOW DETAIL");
@@ -317,6 +318,7 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_fileicon, "FileBrowserのアイコン");
 		strcpy(lang->conf_disc_ps2save_check, "CD/DVDのときセーブデータか調べる");
 		strcpy(lang->conf_disc_elf_check, "CD/DVDのときELFか調べる");
+		strcpy(lang->conf_file_elf_check, "CD/DVD以外のときELFか調べる");
 		strcpy(lang->conf_export_dir, "エクスポートフォルダ");
 		strcpy(lang->conf_defaulttitle, "ゲームタイトル表\示をデフォルトにする");
 		strcpy(lang->conf_defaultdetail, "詳細表\示のデフォルト");

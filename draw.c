@@ -35,6 +35,8 @@ uint16 buffer_height;
 
 int initbiosfont=0;
 char *biosfont=NULL;
+int SCREEN_LEFT;
+int SCREEN_TOP;
 int SCREEN_WIDTH = 640;
 int SCREEN_HEIGHT = 448;
 int SCREEN_MARGIN;
@@ -47,6 +49,8 @@ int char_Margin;	//文字の間隔
 int line_Margin;	//行の間隔
 int font_bold;
 
+int interlace;
+int ffmode;
 //ascii
 int init_ascii=0;	//初期化したかしていないかのフラグ
 char *font_ascii=NULL;	//フォントのバッファ
@@ -131,6 +135,8 @@ void setupito(int tvmode)
 		vmode = 0x50;
 	else if(tvmode==4)
 		vmode = 0x52;
+	else if(tvmode==5)
+		vmode = 0x51;
 	else
 		vmode = ITO_VMODE_NTSC;
 
@@ -152,17 +158,26 @@ void setupito(int tvmode)
 		}
 		case 0x50://480p
 		{
-			buffer_width = 720;
-			buffer_height= 480;
+			buffer_width = 640;
+			buffer_height= 448;
 			psm = ITO_RGBA32;
+			//setting->interlace = ITO_NON_INTERLACE;
+			//setting->ffmode = ITO_FIELD;
+			break;
+		}
+		case 0x51://1080i
+		{
+			buffer_width = 960;//-48;
+			buffer_height= 1080;//-56;
+			psm = ITO_RGBA16;
 			//setting->interlace = ITO_NON_INTERLACE;
 			//setting->ffmode = ITO_FIELD;
 			break;
 		}
 		case 0x52://720p:
 		{
-			buffer_width = 1280;
-			buffer_height= 720;
+			buffer_width = 1280-64;
+			buffer_height= 720-36;
 			psm = ITO_RGBA16;
 			//setting->interlace = ITO_NON_INTERLACE;
 			//setting->ffmode = ITO_FIELD;
@@ -185,8 +200,8 @@ void setupito(int tvmode)
 	screen_env.screen.psm		= psm;
 
 	// These setting work best with my tv, experiment for youself
-	screen_env.screen.x			= setting->screen_x; 
-	screen_env.screen.y			= setting->screen_y;
+	screen_env.screen.x			= SCREEN_LEFT; 
+	screen_env.screen.y			= SCREEN_TOP;
 	
 	screen_env.framebuffer1.x	= 0;
 	screen_env.framebuffer1.y	= 0;
@@ -197,7 +212,7 @@ void setupito(int tvmode)
 	// zbuffer
 	screen_env.zbuffer.x		= 0;
 	screen_env.zbuffer.y		= buffer_height*2;
-	screen_env.zbuffer.psm		= ITO_ZBUF32;
+	screen_env.zbuffer.psm		= ITO_ZBUF16;
 	
 	// scissor 
 	screen_env.scissor_x1		= 0;
@@ -207,8 +222,8 @@ void setupito(int tvmode)
 	
 	// misc
 	screen_env.dither			= TRUE;
-	screen_env.interlace		= setting->interlace;
-	screen_env.ffmode			= setting->ffmode;
+	screen_env.interlace		= interlace;
+	screen_env.ffmode			= ffmode;
 	screen_env.vmode			= vmode;
 	
 	itoGsEnvSubmit(&screen_env);
@@ -361,16 +376,18 @@ void SetHeight(void)
 		case 0:	//AUTO
 		{
 			SCREEN_WIDTH = 640;
+			SCREEN_LEFT = setting->screen_x_480i;
+			SCREEN_TOP = setting->screen_y_480i;
 			if(ITO_VMODE_AUTO==ITO_VMODE_NTSC){
 				//NTSC
-				if(setting->ffmode==FALSE && setting->interlace==TRUE)
+				if(setting->ffmode_480i==FALSE && setting->interlace==TRUE)
 					SCREEN_HEIGHT = 448;
 				else
 					SCREEN_HEIGHT = 224;
 			}
 			else{
 				//PAL
-				if(setting->ffmode==FALSE && setting->interlace==TRUE)
+				if(setting->ffmode_480i==FALSE && setting->interlace==TRUE)
 					SCREEN_HEIGHT = 512;
 				else
 					SCREEN_HEIGHT = 256;
@@ -380,7 +397,9 @@ void SetHeight(void)
 		case 1:	//NTSC
 		{
 			SCREEN_WIDTH = 640;
-			if(setting->ffmode==FALSE && setting->interlace==TRUE)
+			SCREEN_LEFT = setting->screen_x_480i;
+			SCREEN_TOP = setting->screen_y_480i;
+			if(setting->ffmode_480i==FALSE && setting->interlace==TRUE)
 				SCREEN_HEIGHT = 448;
 			else
 				SCREEN_HEIGHT = 224;
@@ -389,7 +408,9 @@ void SetHeight(void)
 		case 2:	//PAL
 		{
 			SCREEN_WIDTH = 640;
-			if(setting->ffmode==FALSE && setting->interlace==TRUE)
+			SCREEN_LEFT = setting->screen_x_480i;
+			SCREEN_TOP = setting->screen_y_480i;
+			if(setting->ffmode_480i==FALSE && setting->interlace==TRUE)
 				SCREEN_HEIGHT = 512;
 			else
 				SCREEN_HEIGHT = 256;
@@ -397,14 +418,30 @@ void SetHeight(void)
 		}
 		case 3:	//480p
 		{
+			SCREEN_LEFT = setting->screen_x_480p;
+			SCREEN_TOP = setting->screen_y_480p;
 			SCREEN_WIDTH = 640+16;
 			SCREEN_HEIGHT = 480-32;
 			break;
 		}
 		case 4:	//720p
 		{
+			SCREEN_LEFT = setting->screen_x_720p;
+			SCREEN_TOP = setting->screen_y_720p;
 			SCREEN_WIDTH = 1280-64;
 			SCREEN_HEIGHT = 720-32;
+			break;
+		}
+		case 5:	//1080i
+		{
+			SCREEN_WIDTH = 960-48;//1280;1440-72;//1920-96;
+			SCREEN_LEFT = setting->screen_x_1080i;
+			SCREEN_TOP = setting->screen_y_1080i;
+			if(setting->ffmode_1080i==FALSE)
+				SCREEN_HEIGHT = 1024;
+			else
+				SCREEN_HEIGHT = 512;
+			//SCREEN_HEIGHT = 1024;
 			break;
 		}
 	}
@@ -964,6 +1001,20 @@ void drawChar_SJIS(unsigned int c, int x, int y, uint64 color)
 					cc = cc << 1;
 				}
 				cc = *pc++;
+				if(kanji_data.width>24){
+					n = kanji_data.width-24;
+					if(n>8) n=8;
+					for(j=0; j<n; j++) {
+						if(cc & 0x80){
+							if(setting->FontBold)
+								itoLine(color, x+24+j, y+i, 0, color, x+24+j+2, y+i, 0);
+							else
+								itoPoint(color, x+24+j, y+i, 0);
+						}
+						cc = cc << 1;
+					}
+					cc = *pc++;
+				}
 			}
 		}
 	}

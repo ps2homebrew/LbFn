@@ -1380,6 +1380,7 @@ int main(int argc, char *argv[])
 
 	//設定をロード
 	loadConfig(mainMsg);
+	SetScreenPosVM();
 
 	//discControl
 	if(setting->discControl)
@@ -1432,6 +1433,7 @@ int main(int argc, char *argv[])
 	if(paddata&PAD_SELECT){
 		//SELECTボタン押しながら起動したとき、SCREEN SETTINGを初期化
 		InitScreenSetting();
+		SetScreenPosVM();
 		SetHeight();
 		setupito(setting->tvmode);
 		clrScr(setting->color[COLOR_BACKGROUND]);
