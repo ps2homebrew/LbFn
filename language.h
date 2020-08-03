@@ -96,6 +96,7 @@ typedef struct
 	char conf_ps1save[MAX_LANGUAGE_STR];
 	char conf_screen_x[MAX_LANGUAGE_STR];
 	char conf_screen_y[MAX_LANGUAGE_STR];
+	char conf_tvmode[MAX_LANGUAGE_STR];
 	char conf_interlace[MAX_LANGUAGE_STR];
 	char conf_ffmode[MAX_LANGUAGE_STR];
 	char conf_ffmode_field[MAX_LANGUAGE_STR];

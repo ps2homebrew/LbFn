@@ -33,7 +33,7 @@
 #include "cnf.h"
 
 // バージョン
-#define LBF_VER "LbF v0.61"
+#define LBF_VER "LbF v0.62"
 
 // 垂直スキャンレート
 #define SCANRATE (ITO_VMODE_AUTO==ITO_VMODE_NTSC ? 60:50)
@@ -49,8 +49,6 @@
 
 enum
 {
-	SCREEN_WIDTH = 640,
-	
 	MAX_NAME = 256,
 	MAX_PATH = 1025,
 	MAX_ENTRY = 2048,
@@ -67,6 +65,7 @@ typedef struct
 	int screen_y;
 	int discControl;
 	int flickerControl;
+	int tvmode;
 	int interlace;
 	int ffmode;
 	int fileicon;
@@ -97,13 +96,6 @@ int checkELFheader(const char *filename);
 void RunLoaderElf(char *filename, char *);
 
 /* draw.c */
-
-enum	//setupito
-{
-	ITO_INIT_ENABLE,
-	ITO_INIT_DISABLE
-};
-
 enum	//SetFontMargin GetFontMargin
 {
 	CHAR_MARGIN = 0,
@@ -129,6 +121,7 @@ enum	//GetFontSize
 };
 
 extern itoGsEnv screen_env;
+extern int SCREEN_WIDTH;
 extern int SCREEN_HEIGHT;
 extern int SCREEN_MARGIN;
 extern int FONT_WIDTH;
@@ -138,7 +131,7 @@ void drawDark(void);
 void drawDialogTmp(int x1, int y1, int x2, int y2, uint64 color1, uint64 color2);
 void setScrTmp(const char *msg0, const char *msg1);
 void drawMsg(const char *msg);
-void setupito(int flag);
+void setupito(int tvmode);
 void clrScr(uint64 color);
 void drawScr(void);
 void SetHeight(void);
@@ -182,7 +175,9 @@ char* getExtension(const char *path);
 int ynDialog(const char *message, int defaultsel);
 void MessageDialog(const char *message);
 int newdir(const char *path, const char *name);
+#ifdef ENABLE_PSB
 int psb(const char *psbpath);
+#endif
 int keyboard(char *out, int max);
 void getFilePath(char *out, const int cnfmode);
 

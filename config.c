@@ -1,6 +1,6 @@
 #include "launchelf.h"
 
-#define NUM_CNF_KEY 45
+#define NUM_CNF_KEY 46
 //設定ファイルのキー
 const char *cnf_keyname[NUM_CNF_KEY] = 
 {
@@ -52,6 +52,7 @@ const char *cnf_keyname[NUM_CNF_KEY] =
 	"ps2save_check",
 	"elf_check",
 	"export_dir",
+	"tvmode",
 	"interlace",
 	"ffmode",
 };
@@ -73,6 +74,7 @@ enum
 	DEF_SCREEN_X = 160,
 	DEF_SCREEN_Y = 55,
 	DEF_FLICKERCONTROL = TRUE,
+	DEF_TVMODE = 0,	//0=auto 1=ntsc 2=pal 3=480p 4=720p
 	DEF_INTERLACE = TRUE,	//FALSE=ITO_NON_INTERLACE TRUE=ITO_INTERLACE
 	DEF_FFMODE = FALSE,	//FALSE=ITO_FIELD TRUE=ITO_FRAME
 
@@ -134,6 +136,7 @@ enum
 	COLOR7,
 	COLOR8,
 	COLOR9,
+	TVMODE,
 	INTERLACE,
 	FFMODE,
 	SCREEN_X,
@@ -232,6 +235,7 @@ void InitScreenSetting(void)
 	setting->screen_x = DEF_SCREEN_X;
 	setting->screen_y = DEF_SCREEN_Y;
 	setting->flickerControl = DEF_FLICKERCONTROL;
+	setting->tvmode = DEF_TVMODE;
 	setting->interlace = DEF_INTERLACE;
 	setting->ffmode = DEF_FFMODE;
 }
@@ -387,8 +391,10 @@ void saveConfig(char *mainMsg)
 		if(i==42)
 			strcpy(tmp, setting->Exportdir);
 		if(i==43)
-			sprintf(tmp, "%d", setting->interlace);
+			sprintf(tmp, "%d", setting->tvmode);
 		if(i==44)
+			sprintf(tmp, "%d", setting->interlace);
+		if(i==45)
 			sprintf(tmp, "%d", setting->ffmode);
 		//
 		ret = cnf_setstr(cnf_keyname[i], tmp);
@@ -599,11 +605,16 @@ void loadConfig(char *mainMsg)
 				if(i==42)
 					strcpy(setting->Exportdir, tmp);
 				if(i==43){
+					setting->tvmode = atoi(tmp);
+					if(setting->tvmode<0 || setting->tvmode>4)
+						setting->tvmode = DEF_TVMODE;
+				}
+				if(i==44){
 					setting->interlace = atoi(tmp);
 					if(setting->interlace<0 || setting->interlace>1)
 						setting->interlace = DEF_INTERLACE;
 				}
-				if(i==44){
+				if(i==45){
 					setting->ffmode = atoi(tmp);
 					if(setting->ffmode<0 || setting->ffmode>1)
 						setting->ffmode = DEF_FFMODE;
@@ -832,8 +843,8 @@ void config_screen(SETTING *setting)
 						sel--;
 					}
 				}
-				else if(sel>INTERLACE)
-					sel=INTERLACE;
+				else if(sel>TVMODE)
+					sel=TVMODE;
 				else
 					sel=0;
 			}
@@ -846,7 +857,7 @@ void config_screen(SETTING *setting)
 					}
 				}
 				else if(sel==0)
-					sel=INTERLACE;
+					sel=TVMODE;
 				else
 					sel+=MAX_ROWS/2;
 			}
@@ -863,19 +874,51 @@ void config_screen(SETTING *setting)
 					if(sel_x==2 && b<255) b++;
 					setting->color[sel-1] = ITO_RGBA(r, g, b, 0);
 				}
-				else if(sel==INTERLACE){	//インターレース
-					setting->interlace = !setting->interlace;
-					if(setting->interlace) setting->screen_y+=30;
-					else setting->screen_y-=30;
+				else if(sel==TVMODE){	//TVMODE
+					if(setting->tvmode==2){	//PALから480pへ変更
+						if(setting->interlace){
+							setting->screen_y-=30;
+							setting->interlace = ITO_NON_INTERLACE;
+						}
+						if(setting->ffmode)
+							setting->ffmode = ITO_FIELD;
+						setting->screen_y += 25;
+					}
+					if(setting->tvmode==3)	//480pから720pへ変更
+						setting->screen_x += 170;
+					if(setting->tvmode==4){	//720pからautoへ変更
+						setting->screen_x -= 170;
+						setting->screen_y -= 25;
+					}
+					//tvmode変更
+					setting->tvmode++;
+					if(setting->tvmode>4)
+						setting->tvmode=0;
+					//
 					itoGsReset();
-					setupito(ITO_INIT_DISABLE);
+					setupito(setting->tvmode);
 					SetHeight();
 				}
+				else if(sel==INTERLACE){	//インターレース
+					if(setting->tvmode<3){
+						if(setting->interlace)
+							setting->screen_y-=30;
+						else
+							setting->screen_y+=30;
+						setting->interlace = !setting->interlace;
+						//
+						itoGsReset();
+						setupito(setting->tvmode);
+						SetHeight();
+					}
+				}
 				else if(sel==FFMODE){	//ffmode
-					setting->ffmode = !setting->ffmode;
-					itoGsReset();
-					setupito(ITO_INIT_DISABLE);
-					SetHeight();
+					if(setting->tvmode<3){
+						setting->ffmode = !setting->ffmode;
+						itoGsReset();
+						setupito(setting->tvmode);
+						SetHeight();
+					}
 				}
 				else if(sel==SCREEN_X){	//SCREEN X
 					setting->screen_x++;
@@ -893,7 +936,7 @@ void config_screen(SETTING *setting)
 					//init
 					InitScreenSetting();
 					itoGsReset();
-					setupito(ITO_INIT_DISABLE);
+					setupito(setting->tvmode);
 					SetHeight();
 					//sprintf(msg0, "%s", "Initialize Screen Setting");
 					//pushed = FALSE;
@@ -909,6 +952,16 @@ void config_screen(SETTING *setting)
 					if(sel_x==2 && b>0) b--;
 					setting->color[sel-1] = ITO_RGBA(r, g, b, 0);
 				}
+/*
+				else if(sel==TVMODE){	//TVMODE
+					setting->tvmode--;
+					if(setting->tvmode<0) setting->tvmode=4;
+					//
+					itoGsReset();
+					setupito(setting->tvmode);
+					SetHeight();
+				}
+*/
 				else if(sel==SCREEN_X){	//SCREEN X
 					if(setting->screen_x > 0){
 						setting->screen_x--;
@@ -1000,6 +1053,18 @@ void config_screen(SETTING *setting)
 				if(i==COLOR8) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_elffile, r, g, b);
 				if(i==COLOR9) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_ps1save, r, g, b);
 			}
+			else if(i==TVMODE){	//TVMODE
+				if(setting->tvmode==0)
+					sprintf(config[i],"%s: %s", lang->conf_tvmode, "AUTO");
+				else if(setting->tvmode==1)
+					sprintf(config[i],"%s: %s", lang->conf_tvmode, "NTSC");
+				else if(setting->tvmode==2)
+					sprintf(config[i],"%s: %s", lang->conf_tvmode, "PAL");
+				else if(setting->tvmode==3)
+					sprintf(config[i],"%s: %s", lang->conf_tvmode, "480p");
+				else if(setting->tvmode==4)
+					sprintf(config[i],"%s: %s", lang->conf_tvmode, "720p");
+			}
 			else if(i==INTERLACE){	//INTERLACE
 				sprintf(config[i], "%s: ", lang->conf_interlace);
 				if(setting->interlace)
@@ -1031,7 +1096,7 @@ void config_screen(SETTING *setting)
 				strcpy(config[i], lang->conf_screensettinginit);
 			}
 		}
-		nList=16;
+		nList=17;
 
 		// リスト表示用変数の正規化
 		if(top > nList-MAX_ROWS)	top=nList-MAX_ROWS;
@@ -1092,6 +1157,8 @@ void config_screen(SETTING *setting)
 			sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
 		else if(sel>=COLOR1 && sel<=COLOR9)
 			sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_add, lang->conf_away, lang->conf_up);
+		else if(sel==TVMODE)
+			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
 		else if(sel==INTERLACE)
 			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
 		else if(sel==FFMODE)
@@ -1799,7 +1866,7 @@ void config(char *mainMsg)
 					SetFontMargin(KANJI_FONT_MARGIN_TOP, setting->KanjiMarginTop);
 					SetFontMargin(KANJI_FONT_MARGIN_LEFT, setting->KanjiMarginLeft);
 					itoGsReset();
-					setupito(ITO_INIT_DISABLE);
+					setupito(setting->tvmode);
 					mainMsg[0] = 0;
 					break;
 				}

@@ -1355,7 +1355,8 @@ int main(int argc, char *argv[])
 
 	getIpConfig();
 
-	setupito(ITO_INIT_ENABLE);
+	itoInit();
+	setupito(setting->tvmode);
 
 	LastDir[0] = 0;
 

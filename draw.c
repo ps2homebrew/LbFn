@@ -28,6 +28,7 @@ itoGsEnv screen_env;
 
 int initbiosfont=0;
 char *biosfont=NULL;
+int SCREEN_WIDTH = 640;
 int SCREEN_HEIGHT = 448;
 int SCREEN_MARGIN;
 int FONT_WIDTH;
@@ -105,6 +106,118 @@ unsigned short font_sjis_table[] = {
 0x9840,0x9872
 };
 
+	uint16 buffer_width;
+	uint16 buffer_height;
+//-------------------------------------------------
+// setup ito
+void setupito(int tvmode)
+{
+	uint8 vmode;
+	uint8 psm;
+
+	if(tvmode==0)
+		vmode = ITO_VMODE_AUTO;
+	else if(tvmode==1)
+		vmode = ITO_VMODE_NTSC;
+	else if(tvmode==2)
+		vmode = ITO_VMODE_PAL;
+	else if(tvmode==3)
+		vmode = 0x50;
+	else if(tvmode==4)
+		vmode = 0x52;
+	else
+		vmode = ITO_VMODE_NTSC;
+
+	switch(vmode)
+	{
+		case ITO_VMODE_NTSC:
+		{
+			buffer_width = 640;
+			buffer_height= 448;
+			psm = ITO_RGBA32;
+			break;
+		}
+		case ITO_VMODE_PAL:
+		{
+			buffer_width = 640;
+			buffer_height= 512;
+			psm = ITO_RGBA32;
+			break;
+		}
+		case 0x50://480p
+		{
+			buffer_width = 720;
+			buffer_height= 480;
+			psm = ITO_RGBA32;
+			//setting->interlace = ITO_NON_INTERLACE;
+			//setting->ffmode = ITO_FIELD;
+			break;
+		}
+		case 0x52://720p:
+		{
+			buffer_width = 1280;
+			buffer_height= 720;
+			psm = ITO_RGBA16;
+			//setting->interlace = ITO_NON_INTERLACE;
+			//setting->ffmode = ITO_FIELD;
+			break;
+		}
+		default:
+		{
+			//NTSC
+			buffer_width = 640;
+			buffer_height= 448;
+			psm = ITO_RGBA32;
+			vmode = ITO_VMODE_NTSC;
+			break;
+		}
+	}
+
+	// screen resolution
+	screen_env.screen.width		= buffer_width;
+	screen_env.screen.height	= buffer_height;
+	screen_env.screen.psm		= psm;
+
+	// These setting work best with my tv, experiment for youself
+	screen_env.screen.x			= setting->screen_x; 
+	screen_env.screen.y			= setting->screen_y;
+	
+	screen_env.framebuffer1.x	= 0;
+	screen_env.framebuffer1.y	= 0;
+	
+	screen_env.framebuffer2.x	= 0;
+	screen_env.framebuffer2.y	= buffer_height;
+
+	// zbuffer
+	screen_env.zbuffer.x		= 0;
+	screen_env.zbuffer.y		= buffer_height*2;
+	screen_env.zbuffer.psm		= ITO_ZBUF32;
+	
+	// scissor 
+	screen_env.scissor_x1		= 0;
+	screen_env.scissor_y1		= 0;
+	screen_env.scissor_x2		= buffer_width;
+	screen_env.scissor_y2		= buffer_height;
+	
+	// misc
+	screen_env.dither			= TRUE;
+	screen_env.interlace		= setting->interlace;
+	screen_env.ffmode			= setting->ffmode;
+	screen_env.vmode			= vmode;
+	
+	itoGsEnvSubmit(&screen_env);
+
+	itoSetBgColor(setting->color[0]);
+
+	//アルファブレンド
+	itoSetAlphaBlending(
+		ITO_ALPHA_COLOR_SRC, // A = COLOR SOURCE
+		ITO_ALPHA_COLOR_DST, // B = COLOR DEST
+		ITO_ALPHA_VALUE_SRC, // C = ALPHA VALUE SOURCE
+		ITO_ALPHA_COLOR_DST, // C = COLOR DEST
+		0x80);				 // Fixed Value
+}
+
 //-------------------------------------------------
 // 暗くする(半透明の黒い四角)
 void drawDark(void)
@@ -179,59 +292,15 @@ void drawMsg(const char *msg)
 }
 
 //-------------------------------------------------
-// setup ito
-void setupito(int flag)
-{
-	if(flag==ITO_INIT_ENABLE) itoInit();
-
-	// screen resolution
-	screen_env.screen.width		= 640;
-	screen_env.screen.height	= 448;
-	screen_env.screen.psm		= ITO_RGBA32;
-
-	// These setting work best with my tv, experiment for youself
-	screen_env.screen.x			= setting->screen_x; 
-	screen_env.screen.y			= setting->screen_y;
-	
-	screen_env.framebuffer1.x	= 0;
-	screen_env.framebuffer1.y	= 0;
-	
-	screen_env.framebuffer2.x	= 0;
-	screen_env.framebuffer2.y	= 448;
-
-	// zbuffer
-	screen_env.zbuffer.x		= 0;
-	screen_env.zbuffer.y		= 448*2;
-	screen_env.zbuffer.psm		= ITO_ZBUF32;
-	
-	// scissor 
-	screen_env.scissor_x1		= 0;
-	screen_env.scissor_y1		= 0;
-	screen_env.scissor_x2		= 640;
-	screen_env.scissor_y2		= 448;
-	
-	// misc
-	screen_env.dither			= TRUE;
-	screen_env.interlace		= setting->interlace;
-	screen_env.ffmode			= setting->ffmode;
-	screen_env.vmode			= ITO_VMODE_AUTO;
-	
-	itoGsEnvSubmit(&screen_env);
-
-	//アルファブレンド
-	itoSetAlphaBlending(
-		ITO_ALPHA_COLOR_SRC, // A = COLOR SOURCE
-		ITO_ALPHA_COLOR_DST, // B = COLOR DEST
-		ITO_ALPHA_VALUE_SRC, // C = ALPHA VALUE SOURCE
-		ITO_ALPHA_COLOR_DST, // C = COLOR DEST
-		0x80);				 // Fixed Value
-}
-
-//-------------------------------------------------
 // 画面のクリア
 void clrScr(uint64 color)
 {
-	itoSprite(color, 0, 0, SCREEN_WIDTH, 448, 0);
+	//type A
+	itoSprite(color, 0, 0, buffer_width, buffer_height, 0);
+
+	//type B
+//	itoSprite(ITO_RGBA(0x00,0x00,0x00,0x00), 0, 0, buffer_width, buffer_height-32, 0);//ちらつき防止のためにbuffer_heightを-32する
+//	itoSprite(color, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
 }
 
 //-------------------------------------------------
@@ -279,11 +348,32 @@ void drawFrame(int x1, int y1, int x2, int y2, uint64 color)
 //MAX_ROWSなどの設定
 void SetHeight(void)
 {
-	//SCREEN_HEIGHT
-	if(setting->ffmode==FALSE && setting->interlace==TRUE)
-		SCREEN_HEIGHT = 448;
-	else
-		SCREEN_HEIGHT = 224;
+	//SCREEN_WIDTHとSCREEN_HEIGHT
+	if(setting->tvmode==3){	//480p
+		SCREEN_WIDTH = 640;
+		SCREEN_HEIGHT = 480-32;
+	}
+	else if(setting->tvmode==4){	//720p
+		SCREEN_WIDTH = 1280-64;
+		SCREEN_HEIGHT = 720-32;
+	}
+	else{
+		SCREEN_WIDTH = 640;
+		if(ITO_VMODE_AUTO==ITO_VMODE_NTSC){
+			//NTSC
+			if(setting->ffmode==FALSE && setting->interlace==TRUE)
+				SCREEN_HEIGHT = 448;
+			else
+				SCREEN_HEIGHT = 224;
+		}
+		else{
+			//PAL
+			if(setting->ffmode==FALSE && setting->interlace==TRUE)
+				SCREEN_HEIGHT = 512;
+			else
+				SCREEN_HEIGHT = 256;
+		}
+	}
 
 	//FONT_WIDTH
 	FONT_WIDTH = ascii_data.width + char_Margin;
@@ -319,7 +409,7 @@ int InitFontAscii(const char *path)
 		if(fd<0) return -1;
 	
 		//メモリを確保 仮想FONTX2 KROM
-		size=17 + 15*256;	//ヘッダサイズ + 1文字のサイズ*256文字
+		size = 17 + 15*256;	//ヘッダサイズ + 1文字のサイズ*256文字
 		font_ascii = (char*)malloc(size);
 		memset(font_ascii, 0, size);
 		if(font_ascii==NULL){
@@ -328,8 +418,8 @@ int InitFontAscii(const char *path)
 		}
 
 		//メモリに読み込む
-		fioLseek(fd, 0x198DF, SEEK_SET);
-		fioRead(fd, font_ascii + 18 + 15*33, 15*95);//ヘッダサイズ + 1文字のサイズ*33文字, 1文字のサイズ*95文字
+		fioLseek(fd, 0x198DE, SEEK_SET);
+		fioRead(fd, font_ascii + 17 + 15*33, 15*95);//ヘッダサイズ + 1文字のサイズ*33文字, 1文字のサイズ*95文字
 
 		//クローズ
 		fioClose(fd);
@@ -434,7 +524,7 @@ int InitFontKnaji(const char *path)
 		if(fd<0) return -1;
 
 		//メモリを確保 仮想FONTX2 KROM
-		size=18 + 51*4 + 30*3489;	//ヘッダサイズ + テーブルの数*4 + 1文字のサイズ*3489文字
+		size = 18 + 51*4 + 30*3489;	//ヘッダサイズ + テーブルの数*4 + 1文字のサイズ*3489文字
 		font_kanji = (char*)malloc(size);
 		memset(font_kanji, 0, size);
 		if(font_kanji==NULL){
@@ -715,6 +805,7 @@ void drawChar(unsigned char c, int x, int y, uint64 color)
 	unsigned int i, j;
 	unsigned char cc;
 	unsigned char *pc=0;
+	int n;
 
 	//初期化していないか、初期化失敗している
 	if(!init_ascii) return;
@@ -723,11 +814,12 @@ void drawChar(unsigned char c, int x, int y, uint64 color)
 	if(c==' ') return;
 
 	pc = &font_ascii[ascii_data.offset + c * ascii_data.size];
-	cc = *pc;
+	cc = *pc++;
 
-	//for(i=0; i<ascii_data.height; i++){
-	for(i=0; i<=ascii_data.height; i++){
-		for(j=0; j<ascii_data.width; j++){
+	for(i=0; i<ascii_data.height; i++){
+		n = ascii_data.width;
+		if(n>8) n=8;
+		for(j=0; j<n; j++){
 			if(cc & 0x80){
 				if(setting->FontBold)
 					itoLine(color, x+j, y+i, 0, color, x+j+2, y+i, 0);
@@ -737,6 +829,20 @@ void drawChar(unsigned char c, int x, int y, uint64 color)
 			cc = cc << 1;
 		}
 		cc = *pc++;
+		if(ascii_data.width>8){
+			n = ascii_data.width-8;
+			if(n>8) n=8;
+			for(j=0; j<n; j++) {
+				if(cc & 0x80){
+					if(setting->FontBold)
+						itoLine(color, x+8+j, y+i, 0, color, x+8+j+2, y+i, 0);
+					else
+						itoPoint(color, x+8+j, y+i, 0);
+				}
+				cc = cc << 1;
+			}
+			cc = *pc++;
+		}
 	}
 	return;
 }
@@ -750,6 +856,7 @@ void drawChar_SJIS(unsigned int c, int x, int y, uint64 color)
 	int ret, sum;
 	unsigned char cc;
 	unsigned char *pc;
+	int n;
 
 	//初期化していないか、初期化失敗している
 	if(!init_kanji) return;
@@ -777,12 +884,12 @@ void drawChar_SJIS(unsigned int c, int x, int y, uint64 color)
 	//
 	a = sum + ret + ( c - fontx_header_kanji->Block[ret].Start );
 	pc = &font_kanji[kanji_data.offset + a * kanji_data.size];
+	cc = *pc++;
 
 	for(i=0; i<kanji_data.height; i++) {
-	//for(i=0; i<=kanji_data.height; i++) {
-		//左半分
-		cc = *pc++;
-		for(j=0; j<kanji_data.width; j++) {
+		n = kanji_data.width;
+		if(n>8) n=8;
+		for(j=0; j<n; j++) {
 			if(cc & 0x80){
 				if(setting->FontBold)
 					itoLine(color, x+j, y+i, 0, color, x+j+2, y+i, 0);
@@ -791,17 +898,33 @@ void drawChar_SJIS(unsigned int c, int x, int y, uint64 color)
 			}
 			cc = cc << 1;
 		}
+		cc = *pc++;
 		if(kanji_data.width>8){
-			//右半分
-			cc = *pc++;
-			for(j=0; j<kanji_data.width-8; j++) {
+			n = kanji_data.width-8;
+			if(n>8) n=8;
+			for(j=0; j<n; j++) {
 				if(cc & 0x80){
-				if(setting->FontBold)
-					itoLine(color, x+8+j, y+i, 0, color, x+8+j+2, y+i, 0);
-				else
-					itoPoint(color, x+8+j, y+i, 0);
+					if(setting->FontBold)
+						itoLine(color, x+8+j, y+i, 0, color, x+8+j+2, y+i, 0);
+					else
+						itoPoint(color, x+8+j, y+i, 0);
 				}
 				cc = cc << 1;
+			}
+			cc = *pc++;
+			if(kanji_data.width>16){
+				n = kanji_data.width-16;
+				if(n>8) n=8;
+				for(j=0; j<n; j++) {
+					if(cc & 0x80){
+						if(setting->FontBold)
+							itoLine(color, x+16+j, y+i, 0, color, x+16+j+2, y+i, 0);
+						else
+							itoPoint(color, x+16+j, y+i, 0);
+					}
+					cc = cc << 1;
+				}
+				cc = *pc++;
 			}
 		}
 	}

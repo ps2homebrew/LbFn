@@ -114,6 +114,7 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_ps2save, "PS2 SAVE      ");
 		strcpy(lang->conf_elffile, "ELF FILE      ");
 		strcpy(lang->conf_ps1save, "PS1 SAVE      ");
+		strcpy(lang->conf_tvmode, "TV MODE");
 		strcpy(lang->conf_interlace, "INTERLACE");
 		strcpy(lang->conf_ffmode, "FFMODE");
 		strcpy(lang->conf_ffmode_field, "FIELD");
@@ -255,6 +256,7 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_ps1save, "PS1 セーブ    ");
 		strcpy(lang->conf_screen_x, "画面位置 X");
 		strcpy(lang->conf_screen_y, "画面位置 Y");
+		strcpy(lang->conf_tvmode, "TV MODE");
 		strcpy(lang->conf_interlace, "インターレース");
 		strcpy(lang->conf_ffmode, "FFMODE");
 		strcpy(lang->conf_ffmode_field, "FIELD");
