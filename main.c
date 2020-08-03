@@ -67,6 +67,16 @@ char gw[16]      = "192.168.0.1";
 char netConfig[IPCONF_MAX_LEN+64];	//Adjust size as needed
 
 //--------------------------------------------------------------
+//original source uLaunchELF
+void PS2Browser(void) 
+{
+	__asm__ __volatile__(
+	"li $3, 0x04;"
+	"syscall;"
+	"nop;");
+}
+
+//--------------------------------------------------------------
 // FormatMemoryCard
 void FormatMemoryCard(void)
 {
@@ -866,8 +876,9 @@ void RunElf(const char *path)
 			else return;
 		}
 		else if(!stricmp(path, "MISC/PS2Browser")){
-			party[0]=0;
-			strcpy(fullpath, "rom0:OSDSYS");
+			//party[0]=0;
+			//strcpy(fullpath, "rom0:OSDSYS");
+			PS2Browser();
 		}
 		else if(!stricmp(path, "MISC/PS2Disc")){
 			drawMsg(lang->main_readsystemcnf);
