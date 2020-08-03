@@ -16,21 +16,28 @@ int readpad(void)
 	if (ret != 0){
 		paddata = 0xffff ^ buttons.btns;
 		new_pad = paddata & ~old_pad;
-		if(old_pad==paddata){
-			n++;
+		if(!new_pad && (old_pad==paddata)){
+			int p = SCANRATE * 42 / 100;
+			int q = (SCANRATE * 8 +50) / 100;
+			n++;		/*
 			if(ITO_VMODE_AUTO==ITO_VMODE_NTSC){
-				if(n>=25){
+				if(n>=25){	// 25/60: 0.41667
 					new_pad=paddata;
-					if(nn++ < 20)	n=20;
-					else			n=23;
+					if(nn++ < 20)	n=20;	// -5:0.08333
+					else			n=23;	// -2
 				}
 			}
 			else{
-				if(n>=21){
+				if(n>=21){	// 21/50: 0.42
 					new_pad=paddata;
-					if(nn++ < 20)	n=17;
-					else			n=19;
+					if(nn++ < 20)	n=17;	// -4:0.08
+					else			n=19;	// -2
 				}
+			}			*/
+			if (n >= p) {
+				new_pad = paddata;
+				if (nn++ < 20)	n = p -q;
+				else			n = p -2;
 			}
 		}
 		else{

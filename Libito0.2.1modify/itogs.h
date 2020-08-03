@@ -273,7 +273,7 @@ typedef struct{
 	uint32	scissor_y1;
 	uint32	scissor_y2;
 
-	uint64	matrix;
+	uint64	matrix[2];
 	uint8	dither;
 	uint8	interlace;
 	uint8	ffmode; // Frame/Field Mode
@@ -306,6 +306,7 @@ void itoSetActiveFrameBuffer(uint8 buffer);
 void itoSetVisibleFrameBuffer(uint8 buffer);
 uint8 itoGetVisibleFrameBuffer();
 uint8 itoGetActiveFrameBuffer();
+void itoSetActiveFrameBufferWithMatrix(uint8 buffer);
 
 //-----------------------------------------------------------------
 //-----------------------------------------------------------------

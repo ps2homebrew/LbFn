@@ -1,29 +1,5 @@
 #include "launchelf.h"
 
-//PS2TIME uLaunchELF
-typedef struct
-{
-	unsigned char unknown;
-	unsigned char sec;	// date/time (second)
-	unsigned char min;	// date/time (minute)
-	unsigned char hour;	// date/time (hour)
-	unsigned char day;	// date/time (day)
-	unsigned char month;	// date/time (month)
-	unsigned short year;	// date/time (year)
-} PS2TIME __attribute__((aligned (2)));
-
-typedef struct{
-	PS2TIME createtime;
-	PS2TIME modifytime;
-	unsigned fileSizeByte;
-	unsigned short attr;
-	char title[16*4+1];
-	char name[256];
-	int type;
-	unsigned int timestamp;
-	int num;
-} FILEINFO;
-
 // psuファイルヘッダ構造体
 typedef struct { // 512 bytes
 	unsigned short attr;
@@ -46,6 +22,7 @@ enum
 	TYPE_DEVICE_CD,
 	TYPE_DEVICE_MASS,
 	TYPE_DEVICE_HOST,
+	TYPE_DEVICE_VMC,
 	TYPE_MISC,
 	TYPE_FILE,
 	TYPE_ELF,
@@ -120,7 +97,6 @@ char parties[MAX_PARTITIONS][MAX_NAME];
 char clipPath[MAX_PATH], LastDir[MAX_NAME], marks[MAX_ENTRY];
 FILEINFO clipFiles[MAX_ENTRY];
 int fileMode = FIO_S_IRUSR | FIO_S_IWUSR | FIO_S_IXUSR | FIO_S_IRGRP | FIO_S_IWGRP | FIO_S_IXGRP | FIO_S_IROTH | FIO_S_IWOTH | FIO_S_IXOTH;
-unsigned int volumeserialnumber;
 
 #ifdef ENABLE_PSB
 #define MAX_ARGC 3
@@ -130,6 +106,8 @@ char psb_argv[MAX_ARGC][MAX_PATH+2];
 
 //プロトタイプ宣言
 void sjis2ascii(const unsigned char *in, unsigned char *out);
+int getDir(const char *path, FILEINFO *info);
+void setPartyList(void);
 
 //-------------------------------------------------
 //拡張子を取得
@@ -307,311 +285,7 @@ void sort(FILEINFO *a, int max)
 	}
 	return;
 }
-
-unsigned int ps2timetostamp(PS2TIME *src)
-{
-	// YYYY YYYm mmmd dddd HHHH Hiii iiiS SSSS
-	//   28   24   20   16   12    8    4    0
-	int Y;
-	unsigned int tmp;
-	Y = src[0].year -1980;
-	if (Y < 0) Y = 0;
-	if (Y > 127) Y = 127;
-	tmp = ((unsigned int) Y << 25)|((int) src[0].month << 21)|((int) src[0].day << 16)|((int) src[0].hour << 11)|((int) src[0].min << 5)|((int) src[0].sec >> 1);
-	//printf("filer: timestamp: %08X\n", tmp);
-	return tmp;
-}
-
-//-------------------------------------------------
-// メモリーカード読み込み
-int readMC(const char *path, FILEINFO *info, int max)
-{
-	static mcTable mcDir[MAX_ENTRY] __attribute__((aligned(64)));
-	char dir[MAX_PATH];
-	int i, j, ret;
-
-	mcSync(MC_WAIT, NULL, NULL);
-
-	strcpy(dir, &path[4]); strcat(dir, "*");
-	mcGetDir(path[2]-'0', 0, dir, 0, MAX_ENTRY-2, mcDir);
-	mcSync(MC_WAIT, NULL, &ret);
-
-	for(i=j=0; i<ret; i++)
-	{
-		//printf("%s: create=%08X, modify=%08X\n", mcDir[i].name, ps2timetostamp((PS2TIME*)&mcDir[i]._create), ps2timetostamp((PS2TIME*)&mcDir[i]._modify));
-		if(!strcmp(mcDir[i].name, "..")) {
-			volumeserialnumber = ps2timetostamp((PS2TIME*)&mcDir[i]._create);
-		}
-		if(mcDir[i].attrFile & MC_ATTR_SUBDIR && (!strcmp(mcDir[i].name, ".") || !strcmp(mcDir[i].name, "..")))
-			continue;
-
-		strcpy(info[j].name, mcDir[i].name);
-		info[j].attr = mcDir[i].attrFile;
-		info[j].fileSizeByte = mcDir[i].fileSizeByte;
-		memcpy(&info[j].createtime, &mcDir[i]._create, 8);
-		memcpy(&info[j].modifytime, &mcDir[i]._modify, 8);
-		info[j].timestamp = ps2timetostamp(&info[j].modifytime);
-		info[j].num = j;
-		j++;
-	}
-
-	return j;
-}
-
-//-------------------------------------------------
-// CD読み込み
-int readCD(const char *path, FILEINFO *info, int max)
-{
-	static struct TocEntry TocEntryList[MAX_ENTRY];
-	char dir[1025];
-	int i, j, n;
-
-	loadCdModules();
-
-	strcpy(dir, &path[5]);
-	CDVD_FlushCache();
-	n = CDVD_GetDir(dir, NULL, CDVD_GET_FILES_AND_DIRS, TocEntryList, MAX_ENTRY, dir);
-
-	for(i=j=0; i<n; i++)
-	{
-		
-		if(TocEntryList[i].fileProperties & 0x02 && (!strcmp(TocEntryList[i].filename, ".") || !strcmp(TocEntryList[i].filename, "..")))
-			continue;
-
-		if(TocEntryList[i].fileProperties & 0x02){
-			info[j].attr = MC_ATTR_SUBDIR;
-		}
-		else{
-			info[j].attr = 0;
-			info[j].fileSizeByte = TocEntryList[i].fileSize;
-		}
-		strcpy(info[j].name, TocEntryList[i].filename);
-		memset(&info[j].createtime, 0, sizeof(PS2TIME)); //取得しない
-		memset(&info[j].modifytime, 0, sizeof(PS2TIME)); //取得できない
-		//info[j].timestamp = ps2timetostamp(&info[j].modifytime);
-		//info[j].num = j;
-		j++;
-	}
-
-	return j;
-}
-
-//-------------------------------------------------
-// パーティションリスト設定
-void setPartyList(void)
-{
-	iox_dirent_t dirEnt;
-	int hddFd;
-
-	nparties=0;
-	
-	if((hddFd=fileXioDopen("hdd0:")) < 0)
-		return;
-	while(fileXioDread(hddFd, &dirEnt) > 0)
-	{
-		if(nparties >= MAX_PARTITIONS)
-			break;
-		if((dirEnt.stat.attr & ATTR_SUB_PARTITION) 
-				|| (dirEnt.stat.mode == FS_TYPE_EMPTY))
-			continue;
-		if(!strncmp(dirEnt.name, "PP.HDL.", 7))
-			continue;
-		if(!strncmp(dirEnt.name, "__", 2) && strcmp(dirEnt.name, "__boot"))
-			continue;
-		strcpy(parties[nparties++], dirEnt.name);
-	}
-	fileXioDclose(hddFd);
-}
-
-//-------------------------------------------------
-// HDD読み込み
-int readHDD(const char *path, FILEINFO *info, int max)
-{
-	iox_dirent_t dirbuf;
-	char party[MAX_PATH], dir[MAX_PATH];
-	int i=0, fd, ret;
-
-	if(nparties==0){
-		loadHddModules();
-		setPartyList();
-	}
-
-	if(!strcmp(path, "hdd0:/")){
-		for(i=0; i<nparties; i++){
-			strcpy(info[i].name, parties[i]);
-			info[i].attr = MC_ATTR_SUBDIR;
-			info[i].fileSizeByte = 0;
-			info[i].timestamp = 0;
-			info[i].num = i;
-			memset(&info[i].createtime, 0, sizeof(PS2TIME));
-			memset(&info[i].modifytime, 0, sizeof(PS2TIME));
-		}
-		return nparties;
-	}
-
-	getHddParty(path, NULL, party, dir);
-	ret = mountParty(party);
-	if(ret<0) return 0;
-	dir[3] = ret+'0';
-
-	if((fd=fileXioDopen(dir)) < 0) return 0;
-
-	while(fileXioDread(fd, &dirbuf)){
-		if(dirbuf.stat.mode & FIO_S_IFDIR && (!strcmp(dirbuf.name, ".") || !strcmp(dirbuf.name, "..")))
-			continue;
-
-		if(dirbuf.stat.mode & FIO_S_IFDIR){
-			info[i].attr = MC_ATTR_SUBDIR;
-		}
-		else{
-			info[i].attr = 0;
-			info[i].fileSizeByte = dirbuf.stat.size;
-		}
-		strcpy(info[i].name, dirbuf.name);
-		memset(&info[i].createtime, 0, sizeof(PS2TIME)); //取得しない
-		info[i].modifytime.unknown = dirbuf.stat.mtime[0];
-		info[i].modifytime.sec = dirbuf.stat.mtime[1];
-		info[i].modifytime.min = dirbuf.stat.mtime[2];
-		info[i].modifytime.hour = dirbuf.stat.mtime[3];
-		info[i].modifytime.day = dirbuf.stat.mtime[4];
-		info[i].modifytime.month = dirbuf.stat.mtime[5];
-		info[i].modifytime.year = dirbuf.stat.mtime[6]+dirbuf.stat.mtime[7]*256;
-		info[i].timestamp = ps2timetostamp(&info[i].modifytime);
-		info[i].num = i;
-		i++;
-		if(i==max) break;
-	}
-
-	fileXioDclose(fd);
-
-	return i;
-}
-
-//-------------------------------------------------
-// USBマスストレージ読み込み
-int readMASS(const char *path, FILEINFO *info, int max)
-{
-	fio_dirent_t record;
-	int n=0, dd=-1;
-
-	loadUsbMassModules();
-	
-
-	if ((dd = fioDopen(path)) < 0) goto exit;
-
-	while(fioDread(dd, &record) > 0){
-		if((FIO_SO_ISDIR(record.stat.mode)) && (!strcmp(record.name,".") || !strcmp(record.name,"..")))
-			continue;
-
-		if(FIO_SO_ISDIR(record.stat.mode)){
-			info[n].attr = MC_ATTR_SUBDIR;
-		}
-		else if(FIO_SO_ISREG(record.stat.mode)){
-			info[n].attr = 0;
-			info[n].fileSizeByte = record.stat.size;
-		}
-		else
-			continue;
-
-		strcpy(info[n].name, record.name);
-		strncpy(info[n].name, info[n].name, 32);
-		memset(&info[n].createtime, 0, sizeof(PS2TIME)); //取得しない
-		info[n].modifytime.unknown = 0;
-		info[n].modifytime.sec = record.stat.mtime[1];
-		info[n].modifytime.min = record.stat.mtime[2];
-		info[n].modifytime.hour = record.stat.mtime[3];
-		info[n].modifytime.day = record.stat.mtime[4];
-		info[n].modifytime.month = record.stat.mtime[5];
-		info[n].modifytime.year = record.stat.mtime[6] + record.stat.mtime[7]*256;
-		//if (info[n].modifytime.year < 1000) info[n].modifytime.year+=1800;
-		info[n].timestamp = ps2timetostamp(&info[n].modifytime);
-		info[n].num = n;
-		n++;
-		if(n==max) break;
-	}
-
-exit:
-	if(dd >= 0) fioDclose(dd);
-	return n;
-}
-
-//-------------------------------------------------
-// HOST読み込み
-int readHOST(const char *path0, FILEINFO *info, int max)
-{
-	fio_dirent_t record;
-	int n=0, dd=-1;
-	char path[MAX_PATH];
-	
-	if (!strcmp(path0, "host:/"))
-		sprintf(path, "host:%s", path0+6);
-	else
-		strcpy(path, path0);
-	//strcpy(path, path0);
-	if (path[strlen(path)-1]=='/')
-		path[strlen(path)-1]=0;
-	
-	if ((dd = fioDopen(path)) < 0) goto exit;
-
-	while(fioDread(dd, &record) > 0){
-		if((FIO_SO_ISDIR(record.stat.mode)) && (!strcmp(record.name,".") || !strcmp(record.name,"..")))
-			continue;
-
-		if(FIO_SO_ISDIR(record.stat.mode)){
-			info[n].attr = MC_ATTR_SUBDIR;
-		}
-		else {
-			info[n].attr = 0;
-			info[n].fileSizeByte = record.stat.size;
-		}
-		//else
-		//	continue;
-
-		strcpy(info[n].name, record.name);
-		strncpy(info[n].name, info[n].name, 32);
-		memset(&info[n].createtime, 0, sizeof(PS2TIME)); //取得しない
-		info[n].modifytime.unknown = 0;
-		info[n].modifytime.sec = record.stat.mtime[1];
-		info[n].modifytime.min = record.stat.mtime[2];
-		info[n].modifytime.hour = record.stat.mtime[3];
-		info[n].modifytime.day = record.stat.mtime[4];
-		info[n].modifytime.month = record.stat.mtime[5];
-		info[n].modifytime.year = record.stat.mtime[6] + record.stat.mtime[7]*256;
-		if (info[n].modifytime.year < 1000) info[n].modifytime.year+=1900;
-		info[n].timestamp = ps2timetostamp(&info[n].modifytime);
-		info[n].num = n;
-		n++;
-		if(n==max) break;
-	}
-
-exit:
-	if(dd >= 0) fioDclose(dd);
-	return n;
-}
-
-//-------------------------------------------------
-// ファイルリスト取得
-int getDir(const char *path, FILEINFO *info)
-{
-	int max=MAX_ENTRY-2;
-	int n;
-
-	if(!strncmp(path, "mc", 2))
-		n=readMC(path, info, max);
-	else if(!strncmp(path, "hdd", 3))
-		n=readHDD(path, info, max);
-	else if(!strncmp(path, "mass", 4))
-		n=readMASS(path, info, max);
-	else if(!strncmp(path, "cdfs", 4))
-		n=readCD(path, info, max);
-	else if(!strncmp(path, "host", 4))
-		n=readHOST(path, info, max);
-	else
-		return 0;
-
-	return n;
-}
-
+extern int vmcmount;
 //-------------------------------------------------
 //psuファイルからゲームタイトル取得
 //戻り値
@@ -992,9 +666,7 @@ int menu(const char *path, const char *file)
 			// 操作説明
 			x = FONT_WIDTH*1;
 			y = SCREEN_MARGIN+(MAX_ROWS+4)*FONT_HEIGHT;
-			itoSprite(setting->color[COLOR_BACKGROUND],
-				0, y,
-				SCREEN_WIDTH, SCREEN_HEIGHT, 0);
+			X_itoSprite(0, y, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
 			sprintf(tmp,"○:%s ×:%s", lang->gen_ok, lang->gen_cancel);
 			printXY(tmp, x, y, setting->color[COLOR_TEXT], TRUE);
 			drawScr();
@@ -1009,12 +681,12 @@ int menu(const char *path, const char *file)
 
 //-------------------------------------------------
 // ファイルサイズ取得
-size_t getFileSize(const char *path, const FILEINFO *file)
+long getFileSize(const char *path, const FILEINFO *file)
 {
-	size_t size;
+	long size, ret;
 	FILEINFO files[MAX_ENTRY];
-	char dir[MAX_PATH], party[MAX_NAME];
-	int nfiles, i, ret, fd;
+	char dir[MAX_PATH];//, party[MAX_NAME];
+	int nfiles, i, fd;
 
 	if(file->attr & MC_ATTR_SUBDIR){
 		sprintf(dir, "%s%s/", path, file->name);
@@ -1027,6 +699,7 @@ size_t getFileSize(const char *path, const FILEINFO *file)
 		}
 	}
 	else{
+	/*//
 		// パーティションマウント
 		if(!strncmp(path, "hdd", 3)){
 			getHddParty(path,file,party,dir);
@@ -1045,6 +718,14 @@ size_t getFileSize(const char *path, const FILEINFO *file)
 			size = fioLseek(fd,0,SEEK_END);
 			fioClose(fd);
 		}
+	//*/
+		sprintf(dir, "%s%s", path, file->name);
+		fd = nopen(dir, O_RDONLY);
+		if (fd >= 0) {
+			size = nseek(fd, 0, SEEK_END);
+			nclose(fd);
+		} else 
+			size = -1;
 	}
 	return size;
 }
@@ -1841,7 +1522,7 @@ void filenameFix(const unsigned char *in, unsigned char *out)
 	int i=0;
 
 	len = strlen(in);
-	memcpy(out, in, len);
+	memcpy(out, in, len+1);
 	for(i=0;i<len;i++){
 		if(out[i]==0x22) out[i]='_';	// '"'
 		if(out[i]==0x2A) out[i]='_';	// '*'
@@ -1989,6 +1670,10 @@ int psuImport(const char *path, const FILEINFO *file, int outmc)
 		else fioRead(in_fd, &psu_header_dir, sizeof(PSU_HEADER));
 		n = psu_header_dir.size;	//ファイル数
 		seek = sizeof(PSU_HEADER);	//ファイルのシーク
+		if (!is_psu((unsigned char*)&psu_header_dir, sizeof(PSU_HEADER))) {
+			ret=-90;
+			goto error;
+		}
 
 		//psu_header[0]から読み込む
 		for(i=0;i<n;i++){
@@ -2072,6 +1757,10 @@ int psuImport(const char *path, const FILEINFO *file, int outmc)
 		}
 
 		//セーブデータのフォルダ作成
+		if (psu_header_dir.name[0] == 0) {
+			ret = -7;
+			goto error;
+		}
 		r = newdir(outpath, psu_header_dir.name);
 		/*
 		if(r == -17){	//フォルダがすでにあるとき上書きを確認する
@@ -2086,9 +1775,10 @@ int psuImport(const char *path, const FILEINFO *file, int outmc)
 				goto error;
 			}
 		}
-		*/
+		/*/
 		if(r == -17) {
 		}
+		//*/
 		else if(r < 0){//フォルダ作成失敗
 			ret = -9;
 			goto error;
@@ -2554,7 +2244,7 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 		//}
 		//ret = 0;
 		if (cnfmode!=FMB_FILE) {
-			for(i=0;i<5+setting->usbmdevs+(setting->usbmdevs==1)*3+(boot==HOST_BOOT);i++){
+			for(i=0;i<5+setting->usbmdevs+(setting->usbmdevs==1)*3+(boot==HOST_BOOT)+(setting->vmc_flag!=0);i++){
 				memset(&files[i].createtime, 0, sizeof(PS2TIME));
 				memset(&files[i].modifytime, 0, sizeof(PS2TIME));
 				files[i].fileSizeByte = 0;
@@ -2589,6 +2279,10 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 				if((i>=5+(boot==HOST_BOOT)) && (i<5+(boot==HOST_BOOT)+setting->usbmdevs+(setting->usbmdevs==1)*3)){
 					sprintf(files[i].name, "mass%d:", i-5-(boot==HOST_BOOT));
 					files[i].type = TYPE_DEVICE_MASS;
+				}
+				if(i==5+(boot==HOST_BOOT)+setting->usbmdevs+(setting->usbmdevs==1)*3) {
+					strcpy(files[i].name, "vmc:");
+					files[i].type = TYPE_DEVICE_VMC;
 				}
 			}
 		} else {
@@ -2794,25 +2488,32 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 
 //-------------------------------------------------
 // 任意のファイルパスを返す
+static char *imgext[] = {"*", "jpg", "bmp", "gif", "png"};
 void getFilePath(char *out, int cnfmode)
 {
 	char path[MAX_PATH], oldFolder[MAX_PATH],
 		msg0[MAX_PATH], msg1[MAX_PATH],
-		tmp[MAX_PATH], c[MAX_PATH], ext[8], *p;
+		tmp[MAX_PATH], c[MAX_PATH], ext[8], nextext[8], *p;
 	uint64 color;
 	FILEINFO files[MAX_ENTRY];
 	int nfiles=0, sel=0, top=0, redraw=2;
 	int cd=TRUE, up=FALSE, pushed=TRUE;
 	int x, y, y0, y1;
 	int i, ret;//, fd;
-	size_t size;
-	int code;
+	long size;
+//	int code;
 	int detail=0;	//詳細表示 0:なし 1:サイズ 2:更新日時
 	size_t freeSpace=0;
 	int mcfreeSpace=0;
 	int vfreeSpace=FALSE;	//空き容量表示フラグ
 	int l2button=FALSE, oldl2=FALSE;
 	int showdirsize=FALSE;	//フォルダサイズ表示フラグ
+	int extval=0;
+	
+	if (cnfmode == JPG_FILE) {
+		strcpy(ext, imgext[extval]);
+		strcpy(nextext, imgext[(extval+1)%5]);
+	}
 
 	if(cnfmode==ANY_FILE)
 		strcpy(ext, "*");
@@ -2825,7 +2526,7 @@ void getFilePath(char *out, int cnfmode)
 	else if(cnfmode==IRX_FILE)
 		strcpy(ext, "irx");
 	else if(cnfmode==JPG_FILE)
-		strcpy(ext, "jpg");
+		strcpy(ext, "*");
 	else if(cnfmode==TXT_FILE)
 		strcpy(ext, "txt");
 	else if(cnfmode==FMB_FILE)
@@ -2978,12 +2679,14 @@ void getFilePath(char *out, int cnfmode)
 							strcpy(msg0, lang->filer_getsizefailed);
 						}
 						else{
-							if(size >= 1024*1024)
+							if(size >= 1048576L * 10240)
+								sprintf(msg0, "SIZE = %.1f GByte", (double)size/1024/1024/1024);
+							else if(size >= 1024*1024)
 								sprintf(msg0, "SIZE = %.1f MByte", (double)size/1024/1024);
 							else if(size >= 1024)
 								sprintf(msg0, "SIZE = %.1f KByte", (double)size/1024);
 							else
-								sprintf(msg0, "SIZE = %d Byte", size);
+								sprintf(msg0, "SIZE = %ld Byte", size);
 							//mcのとき属性表示
 							if(!strncmp(path, "mc", 2) && nmarks==0){
 								sprintf(tmp, ", ATTR = %04X", files[sel].attr);
@@ -3076,6 +2779,33 @@ void getFilePath(char *out, int cnfmode)
 					else if(new_pad & PAD_SQUARE) {	// ファイルマスク切り替え
 						if(!strcmp(ext,"*")) strcpy(ext, "fnt");
 						else				 strcpy(ext, "*");
+						cd=TRUE;
+					}
+					else if(new_pad & PAD_CROSS){	//戻る
+						break;
+					}
+				}
+				//JPG_FILE JPG選択時
+				else if(cnfmode==JPG_FILE){
+					if(new_pad & PAD_CIRCLE) {//イメージファイルを決定
+						if(!(files[sel].attr & MC_ATTR_SUBDIR)){
+							sprintf(out, "%s%s", path, files[sel].name);
+							//ヘッダチェック
+							if(!is_image_file(out)){
+								pushed=FALSE;
+								sprintf(msg0, lang->filer_not_jpg);
+								out[0] = 0;
+							}
+							else{
+								strcpy(LastDir, path);
+								break;
+							}
+						}
+					}
+					else if(new_pad & PAD_SQUARE) {	// ファイルマスク切り替え
+						extval = (extval +1) % 5;
+						strcpy(ext, imgext[extval]);
+						strcpy(nextext, imgext[(extval+1)%5]);
 						cd=TRUE;
 					}
 					else if(new_pad & PAD_CROSS){	//戻る
@@ -3195,10 +2925,7 @@ void getFilePath(char *out, int cnfmode)
 							else			cut=FALSE;
 						}
 						else if(ret==DELETE){	// デリート
-							drawDark();
-							itoGsFinish();
-							itoSwitchFrameBuffers();
-							drawDark();
+							drawDarks(0);
 							if(nmarks==0){
 								if(title && files[sel].title[0])
 									sprintf(tmp,"%s",files[sel].title);
@@ -3313,12 +3040,14 @@ void getFilePath(char *out, int cnfmode)
 								strcpy(msg0, lang->filer_getsizefailed);
 							}
 							else{
+								if(size > 1048576L * 10240) 
+									sprintf(msg0, "SIZE = %.1f GByte", (double)size/1024/1024/1024);
 								if(size >= 1024*1024)
 									sprintf(msg0, "SIZE = %.1f MByte", (double)size/1024/1024);
 								else if(size >= 1024)
 									sprintf(msg0, "SIZE = %.1f KByte", (double)size/1024);
 								else
-									sprintf(msg0, "SIZE = %d Byte", size);
+									sprintf(msg0, "SIZE = %ld Byte", size);
 								//mcのとき属性表示
 								if(!strncmp(path, "mc", 2) && nmarks==0){
 									sprintf(tmp, ", ATTR = %04X", files[sel].attr);
@@ -3411,7 +3140,7 @@ void getFilePath(char *out, int cnfmode)
 										if(marks[i]){
 											if(!(files[i].attr & MC_ATTR_SUBDIR)){	//ファイルのとき
 												ret = psuImport(path, &files[i], outmc);
-												if(ret<0) break;	//中断する
+												if((ret!=-90) && (ret<0)) break;	//中断する
 											}
 										}
 									}
@@ -3486,12 +3215,13 @@ void getFilePath(char *out, int cnfmode)
 								}
 							} else {
 								// 複数のファイル
-								int k,m,o,r,l;
+								int k,o,r,l;
 								for (i=1,k=0,l=0; i<nfiles; i++) {
 									if (marks[i]) {
 										strcpy(fullpath, path);
 										strcat(fullpath, files[i].name);
-										if (((m=formatcheckfile(fullpath)) == FT_BMP) || (m == FT_JPG) || (m == FT_GIF) || (m == FT_P2T) || (m == FT_PS1)) {
+										//if (((m=formatcheckfile(fullpath)) == FT_BMP) || (m == FT_JPG) || (m == FT_GIF) || (m == FT_PNG) || (m == FT_P2T) || (m == FT_PS1)) {
+										if (is_image_file(fullpath)) {
 											k = i;
 											break;
 										}
@@ -3518,7 +3248,8 @@ void getFilePath(char *out, int cnfmode)
 											if (marks[k]) {
 												strcpy(fullpath, path);
 												strcat(fullpath, files[k].name);
-												if (((m=formatcheckfile(fullpath)) == FT_BMP) || (m == FT_JPG) || (m == FT_GIF) || (m == FT_P2T) || (m == FT_PS1)) {
+												//if (((m=formatcheckfile(fullpath)) == FT_BMP) || (m == FT_JPG) || (m == FT_GIF) || (m == FT_PNG) || (m == FT_P2T) || (m == FT_PS1)) {
+												if (is_image_file(fullpath)) {
 													i = k;
 													break;
 												}
@@ -3530,7 +3261,8 @@ void getFilePath(char *out, int cnfmode)
 											if (marks[k]) {
 												strcpy(fullpath, path);
 												strcat(fullpath, files[k].name);
-												if (((m=formatcheckfile(fullpath)) == FT_BMP) || (m == FT_JPG) || (m == FT_GIF) || (m == FT_P2T) || (m == FT_PS1)) {
+												//if (((m=formatcheckfile(fullpath)) == FT_BMP) || (m == FT_JPG) || (m == FT_GIF) || (m == FT_PNG) || (m == FT_P2T) || (m == FT_PS1)) {
+												if (is_image_file(fullpath)) {
 													i = k;
 													break;
 												}
@@ -3643,6 +3375,7 @@ void getFilePath(char *out, int cnfmode)
 			CDVD_Stop();
 
 		if (redraw) {
+			int fl,fr;	// ファイル名描画範囲
 			// ファイルリスト表示用変数の正規化
 			if(top > nfiles-MAX_ROWS)	top=nfiles-MAX_ROWS;
 			if(top < 0)			top=0;
@@ -3685,13 +3418,13 @@ void getFilePath(char *out, int cnfmode)
 					strcat(tmp,"/");
 
 				//ファイル名が長いときは、短くする
-				if(strlen(tmp)>MAX_ROWS_X&&MAX_ROWS_X>3){
-					tmp[MAX_ROWS_X-3]=0;
-					code=tmp[MAX_ROWS_X-4];
-					if( (code>=0x81)&&(code<=0x9F) ) tmp[MAX_ROWS_X-4] = 0;
-					if( (code>=0xE0)&&(code<=0xFC) ) tmp[MAX_ROWS_X-4] = 0;
-					strcat(tmp, "...");
-				}
+			//	if(strlen(tmp)>MAX_ROWS_X&&MAX_ROWS_X>3){
+			//		tmp[MAX_ROWS_X-3]=0;
+			//		code=tmp[MAX_ROWS_X-4];
+			//		if( (code>=0x81)&&(code<=0x9F) ) tmp[MAX_ROWS_X-4] = 0;
+			//		if( (code>=0xE0)&&(code<=0xFC) ) tmp[MAX_ROWS_X-4] = 0;
+			//		strcat(tmp, "...");
+			//	}
 
 				//ファイル名を表示
 				if(setting->fileicon){
@@ -3725,12 +3458,18 @@ void getFilePath(char *out, int cnfmode)
 					}
 #endif
 					//ファイル名表示
-					printXY(tmp, x+FONT_WIDTH*4, y, color, TRUE);
+				//	printXY(tmp, x+FONT_WIDTH*4, y, color, TRUE);
+					fl = x+FONT_WIDTH*4; 
 				}
 				else{
 					//ファイル名のみ表示
-					printXY(tmp, x+FONT_WIDTH*2, y, color, TRUE);
+				//	printXY(tmp, x+FONT_WIDTH*2, y, color, TRUE);
+					fl = x+FONT_WIDTH*2;
 				}
+				
+				int drawStringWindow(const unsigned char *s, int charset, int sx, int sy, uint64 col, int sl, int sr);
+				fr = (MAX_ROWS_X+7-9*(detail & 1)-10*(detail & 2)) * FONT_WIDTH;
+				drawStringWindow(tmp, TXT_SJIS, fl, y, color, fl, fr);
 
 				//詳細表示
 				if(path[0]==0 || !strcmp(path,"hdd0:/") || !strcmp(path,"MISC/")){
@@ -3745,11 +3484,11 @@ void getFilePath(char *out, int cnfmode)
 						}
 						else{
 							if(files[top+i].fileSizeByte >= 1024*1024)
-								sprintf(c, "%4.1fMB", (double)files[top+i].fileSizeByte/1024/1024);
+								sprintf(c, "%4.1fMB", (float)files[top+i].fileSizeByte/1024/1024);
 							else if(files[top+i].fileSizeByte >= 1024)
-								sprintf(c, "%4.1fKB", (double)files[top+i].fileSizeByte/1024);
+								sprintf(c, "%4.1fKB", (float)files[top+i].fileSizeByte/1024);
 							else
-								sprintf(c,"%6d B",files[top+i].fileSizeByte);
+								sprintf(c,"%6ld B",files[top+i].fileSizeByte);
 						}
 						len+= 9;
 						strcpy(tmp, c);
@@ -3774,9 +3513,9 @@ void getFilePath(char *out, int cnfmode)
 					}
 					if (len > 0) {
 						if(strcmp(files[top+i].name,"..")){
-							itoSprite(setting->color[COLOR_BACKGROUND],
-								(MAX_ROWS_X+7-len)*FONT_WIDTH, y,
-								(MAX_ROWS_X+8)*FONT_WIDTH, y+FONT_HEIGHT, 0);
+						//	itoSprite(setting->color[COLOR_BACKGROUND],
+						//		(MAX_ROWS_X+7-len)*FONT_WIDTH, y,
+						//		(MAX_ROWS_X+8)*FONT_WIDTH, y+FONT_HEIGHT, 0);
 							itoLine(setting->color[COLOR_FRAME], (MAX_ROWS_X+7.5-len)*FONT_WIDTH, y, 0,
 								setting->color[COLOR_FRAME], (MAX_ROWS_X+7.5-len)*FONT_WIDTH, y+FONT_HEIGHT, 0);	
 							printXY(tmp, FONT_WIDTH*(MAX_ROWS_X+7-strlen(tmp)), y, color, TRUE);
@@ -3855,6 +3594,9 @@ void getFilePath(char *out, int cnfmode)
 					else
 						sprintf(msg1, lang->filer_elffile_hint2);
 				}
+				else if(cnfmode==JPG_FILE){
+					sprintf(msg1, lang->filer_jpgfile_hint, ext, nextext);
+				}
 				else if(cnfmode==FNT_FILE){
 					if(!strcmp(ext, "*"))
 						sprintf(msg1, lang->filer_fntfile_hint1);
@@ -3906,6 +3648,10 @@ void getFilePath(char *out, int cnfmode)
 	if(mountedParty[1][0]!=0){
 		fileXioUmount("pfs1:");
 		mountedParty[1][0]=0;
+	}
+	if (vmcmount) {
+		fileXioUmount("vmc:");
+		vmcmount = FALSE;
 	}
 	return;
 }

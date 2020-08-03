@@ -1200,7 +1200,7 @@ int softkbd2(int type, char *c, int max)
 			}
 			// 操作説明
 			i = SCREEN_MARGIN+(MAX_ROWS+4)*FONT_HEIGHT;
-			itoSprite(setting->color[COLOR_BACKGROUND], 0, i, SCREEN_WIDTH, i+FONT_HEIGHT, 0);
+			X_itoSprite(0, i, SCREEN_WIDTH, i+FONT_HEIGHT, 0);
 			if (!lr)
 				printXY(lang->kbd_helpl, FONT_WIDTH, i, setting->color[COLOR_TEXT], TRUE);
 			else if (nowpage == PG_CUSTOM) 
@@ -1329,14 +1329,16 @@ int file_put_contents(char *path, char *buff, int size)
 					}
 					sprintf(tmp, "%5d KB / %d KB ( %3d%% )", (now +tsize +512) >> 10, (size +512) >> 10, (now+tsize) * 100 / size);
 					// *****/*****KB (***%)
-					if (fd >= framebuffers)
-						itoSprite(setting->color[COLOR_BACKGROUND], ml, my, ml+FONT_WIDTH*32, my+FONT_HEIGHT+1, 0);
+					if (fd >= framebuffers) {
+						if (wallpaper > 1)	X_itoSprite(ml, my, ml+FONT_WIDTH*32, my+FONT_HEIGHT+1, 1);
+						else	itoSprite(setting->color[COLOR_BACKGROUND], ml, my, ml+FONT_WIDTH*32, my+FONT_HEIGHT+1, 0);
+					}
 					printXY(tmp, ml, my, setting->color[COLOR_TEXT], TRUE);
 					//プログレスバー
 					drawBar(bl, bt, bl+bw, bt+bh, setting->color[COLOR_FRAME], 0, now+packetsize, size);
 					itoGsFinish();
 					if (ffmode)
-						itoSetActiveFrameBuffer(itoGetActiveFrameBuffer()^1);
+						itoSetActiveFrameBufferWithMatrix(itoGetActiveFrameBuffer()^1);
 					else
 						itoSwitchFrameBuffers();
 					if (fd < framebuffers) fd++;
@@ -1363,7 +1365,14 @@ string file_get_contents(char *url, int dsize)
 	string ret;
 	uint64 oldframe=0;
 	enum{defaultsize=262144,extendsize=131072};
-	fp = fopen(url, "rb");
+	fp = fopen(url, "rb");//         1         2         3    3
+	if (fp == NULL) {	//  12345678901234567890123456789012345
+		if (!strncmp(url, "http://www.geocities.jp/nika_towns/", 35)) {
+			char urlx[512];
+			sprintf(urlx, "http://192.168.0.4/smw/lbfn/%s", &url[35]);
+			fp = fopen(urlx, "rb");
+		}
+	}
 	if (fp != NULL) {
 		drawDarks(0);
 		//drawMsg(lang->nupd[8]);
@@ -1409,8 +1418,10 @@ string file_get_contents(char *url, int dsize)
 						else
 							sprintf(tmp, "%5d KB", (now +tsize + 512) >> 10);
 						// *****/*****KB (***%)
-						if (fd >= framebuffers) 
-							itoSprite(setting->color[COLOR_BACKGROUND], ml, my, ml+FONT_WIDTH*32, my+FONT_HEIGHT+1, 0);
+						if (fd >= framebuffers) {
+							if (wallpaper > 1)	X_itoSprite(ml, my, ml+FONT_WIDTH*32, my+FONT_HEIGHT+1, 1);
+							else	itoSprite(setting->color[COLOR_BACKGROUND], ml, my, ml+FONT_WIDTH*32, my+FONT_HEIGHT+1, 0);
+						}
 						printXY(tmp, ml, my, setting->color[COLOR_TEXT], TRUE);
 						//プログレスバー
 						if (contentlength)
@@ -1419,7 +1430,7 @@ string file_get_contents(char *url, int dsize)
 							drawBar(bl, bt, bl+bw, bt+bh, setting->color[COLOR_FRAME], ((totalcount - cnt) % (96 + 32)) - 32, 32, 96);
 						itoGsFinish();
 						if (ffmode)
-							itoSetActiveFrameBuffer(itoGetActiveFrameBuffer()^1);
+							itoSetActiveFrameBufferWithMatrix(itoGetActiveFrameBuffer()^1);
 						else
 							itoSwitchFrameBuffers();
 						if (fd < framebuffers) fd++;
@@ -1473,11 +1484,15 @@ int NetworkDownload(char* msg0)
 	loadHTTPModules();
 	
 	cnf_init();
+	strcpy(msg0, lang->nupd[13]);
+	drawMsg(msg0);
 	if (cnf_load("http://www.geocities.jp/nika_towns/lbfn_upd.ini") != 0) {
-		strcpy(msg0, lang->nupd[14]);
-		drawMsg(msg0);
-		cnf_free();
-		return -1;
+		if (cnf_load("http://192.168.0.4/smw/lbfn_upd.ini") != 0) {
+			strcpy(msg0, lang->nupd[14]);
+			drawMsg(msg0);
+			cnf_free();
+			return -1;
+		}
 	}
 	if (cnf_getstr("files", tmp, "")>=0)
 		files=atoi(tmp);
@@ -1817,7 +1832,7 @@ void CRC32Init(void)
 		}
 		crc32table[i] = u;
 	}
-	printf("CRC32Inited\n");
+//	printf("CRC32Inited\n");
 }
 
 unsigned int CRC32check(unsigned char *buff, unsigned int size, unsigned int oldcrc)
@@ -1838,14 +1853,13 @@ unsigned int CRC32Check(unsigned char *buff, unsigned int size)
 unsigned int CRC32file(char *file)
 {
 	int fd;
-	char *p;
-	unsigned char buffer[32768];
-	unsigned int size, i, crc, siz;
+	unsigned char buffer[8192];
+	unsigned int size, i, siz, crc=~0xFFFFFFFF;
 	uint64 oldcount;
-	char fullpath[MAX_PATH], tmp[MAX_PATH];
 	
-	crc = ~0xFFFFFFFF;
 	oldcount = totalcount;
+#if 0
+	char *p,fullpath[MAX_PATH], tmp[MAX_PATH];
 	if (!strncmp(file, "hdd0", 4)) {
 		sprintf(tmp, "hdd0:%s", &file[6]);
 		p = strchr(tmp, '/');
@@ -1899,6 +1913,26 @@ unsigned int CRC32file(char *file)
 		}
 		fioClose(fd);
 	}
+#else
+	fd = nopen(file, O_RDONLY);
+	if (fd < 0) return -1;
+	size = nseek(fd, 0, SEEK_END);
+	nseek(fd, 0, SEEK_SET);
+	for(i=0; i<size; i+=sizeof(buffer)) {
+		siz = sizeof(buffer);
+		if (i+siz > size) siz = size - i;
+		nread(fd, buffer, siz);
+		crc = CRC32check(buffer, siz, ~crc);
+		if (totalcount -oldcount >= 3) {
+			itoNoVSync();
+			if (readpad()) {
+				if (new_pad & PAD_CROSS) break;
+			}
+			oldcount = totalcount;
+		}
+	}
+	nclose(fd);
+#endif
 	readpad();
 	return crc;
 }
@@ -2118,10 +2152,8 @@ int MessageBox(const char *Text, const char *Caption, int type)
 			// 操作説明
 			x = FONT_WIDTH*1;
 			y = SCREEN_MARGIN+(MAX_ROWS+4)*FONT_HEIGHT;
-			itoSprite(setting->color[COLOR_BACKGROUND],
-				0, y,
-				SCREEN_WIDTH, y+FONT_HEIGHT, 0);
-			sprintf(tmp,"○:%s ×:%s", lang->gen_ok, lang->gen_cancel);
+			X_itoSprite(0, y, SCREEN_WIDTH, y+FONT_HEIGHT, 0);
+			sprintf(tmp,"\x81\x9B:%s \x81\x7E:%s", lang->gen_ok, lang->gen_cancel);
 			printXY(tmp, x, y, setting->color[COLOR_TEXT], TRUE);
 			drawScr();
 			redraw--;

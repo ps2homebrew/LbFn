@@ -65,6 +65,7 @@ void SetLanguage(const int langID)
 		strcpy(lang->filer_execute_psb, "Execute?");
 #endif
 		strcpy(lang->filer_not_fnt, "This file isn't FNT.");
+		strcpy(lang->filer_not_jpg, "This file isn't image.");
 		strcpy(lang->filer_copy_to_clip, "Copied to the Clipboard");
 		strcpy(lang->filer_delete, "Delete?");
 		strcpy(lang->filer_deletemarkfiles, "Mark Files Delete?");
@@ -94,6 +95,7 @@ void SetLanguage(const int langID)
 		strcpy(lang->filer_elffile_hint2, "○:OK ×:Cancel △:Up □:ELF->*");
 		strcpy(lang->filer_fntfile_hint1, "○:OK ×:Cancel △:Up □:*->FNT");
 		strcpy(lang->filer_fntfile_hint2, "○:OK ×:Cancel △:Up □:FNT->*");
+		strcpy(lang->filer_jpgfile_hint,  "○:OK ×:Cancel △:Up □:%s->%s");
 		strcpy(lang->filer_irxfile_hint1, "○:OK ×:Cancel △:Up □:*->IRX");
 		strcpy(lang->filer_irxfile_hint2, "○:OK ×:Cancel △:Up □:IRX->*");
 		strcpy(lang->filer_dir_hint, "○:OK ×:Cancel △:Up START:Choose");
@@ -196,6 +198,7 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_normaltext, "NORMAL TEXT   ");
 		strcpy(lang->conf_highlighttext, "HIGHLIGHT TEXT");
 		strcpy(lang->conf_disabletext, "GRAY TEXT     ");
+		strcpy(lang->conf_shadowtext, "SHADOW TEXT   ");
 		strcpy(lang->conf_folder, "FOLDER        ");
 		strcpy(lang->conf_file, "FILE          ");
 		strcpy(lang->conf_ps2save, "PS2 SAVE      ");
@@ -257,7 +260,30 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_fullscreen, "FULLSCREEN MODE IN IMAGE");
 		strcpy(lang->conf_imageresize,"DO NOT RESIZE IN IMAGE");
 		strcpy(lang->conf_autodecode, "AUTO DECODE OF TEK COMPRESSION");
+		strcpy(lang->conf_sdtv_aspect,"SCREEN ASPECT RATIO OF SDTV IN IMAGE");
+		strcpy(lang->conf_pixelaspect,"APPLY THE PIXEL ASPECT RATIO IN IMAGE");
+		strcpy(lang->conf_aniauto,    "AUTOMATIC ANIMATION OF IMAGE");
+		strcpy(lang->conf_position,   "DEFAULT DISPLAY AREA OF IMAGE");
+		strcpy(lang->conf_bgplay,     "ENABLE BACKGROUND PLAYING OF AUDIO");
+		strcpy(lang->conf_volume,     "DEFAULT VOLUME IN AUDIO");
+		strcpy(lang->conf_repeat,     "DEFAULT REPEAT MODE IN AUDIO");
 		strcpy(lang->conf_viewerinit, "VIEWER SETTING INIT");
+		strcpy(lang->conf_sdtv_square," 4:3");
+		strcpy(lang->conf_sdtv_wide,  "16:9");
+		strcpy(lang->conf_sound[0],   "OFF");
+		strcpy(lang->conf_sound[1],   "REPEAT");
+		strcpy(lang->conf_sound[2],   "REPEAT ALL");
+		strcpy(lang->conf_sound[3],   "RANDOM");
+		strcpy(lang->conf_sound[4],   "SHUFFLE");
+		strcpy(lang->conf_imgpos[0],  "LEFT-TOP");
+		strcpy(lang->conf_imgpos[1],  "TOP");
+		strcpy(lang->conf_imgpos[2],  "RIGHT-TOP");
+		strcpy(lang->conf_imgpos[3],  "LEFT");
+		strcpy(lang->conf_imgpos[4],  "CENTER");
+		strcpy(lang->conf_imgpos[5],  "RIGHT");
+		strcpy(lang->conf_imgpos[6],  "LEFT-BOTTOM");
+		strcpy(lang->conf_imgpos[7],  "BOTTOM");
+		strcpy(lang->conf_imgpos[8],  "RIGHT-BOTTOM");
 		//misc
 		strcpy(lang->conf_language, "LANGUAGE");
 		strcpy(lang->conf_language_us, "ENGLISH");
@@ -303,9 +329,31 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_usbmouse_use, "USE USB MOUSE");
 		strcpy(lang->conf_usbmouse_path, "PS2MOUSE.IRX");
 		strcpy(lang->conf_downloadpath, "DEFAULT DOWNLOAD DIR");
+		strcpy(lang->conf_screenshotflag, "USE SCREENSHOT");
+		strcpy(lang->conf_screenshotpad,  "SCREENSHOT TRIGGER");
+		strcpy(lang->conf_screenshotpath, "SCREENSHOT DIR");
+		strcpy(lang->conf_wallpaperuse, "USE WALLPAPER");
+		strcpy(lang->conf_wallpaperpath, "BACKGROUND IMAGE FILE");
+		strcpy(lang->conf_wallpapermode, "BACKGROUND MODE");
+		strcpy(lang->conf_wallpapercontrast, "CONTRAST");
+		strcpy(lang->conf_wallpaperbrightness, "BRIGHTNESS OF SCREEN");
+		strcpy(lang->conf_wallpaperwindow, "BRIGHTNESS OF WINDOW");
+		strcpy(lang->conf_preview, "PREVIEW");
 		strcpy(lang->conf_miscsettinginit, "MISC SETTING INIT");
 		strcpy(lang->conf_filersettinginit, "FILER SETTING INIT");
 		strcpy(lang->conf_devicesettinginit, "DEVICE SETTING INIT");
+		strcpy(lang->conf_wp_mode[0], "CENTERING");
+		strcpy(lang->conf_wp_mode[1], "TILING");
+		strcpy(lang->conf_wp_mode[2], "TOUCH SCREEN FROM INSIDE");
+		strcpy(lang->conf_wp_mode[3], "TOUCH SCREEN FROM OUTSIDE");
+		strcpy(lang->conf_wp_mode[4], "STRETCH TO SCREEN");
+		strcpy(lang->conf_wp_on[0], "ON (ONLY SCREEN)");
+		strcpy(lang->conf_wp_on[1], "ON (SCREEN AND WINDOW)");
+		strcpy(lang->conf_wallpaperreload, "Reloading wallpaper...");
+		strcpy(lang->conf_wallpaperload,   "Loading wallpaper...");
+		strcpy(lang->conf_wallpaperdecode, "Processing wallpaper...");
+		strcpy(lang->conf_wallpaperresize, "Drawing wallpaper...");
+		strcpy(lang->conf_wallpapererror,  "Wallpaper was failed");
 		//gsconfig
 		{
 		strcpy(lang->gs_easymode,		"EASY MODE");
@@ -319,10 +367,12 @@ void SetLanguage(const int langID)
 		strcpy(lang->gs_name,			"DISPLAY NAME");
 		strcpy(lang->gs_width,			"SCREEN WIDTH ");
 		strcpy(lang->gs_height,			"SCREEN HEIGHT");
-		strcpy(lang->gs_left,			"HORIZONTAL OFFSET");
-		strcpy(lang->gs_top,			"VERTICAL OFFSET  ");
-		strcpy(lang->gs_mag_x,			"X RESIZE");
-		strcpy(lang->gs_mag_y,			"Y RESIZE");
+		strcpy(lang->gs_widthf,			"FULL SCREEN WIDTH ");
+		strcpy(lang->gs_heightf,		"FULL SCREEN HEIGHT");
+		strcpy(lang->gs_left,			"HORIZONTAL CENTER OFFSET");
+		strcpy(lang->gs_top,			"VERTICAL CENTER OFFSET  ");
+		strcpy(lang->gs_mag_x,			"X RESIZE (mag_x) ");
+		strcpy(lang->gs_mag_y,			"Y RESIZE (mag_y) ");
 		strcpy(lang->gs_depth,			"COLOR DEPTH");
 		strcpy(lang->gs_bufferwidth,	"BUFFER WIDTH");
 		strcpy(lang->gs_x1,				"X1");
@@ -342,11 +392,17 @@ void SetLanguage(const int langID)
 		strcpy(lang->gs_f0_top,			"1ST FRAME TOP ");
 		strcpy(lang->gs_f1_left,		"2ND FRAME LEFT");
 		strcpy(lang->gs_f1_top,			"2ND FRAME TOP ");
-		strcpy(lang->gs_preset,			"INIT THIS SETTING");
+		strcpy(lang->gs_preset,			"LOAD VMODE DEFAULT");
 		strcpy(lang->gs_init,			"LOAD DEFAULT SETTING");
-		strcpy(lang->gse_convert,		"OVERRIDE WRITE TO %s");
-		strcpy(lang->gs_vramsize,		"ABOUT THE VRAM SIZE");
+		//strcpy(lang->gs_apply,			"APPLY THE SETTING");
+		strcpy(lang->gs_target,			"TARGET: ");
+		strcpy(lang->gs_read,			"LOAD SETTING FROM TARGET");
+		strcpy(lang->gs_write,			"SAVE SETTING TO TARGET");
+		strcpy(lang->gs_vramsize,		"VRAM SIZE");
 
+		strcpy(lang->gse_editsize,		"EDIT TARGET");
+		strcpy(lang->gse_magnify,		"MAGNIFICATION TARGET");
+		strcpy(lang->gse_convert,		"OVERRIDE WRITE TO %s");
 		strcpy(lang->gs_msg_0,			"In case of setting to system crash. continue the setting?");
 		
 		strcpy(lang->gs_prev,			"Prev");
@@ -451,6 +507,41 @@ void SetLanguage(const int langID)
 		strcpy(lang->nupd[23], "Loading LAN (PS2SMAP) device driver");
 		strcpy(lang->nupd[24], "Download was completed.");
 		}
+		// サウンドプレイヤー
+		{
+		strcpy(lang->sound[ 0], "path");
+		strcpy(lang->sound[ 1], "type");
+		strcpy(lang->sound[ 2], "title");
+		strcpy(lang->sound[ 3], "artist");
+		strcpy(lang->sound[ 4], "comment");
+		strcpy(lang->sound[ 5], "date");
+		strcpy(lang->sound[ 6], "copyright");
+		strcpy(lang->sound[ 7], "bitrate");
+		strcpy(lang->sound[ 8], "sampling rate");
+		strcpy(lang->sound[ 9], "bits");
+		strcpy(lang->sound[10], "channels");
+		strcpy(lang->sound[11], "time");
+		strcpy(lang->sound[12], "volume");
+		strcpy(lang->sound[13], "speed");
+		strcpy(lang->sound[14], "position");
+		strcpy(lang->sound[15], "back");
+		strcpy(lang->sound[16], "skip");
+		strcpy(lang->sound[17], "slow");
+		strcpy(lang->sound[18], "fast");
+		strcpy(lang->sound[19], "top");
+		strcpy(lang->sound[20], "normal");
+		strcpy(lang->sound[21], "play");
+		strcpy(lang->sound[22], "stop");
+		strcpy(lang->sound[23], "quit");
+		strcpy(lang->sound[24], "speed");
+		strcpy(lang->sound[25], "seek");
+		strcpy(lang->sound[26], "info");
+		strcpy(lang->sound[27], "pause / resume");
+		strcpy(lang->sound[28], "○:skip ×:back △:quit L1:top L2/R2:seek");
+		strcpy(lang->sound[29], "○:enter △:quit L2/R2:seek");
+		strcpy(lang->sound[30], "○:add ×:sub +□:fast △:quit L1:default L2/R2:seek");
+		strcpy(lang->sound[31], "△:quit L2/R2:seek");
+		}
 		strcpy(lang->conf_on, "ON");
 		strcpy(lang->conf_off, "OFF");
 		strcpy(lang->conf_edit, "Edit");
@@ -503,6 +594,7 @@ void SetLanguage(const int langID)
 		strcpy(lang->filer_execute_psb, "実行しますか?");
 #endif
 		strcpy(lang->filer_not_fnt, "FNTファイルではありません");
+		strcpy(lang->filer_not_jpg, "イメージファイルではありません");
 		strcpy(lang->filer_copy_to_clip, "クリップボードへコピーしました");
 		strcpy(lang->filer_delete, "削除しますか?");
 		strcpy(lang->filer_deletemarkfiles, "マークしたファイルを削除しますか?");
@@ -532,6 +624,7 @@ void SetLanguage(const int langID)
 		strcpy(lang->filer_elffile_hint2, "○:決定 ×:キャンセル △:上へ □:ELF->*");
 		strcpy(lang->filer_fntfile_hint1, "○:決定 ×:キャンセル △:上へ □:*->FNT");
 		strcpy(lang->filer_fntfile_hint2, "○:決定 ×:キャンセル △:上へ □:FNT->*");
+		strcpy(lang->filer_jpgfile_hint,  "○:決定 ×:キャンセル △:上へ □:%s->%s");
 		strcpy(lang->filer_irxfile_hint1, "○:決定 ×:キャンセル △:上へ □:*->IRX");
 		strcpy(lang->filer_irxfile_hint2, "○:決定 ×:キャンセル △:上へ □:IRX->*");
 		strcpy(lang->filer_dir_hint, "○:決定 ×:キャンセル △:上へ Start:フォルダ選択");
@@ -634,6 +727,7 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_normaltext,    "テキスト      ");
 		strcpy(lang->conf_highlighttext, "テキスト強調  ");
 		strcpy(lang->conf_disabletext,   "テキスト無効  ");
+		strcpy(lang->conf_shadowtext,    "テキスト影    ");
 		strcpy(lang->conf_folder,        "フォルダ      ");
 		strcpy(lang->conf_file,          "ファイル      ");
 		strcpy(lang->conf_ps2save,       "PS2 セーブ    ");
@@ -695,7 +789,30 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_fullscreen, "イメージのフルスクリーンモード");
 		strcpy(lang->conf_imageresize,"イメージをリサイズしないで表\示");
 		strcpy(lang->conf_autodecode, "tek圧縮の自動伸張");
+		strcpy(lang->conf_sdtv_aspect,"標準画質出力のアスペクト比");
+		strcpy(lang->conf_pixelaspect,"ピクセルアスペクト比の適用");
+		strcpy(lang->conf_aniauto,    "イメージの自動アニメーション");
+		strcpy(lang->conf_position,   "イメージの初期描画範囲");
+		strcpy(lang->conf_bgplay,     "サウンドのBG再生");
+		strcpy(lang->conf_volume,     "サウンドの標準音量");
+		strcpy(lang->conf_repeat,     "サウンドのループ再生");
 		strcpy(lang->conf_viewerinit, "「ビューア設定」を初期化する");
+		strcpy(lang->conf_sdtv_square," 4:3");
+		strcpy(lang->conf_sdtv_wide,  "16:9");
+		strcpy(lang->conf_sound[0],   "off");
+		strcpy(lang->conf_sound[1],   "AUTO REPEAT");	// Repeat
+		strcpy(lang->conf_sound[2],   "All repeat");
+		strcpy(lang->conf_sound[3],   "Random");
+		strcpy(lang->conf_sound[4],   "Shuffle");
+		strcpy(lang->conf_imgpos[0],  "左上");
+		strcpy(lang->conf_imgpos[1],  "上");
+		strcpy(lang->conf_imgpos[2],  "右上");
+		strcpy(lang->conf_imgpos[3],  "左");
+		strcpy(lang->conf_imgpos[4],  "中央");
+		strcpy(lang->conf_imgpos[5],  "右");
+		strcpy(lang->conf_imgpos[6],  "左下");
+		strcpy(lang->conf_imgpos[7],  "下");
+		strcpy(lang->conf_imgpos[8],  "右下");
 		//misc
 		strcpy(lang->conf_language, "LANGUAGE");
 		strcpy(lang->conf_language_us, "ENGLISH");
@@ -741,9 +858,34 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_usbmouse_use, "USBマウスを使用する");
 		strcpy(lang->conf_usbmouse_path, "PS2MOUSE.IRX");
 		strcpy(lang->conf_downloadpath, "標準ダウンロードフォルダ");
+		strcpy(lang->conf_screenshotflag, "スクリーンショット機能\を利用する");
+		strcpy(lang->conf_screenshotpad,  "スクリーンショットボタン");
+		strcpy(lang->conf_screenshotpath, "スクリーンショットフォルダ");
+		strcpy(lang->conf_wallpaperuse, "背景に壁紙を利用する");
+		strcpy(lang->conf_wallpaperpath, "背景イメージ");
+		strcpy(lang->conf_wallpapermode, "背景モード");
+		strcpy(lang->conf_wallpapercontrast, "コントラスト");
+		strcpy(lang->conf_wallpaperbrightness, "全体の明るさ");
+		strcpy(lang->conf_wallpaperwindow, "ウィンドウの明るさ");
+		strcpy(lang->conf_preview, "プレビュー");
+		strcpy(lang->conf_wp_mode[0], "中央に表\示");
+		strcpy(lang->conf_wp_mode[1], "並べて表\示");
+		strcpy(lang->conf_wp_mode[2], "画面全体に表\示(内側)");
+		strcpy(lang->conf_wp_mode[3], "画面全体に表\示(外側)");
+		strcpy(lang->conf_wp_mode[4], "画面全体に表\示(全体)");
+		strcpy(lang->conf_wp_on[0], "ON (背景のみ)");
+		strcpy(lang->conf_wp_on[1], "ON (背景とウィンドウ)");
 		strcpy(lang->conf_miscsettinginit, "「その他設定」を初期化する");
 		strcpy(lang->conf_filersettinginit, "「ファイラー設定」を初期化する");
 		strcpy(lang->conf_devicesettinginit, "「デバイス設定」を初期化する");
+		strcpy(lang->conf_wallpaperreload, "壁紙を再設定しています...");
+		strcpy(lang->conf_wallpaperload,   "壁紙を読み込み中です...");
+		strcpy(lang->conf_wallpaperdecode, "壁紙を準備しています...");
+		strcpy(lang->conf_wallpaperresize, "壁紙を描画しています...");
+		strcpy(lang->conf_wallpapererror,  "壁紙の設定に失敗しました");
+		
+		
+
 		//gsconfig
 		{
 		strcpy(lang->gs_easymode,		"簡単設定");
@@ -756,10 +898,12 @@ void SetLanguage(const int langID)
 		strcpy(lang->gs_name,			"設定名");
 		strcpy(lang->gs_width,			"水平解像度");
 		strcpy(lang->gs_height,			"垂直解像度");
+		strcpy(lang->gs_widthf,			"水平解像度(フル)");
+		strcpy(lang->gs_heightf,		"垂直解像度(フル)");
 		strcpy(lang->gs_left,			"水平中央位置");
 		strcpy(lang->gs_top,			"垂直中央位置");
-		strcpy(lang->gs_mag_x,			"水平拡大値");
-		strcpy(lang->gs_mag_y,			"垂直拡大値");
+		strcpy(lang->gs_mag_x,			"水平拡大値(mag_x)");
+		strcpy(lang->gs_mag_y,			"垂直拡大値(mag_y)");
 		strcpy(lang->gs_depth,			"色彩深度");
 		strcpy(lang->gs_bufferwidth,	"1ラインのピクセル数");
 		strcpy(lang->gs_x1,				"水平開始位置");
@@ -779,10 +923,17 @@ void SetLanguage(const int langID)
 		strcpy(lang->gs_f0_top,			"フレーム0の垂直位置");
 		strcpy(lang->gs_f1_left,		"フレーム1の水平位置");
 		strcpy(lang->gs_f1_top,			"フレーム1の垂直位置");
-		strcpy(lang->gs_preset,			"プリセット値に戻す");
+		strcpy(lang->gs_preset,			"プリセット値の読み込み");
 		strcpy(lang->gs_init,			"標準値の読み込み");
-		strcpy(lang->gse_convert,		"%s へ上書き保存する");
+		//strcpy(lang->gs_apply,			"現在の設定を反映");
+		strcpy(lang->gs_target,			"アクセス対象: ");
+		strcpy(lang->gs_read,			"設定を読み込む");
+		strcpy(lang->gs_write,			"設定を保存する");
 		strcpy(lang->gs_vramsize,		"必要なVRAMのサイズ");
+
+		strcpy(lang->gse_editsize,		"編集サイズ");
+		strcpy(lang->gse_magnify,		"拡大基準値");
+		strcpy(lang->gse_convert,		"%s へ上書き保存する");
 		strcpy(lang->gs_msg_0,			"設定によってはシステムが停止する可能\性があります。\n続行してもよろしいですか?");
 
 		strcpy(lang->gs_prev,			"前へ");
@@ -790,8 +941,8 @@ void SetLanguage(const int langID)
 		strcpy(lang->gs_copy,			"コピー");
 		strcpy(lang->gs_paste,			"ペースト");
 		strcpy(lang->gs_apply,			"適用");
-		strcpy(lang->gs_default,		"標準");
 		}
+		strcpy(lang->gs_default,		"標準");
 		//	FMCB_CONFIG
 		{
 		strcpy(lang->fmcb[ 0], "NULL");
@@ -886,6 +1037,41 @@ void SetLanguage(const int langID)
 		strcpy(lang->nupd[22], "TCP/IPドライバを読み込み中です");
 		strcpy(lang->nupd[23], "LANデバイスドライバを読み込み中です");
 		strcpy(lang->nupd[24], "ダウンロードが完了しました");
+		}
+		// サウンドプレイヤー
+		{
+		strcpy(lang->sound[ 0], "ファイル名");
+		strcpy(lang->sound[ 1], "ファイル形式");
+		strcpy(lang->sound[ 2], "タイトル");
+		strcpy(lang->sound[ 3], "アーティスト");
+		strcpy(lang->sound[ 4], "コメント");
+		strcpy(lang->sound[ 5], "日付");
+		strcpy(lang->sound[ 6], "著作権");
+		strcpy(lang->sound[ 7], "ビットレート");
+		strcpy(lang->sound[ 8], "再生周波数");
+		strcpy(lang->sound[ 9], "ビット数");
+		strcpy(lang->sound[10], "チャンネル数");
+		strcpy(lang->sound[11], "再生時間");
+		strcpy(lang->sound[12], "再生音量");
+		strcpy(lang->sound[13], "再生速度");
+		strcpy(lang->sound[14], "再生位置");
+		strcpy(lang->sound[15], "巻き戻し");
+		strcpy(lang->sound[16], "早送り");
+		strcpy(lang->sound[17], "低速化");
+		strcpy(lang->sound[18], "高速化");
+		strcpy(lang->sound[19], "頭出し");
+		strcpy(lang->sound[20], "通常速度");
+		strcpy(lang->sound[21], "再生");
+		strcpy(lang->sound[22], "停止");
+		strcpy(lang->sound[23], "終了");
+		strcpy(lang->sound[24], "速度");
+		strcpy(lang->sound[25], "位置");
+		strcpy(lang->sound[26], "音声情報");
+		strcpy(lang->sound[27], "一時停止 / 再開");
+		strcpy(lang->sound[28], "○:早送り ×:巻き戻し △:終了 L1:頭出し L2/R2:位置");
+		strcpy(lang->sound[29], "○:変更 △:終了 L2/R2:位置");
+		strcpy(lang->sound[30], "○:増やす ×:減らす +□:高速 △:終了 L1:標準 L2/R2:位置");
+		strcpy(lang->sound[31], "△:終了 L2/R2:位置");
 		}
 		strcpy(lang->conf_on, "ON");
 		strcpy(lang->conf_off, "OFF");

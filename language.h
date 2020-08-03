@@ -6,6 +6,7 @@
 #define	MAX_FMCB_LANGS 64
 #define	MAX_SKBD_LANGS 32
 #define	MAX_UPDATE_LANGS 32
+#define	MAX_SOUND_LANGS 32
 enum
 {
 	LANG_ENGLISH = 0,
@@ -51,6 +52,7 @@ typedef struct
 	char filer_execute_psb[MAX_LANGUAGE_STR];
 #endif
 	char filer_not_fnt[MAX_LANGUAGE_STR];
+	char filer_not_jpg[MAX_LANGUAGE_STR];
 	char filer_copy_to_clip[MAX_LANGUAGE_STR];
 	char filer_delete[MAX_LANGUAGE_STR];
 	char filer_deletemarkfiles[MAX_LANGUAGE_STR];
@@ -82,6 +84,7 @@ typedef struct
 	char filer_fntfile_hint2[MAX_LANGUAGE_STR];
 	char filer_irxfile_hint1[MAX_LANGUAGE_STR];
 	char filer_irxfile_hint2[MAX_LANGUAGE_STR];
+	char filer_jpgfile_hint[MAX_LANGUAGE_STR];
 	char filer_dir_hint[MAX_LANGUAGE_STR];
 //	char filer_export_files[MAX_LANGUAGE_STR];
 //	char filer_export_header[MAX_LANGUAGE_STR];
@@ -146,6 +149,7 @@ typedef struct
 	char conf_normaltext[MAX_LANGUAGE_STR];
 	char conf_highlighttext[MAX_LANGUAGE_STR];
 	char conf_disabletext[MAX_LANGUAGE_STR];
+	char conf_shadowtext[MAX_LANGUAGE_STR];
 	char conf_folder[MAX_LANGUAGE_STR];
 	char conf_file[MAX_LANGUAGE_STR];
 	char conf_ps2save[MAX_LANGUAGE_STR];
@@ -208,8 +212,19 @@ typedef struct
 	char conf_fullscreen[MAX_LANGUAGE_STR];
 	char conf_imageresize[MAX_LANGUAGE_STR];
 	char conf_autodecode[MAX_LANGUAGE_STR];
+	char conf_bgplay[MAX_LANGUAGE_STR];
+	char conf_volume[MAX_LANGUAGE_STR];
+	char conf_repeat[MAX_LANGUAGE_STR];
+	char conf_sdtv_aspect[MAX_LANGUAGE_STR];
+	char conf_pixelaspect[MAX_LANGUAGE_STR];
+	char conf_aniauto[MAX_LANGUAGE_STR];
+	char conf_position[MAX_LANGUAGE_STR];
 	char conf_viewerinit[MAX_LANGUAGE_STR];
 	char conf_imageresizes[8][MAX_LANGUAGE_STR];
+	char conf_sdtv_square[MAX_LANGUAGE_STR];
+	char conf_sdtv_wide[MAX_LANGUAGE_STR];
+	char conf_sound[8][MAX_LANGUAGE_STR];
+	char conf_imgpos[9][MAX_LANGUAGE_STR];
 	//misc
 	char conf_language[MAX_LANGUAGE_STR];
 	char conf_language_us[MAX_LANGUAGE_STR];
@@ -247,11 +262,30 @@ typedef struct
 	char conf_usbkbd_path[MAX_LANGUAGE_STR];
 	char conf_usbmouse_use[MAX_LANGUAGE_STR];
 	char conf_usbmouse_path[MAX_LANGUAGE_STR];
+	char conf_vmcfs_use[MAX_LANGUAGE_STR];
+	char conf_vmcfs_path[MAX_LANGUAGE_STR];
 	char conf_auto_decompression[MAX_LANGUAGE_STR];
 	char conf_downloadpath[MAX_LANGUAGE_STR];
+	char conf_screenshotflag[MAX_LANGUAGE_STR];
+	char conf_screenshotpad[MAX_LANGUAGE_STR];
+	char conf_screenshotpath[MAX_LANGUAGE_STR];
+	char conf_wallpaperuse[MAX_LANGUAGE_STR];
+	char conf_wallpaperpath[MAX_LANGUAGE_STR];
+	char conf_wallpapermode[MAX_LANGUAGE_STR];
+	char conf_wallpapercontrast[MAX_LANGUAGE_STR];
+	char conf_wallpaperbrightness[MAX_LANGUAGE_STR];
+	char conf_wallpaperwindow[MAX_LANGUAGE_STR];
+	char conf_preview[MAX_LANGUAGE_STR];
 	char conf_miscsettinginit[MAX_LANGUAGE_STR];
 	char conf_filersettinginit[MAX_LANGUAGE_STR];
 	char conf_devicesettinginit[MAX_LANGUAGE_STR];
+	char conf_wp_mode[8][MAX_LANGUAGE_STR];
+	char conf_wp_on[2][MAX_LANGUAGE_STR];
+	char conf_wallpaperreload[MAX_LANGUAGE_STR];
+	char conf_wallpaperload[MAX_LANGUAGE_STR];
+	char conf_wallpaperdecode[MAX_LANGUAGE_STR];
+	char conf_wallpaperresize[MAX_LANGUAGE_STR];
+	char conf_wallpapererror[MAX_LANGUAGE_STR];
 	//gsconfig
 	char gs_easymode[MAX_LANGUAGE_STR];
 	char gs_detailmode[MAX_LANGUAGE_STR];
@@ -264,6 +298,8 @@ typedef struct
 	char gs_name[MAX_LANGUAGE_STR];
 	char gs_width[MAX_LANGUAGE_STR];
 	char gs_height[MAX_LANGUAGE_STR];
+	char gs_widthf[MAX_LANGUAGE_STR];
+	char gs_heightf[MAX_LANGUAGE_STR];
 	char gs_left[MAX_LANGUAGE_STR];
 	char gs_top[MAX_LANGUAGE_STR];
 	char gs_mag_x[MAX_LANGUAGE_STR];
@@ -289,6 +325,12 @@ typedef struct
 	char gs_f1_top[MAX_LANGUAGE_STR];
 	char gs_preset[MAX_LANGUAGE_STR];
 	char gs_init[MAX_LANGUAGE_STR];
+	//char gs_apply[MAX_LANGUAGE_STR];
+	char gs_target[MAX_LANGUAGE_STR];
+	char gs_read[MAX_LANGUAGE_STR];
+	char gs_write[MAX_LANGUAGE_STR];
+	char gse_editsize[MAX_LANGUAGE_STR];
+	char gse_magnify[MAX_LANGUAGE_STR];
 	char gse_convert[MAX_LANGUAGE_STR];
 	char gs_vramsize[MAX_LANGUAGE_STR];
 
@@ -317,6 +359,7 @@ typedef struct
 	
 	char fmcb[MAX_FMCB_LANGS][MAX_LANGUAGE_STR];
 	char nupd[MAX_UPDATE_LANGS][MAX_LANGUAGE_STR];
+	char sound[MAX_SOUND_LANGS][MAX_LANGUAGE_STR];
 	char kbd_page[16][MAX_LANGUAGE_STR];
 	char kbd_enter[MAX_LANGUAGE_STR];
 	char kbd_abort[MAX_LANGUAGE_STR];

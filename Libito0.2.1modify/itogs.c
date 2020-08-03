@@ -30,6 +30,8 @@ uint64 itoPacket[ 20 * 2 + 1024] align(16);
 
 uint8	itoActiveFrameBuffer;
 uint8	itoVisibleFrameBuffer;
+static int dither;
+static uint64 matrix[2];
 
 //-----------------------------------------------------------------
 // Global Settings for GS
@@ -69,6 +71,9 @@ void itoGsEnvSubmit(itoGsEnv* env)
 		ito.screen.height = height;
 		ito.screen.width = bufferwidth;
 		ito.screen.dwidth = width;
+		dither = env->dither;
+		matrix[0] = env->matrix[0];
+		matrix[1] = env->matrix[1];
 
 		//-----------------------------------------------------------------
 		// offset_x, offset_y calculations taken from duke's lib.
@@ -134,8 +139,8 @@ void itoGsEnvSubmit(itoGsEnv* env)
 
 			itoPRMODECONT(PRMODE_PRIM); // use prim register for prim attributes
 			itoCOLCLAMP(TRUE); // Perform ColClamp
-			itoDITHER(env->dither);
-			itoMATRIX(env->matrix);
+			itoDITHER(dither);
+			itoMATRIX(matrix[0] * dither);
 		
 		itoSendActivePacket();
 		itoDmaWait();
@@ -218,6 +223,7 @@ void itoTextureColorComponet(uint8 mode)
 }
 
 
+#if 0
 void itoLoadClut(void* src, uint32 dest, uint16 cbw, uint8 psm, uint8 cpsm, uint16 x, uint16 y)
 {
 	uint16 w = 0, h = 0;
@@ -402,6 +408,7 @@ void itoLoadTexture(void *src, uint32 dest,
 	itoInitGsPacket();
 
 }
+#endif
 
 uint8 itoGetPixelSize(uint8 mode)
 {
@@ -649,6 +656,10 @@ void itoRGBAQ(uint64 rgbaq)
 //-----------------------------------------------------------------
 void itoSCISSOR(uint16 scissor_x1, uint16 scissor_y1, uint16 scissor_x2, uint16 scissor_y2)
 {
+	if (scissor_x1 > 2047) scissor_x1 = 2047;
+	if (scissor_y1 > 2047) scissor_y1 = 2047;
+	if (scissor_x2 > 2047) scissor_x2 = 2047;
+	if (scissor_y2 > 2047) scissor_y2 = 2047;
 	itoActivePacket[0] = (((uint64)(scissor_y2)) << 48) | (((uint64)(scissor_y1)) << 32) | (((uint64)(scissor_x2)) << 16) | scissor_x1;
 	itoActivePacket[1] = GS_REG_SCISSOR_1+itoActiveFrameBuffer;
 	itoActivePacket+=2;
@@ -892,6 +903,15 @@ void itoSetActiveFrameBuffer(uint8 buffer)
 	itoActiveFrameBuffer = buffer;
 }
 
+void itoSetActiveFrameBufferWithMatrix(uint8 buffer)
+{
+	itoActiveFrameBuffer = buffer;
+	if (dither)	{
+		itoGifTag(1, TRUE, FALSE, 0, ITO_GIFTAG_TYPE_LIST, 1, ITO_GIFTAG_A_D);
+		itoMATRIX(matrix[buffer]);
+		itoCheckGsPacket();
+	}
+}
 uint8 itoGetActiveFrameBuffer()
 {
 	return itoActiveFrameBuffer;

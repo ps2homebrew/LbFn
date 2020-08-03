@@ -40,6 +40,7 @@ enum
 	DEF_USBM_DEVICES = 4,
 	DEF_USBKBD_FLAG = FALSE,
 	DEF_USBMOUSE_FLAG = FALSE,
+	DEF_VMC_FLAG = FALSE,
 	DEF_SKBD_UPDATE = TRUE,
 
 	DEF_TXT_LINENUM    = FALSE,
@@ -49,6 +50,20 @@ enum
 	DEF_TXT_WORDWRAP   = FALSE,
 	DEF_IMG_RESIZE     = 1,
 	DEF_AUTODECODE     = TRUE,
+	DEF_IMG_SDTVASPECT = 0,	// 0=4:3, 1=16:9
+	DEF_IMG_PIXELASPECT= TRUE,	// apply 10:11,40:33,12:11,16:11
+	DEF_IMG_ANIAUTO    = TRUE,			//┌ 0 1 2
+	DEF_IMG_POSITION   = 4, //------------┤ 3 4 5
+	DEF_SND_BGPLAY     = FALSE,			//└ 6 7 8
+	DEF_SND_VOLUME     = 60,			
+	DEF_SND_REPEAT     = 1,	// 0=off, 1=repeat one, 2=repeat all ?, 3=shuffle ?
+	
+	DEF_SCREENSHOT_FLAG = FALSE,
+	DEF_SCREENSHOT_BUTTON = PAD_R3,	// PAD_L3|PAD_R3,
+	DEF_WALLPAPER = 0,	// 0=off, 1=screen, 2=screen and window
+	DEF_WALLPAPERMODE = 0,	// 0=center, 1=tiling, 2-4=all screen area(inside,outside,all)
+	DEF_WALLPAPERBRIGHT = 0,	// bitween -128 to 128, default(normal) is 0 and -32.
+	DEF_WINDOWBRIGHT = -32,
 };
 
 //CONFIG
@@ -83,7 +98,6 @@ enum
 enum
 {
 	GS_EASYMODE,
-	//GS_DETAILMODE,
 	GS_ALLINIT,
 	GS_OK,
 	GS_CANCEL,
@@ -95,6 +109,7 @@ enum
 {
 	GSE_NAME=1,
 	GSE_VMODE,
+	GSE_SIZENUM,
 	GSE_WIDTH,
 	GSE_HEIGHT,
 	GSE_DEPTH,
@@ -103,38 +118,6 @@ enum
 	GSE_AUTOAPPLY,
 	GSE_CONVERT,
 	GSE_INIT,
-};
-
-//GSCONFIG/DETAILMODE
-enum
-{
-	GSD_NUMBER=1,
-	GSD_NAME,
-	GSD_WIDTH,
-	GSD_HEIGHT,
-	GSD_LEFT,
-	GSD_TOP,
-	GSD_MAG_X,
-	GSD_MAG_Y,
-	GSD_DEPTH,
-	GSD_X1,
-	GSD_Y1,
-	GSD_X2,
-	GSD_Y2,
-	GSD_ZLEFT,
-	GSD_ZTOP,
-	GSD_ZDEPTH,
-	GSD_DITHER,
-	GSD_INTERLACE,
-	GSD_FFMODE,
-	GSD_VMODE,
-	GSD_VESA,
-	GSD_DOUBLE,
-	GSD_F0_LEFT,
-	GSD_F0_TOP,
-	GSD_F1_LEFT,
-	GSD_F1_TOP,
-	GSD_INIT,
 };
 
 //LAUNCHER SETTING
@@ -185,6 +168,7 @@ enum
 	COLOR10,
 	COLOR11,
 	COLOR12,
+	COLOR13,
 	FLICKER_ALPHA,
 	PRESETCOLOR,
 };
@@ -256,7 +240,14 @@ enum
 	IMG_FULLSCREEN,
 	IMG_RESIZE,
 	TXT_AUTODECODE,
+	IMG_SDTVASPECT,
+	IMG_PIXELASPECT,
+	IMG_ANIAUTO,
+	IMG_POSITION,
+	SND_VOLUME,
+	SND_REPEAT,
 	VIEWERINIT,
+	SND_BGPLAY,
 };
 
 //MISC SETTING
@@ -265,7 +256,16 @@ enum
 	LANG=1,
 	DISCCONTROL,
 	DOWNLOADPATH,
+	SCRNSHOTFLAG,
+	SCRNSHOTPAD,
+	SCRNSHOTPATH,
 	SKBDUPDATE,
+	WALLPAPERFLAG,
+	WALLPAPERPATH,
+	WALLPAPERMODE,
+	WALLPAPERBRIGHT,
+	WINDOWBRIGHT,
+	WALLPAPERPREVIEW,
 	MISCINIT,
 };
 
@@ -279,16 +279,16 @@ int tmpi[32];
 char tmps[32][MAX_PATH];
 static uint64 clut[8][16] = 
 {
-	{	0x106040, 0xC0C0C0, 0x00C0FF, 0xFFFFFF, 0x00A0A0, 0x606060,
-		0x00C000, 0x0000A0, 0xE08000, 0xA8A8A8, 0x0060C0, 0x000000,
-	},{	0x321E1E, 0x504040, 0xC0C0C0, 0x808080, 0x008080, 0x808080,
-		0x008000, 0x000080, 0xFF8000, 0x504040, 0x0060C0, 0x000000,
-	},{	0x808080, 0x404040, 0x000060, 0x000000, 0x00A0A0, 0x505050,
-		0x008000, 0x000080, 0xC06000, 0x404040, 0x0060C0, 0x000000,
-	},{	0x181818, 0x404040, 0x0080FF, 0x909090, 0x008080, 0x808080,
-		0x008000, 0x000080, 0xFF8000, 0x404040, 0x0060C0, 0x000000,
-	},{	0x000000, 0x7A6450, 0x80FF80, 0xA0A0A0, 0x00A0A0, 0xA0A0A0,
-		0x00A000, 0x2020A0, 0xFFA000, 0x303030, 0x0070C0, 0x100010,
+	{	0x106040, 0xC0C0C0, 0x00C0FF, 0xFFFFFF, 0x00A0A0, 0x606060, 0x00C000, 
+		0x0000A0, 0xE08000, 0xA8A8A8, 0x0060C0, 0x000000, 0x000000,
+	},{	0x321E1E, 0x504040, 0xC0C0C0, 0x808080, 0x008080, 0x808080,	0x008000, 
+		0x000080, 0xFF8000, 0x504040, 0x0060C0, 0x000000, 0x000000,
+	},{	0x808080, 0x404040, 0x000060, 0x000000, 0x00A0A0, 0x505050,	0x008000, 
+		0x000080, 0xC06000, 0x404040, 0x0060C0, 0x000000, 0x000000,
+	},{	0x181818, 0x404040, 0x0080FF, 0x909090, 0x008080, 0x808080,	0x008000, 
+		0x000080, 0xFF8000, 0x404040, 0x0060C0, 0x000000, 0x000000,
+	},{	0x000000, 0x7A6450, 0x80FF80, 0xA0A0A0, 0x00A0A0, 0xA0A0A0,	0x00A000, 
+		0x2020A0, 0xFFA000, 0x303030, 0x0070C0, 0x100010, 0x000000,
 	}
 };
 
@@ -298,6 +298,7 @@ static int clutnum[16] = {
 	COLOR_TEXT,
 	COLOR_HIGHLIGHTTEXT,
 	COLOR_GRAYTEXT,
+	COLOR_SHADOWTEXT,
 	COLOR_DIR,
 	COLOR_FILE,
 	COLOR_PS2SAVE,
@@ -310,10 +311,8 @@ static int clutnum[16] = {
 /*	画面モードメモ 
 02	NTSC	 720x 480	60
 03	PAL		 720x 576	50
-72	NTSC	 720x 480	60
-73	PAL		 720x 576	50
-82	NTSC	 720x 480	60
-83	PAL		 720x 576	50
+82	NTSC	 720x 480	60	(Protected)
+83	PAL		 720x 576	50	(Protected)
 1A	VESA	 640x 480	60
 1B	VESA	 640x 480	72
 1C	VESA	 640x 480	75
@@ -330,7 +329,7 @@ static int clutnum[16] = {
 4A	VESA	1280x1024	60
 4B	VESA	1280x1024	75
 50	480p	 720x 480	60
-D0	480p	 720x 480	60
+D0	480p	 720x 480	60	(Protected?)
 51	1080i	1920x1080	60
 52	720p	1280x 720	60
 53	576p	 720x 576	50
@@ -427,36 +426,36 @@ void InitGSREG(void)
 {// 480,576,96,48,275+48=323
 	char src[31][128] = {
 		//"\"NTSC\",640,224,1914,275,3,0,4,640,0,0,640,224,0,448,2,0,1,1,2,0,2,0,0,0,224",
-		"\"NTSC\",640,448,720,480,0x02,1914,275,3,0,4,0,1,0,0,1,2",
-		"\"PAL\",640,512,720,576,0x03,1934,328,3,0,4,0,1,0,0,1,2",
-		"\"480p\",684,448,720,480,0x50,948,275,1,0,4,0,0,0,0,1,2",
+		"\"NTSC\",640,448,720,480,0x02,1914,276,3,0,4,0,1,0,0,1,2",
+		"\"PAL\",640,512,720,576,0x03,1950,328,3,0,4,0,1,0,0,1,2",
+		"\"480p\",684,448,720,480,0x50,948,276,1,0,4,0,0,0,0,1,2",
 		"\"1080i\",1824,1024,1920,1080,0x51,1194,578,0,0,2,1,1,0,0,0,2",
 		"\"720p\",1216,684,1280,720,0x52,938,384,0,0,2,1,0,0,0,1,2",
-		"\"CFG0 (NTSC,640x224)\",640,224,640,224,0x02,1914,275,3,0,4,0,1,1,0,1,2",
-		"\"CFG1 (NTSC,832x448)\",832,448,832,448,0x02,1914,275,2,0,4,0,1,0,0,1,2",
-		"\"CFG2 (PAL,832x512)\",832,512,832,512,0x03,1934,328,2,0,4,0,1,0,0,1,2",
-		"\"CFG3 (480p,640x400)\",640,400,640,400,0x50,948,275,1,0,4,0,0,0,0,1,2",
-		"\"CFG4 (1080i,832x512)\",832,512,832,512,0x51,1194,578,1,1,4,0,1,0,0,1,2",
-		"\"CFG5 (1080i,1152x864)\",1152,864,1152,864,0x51,1195,578,0,0,2,1,1,0,0,1,2",
-		"\"CFG6 (1080i,1280x768)\",1280,768,1280,768,0x51,1195,578,0,0,2,1,1,0,0,1,2",
-		"\"CFG7 (1080i,1600x448)\",1600,448,1600,448,0x51,1195,578,0,0,2,1,1,1,0,1,2",
-		"\"CFG8 (720p,960x540)\",960,540,960,540,0x52,938,384,0,0,4,0,0,0,0,1,2",
-		"\"CFG9 (720p,1024x640)\",1024,640,1024,640,0x52,938,384,0,0,2,1,0,0,0,1,2",
-		"\"RGB 640x480@60Hz\",640,480,640,480,0x1A,920,258,1,0,4,0,0,0,0,1,2",
-		"\"RGB 640x480@72Hz\",640,480,640,480,0x1B,970,258,1,0,4,0,0,0,0,1,2",
-		"\"RGB 640x480@75Hz\",640,480,640,480,0x1C,1000,258,1,0,4,0,0,0,0,1,2",
-		"\"RGB 640x480@85Hz\",640,480,640,480,0x1D,900,258,1,0,4,0,0,0,0,1,2",
-		"\"RGB 800x600@56Hz\",800,600,800,600,0x2A,1250,325,1,0,4,0,0,0,0,1,2",
-		"\"RGB 800x600@60Hz\",800,600,800,600,0x2B,1265,325,1,0,4,0,0,0,0,1,2",
-		"\"RGB 800x600@72Hz\",800,600,800,600,0x2C,1265,325,1,0,4,0,0,0,0,1,2",
-		"\"RGB 800x600@75Hz\",800,600,800,600,0x2D,1310,325,1,0,4,0,0,0,0,1,2",
-		"\"RGB 800x600@85Hz\",800,600,800,600,0x2E,1300,325,1,0,4,0,0,0,0,1,2",
-		"\"RGB 1024x768@60Hz\",1024,768,1024,768,0x3B,1604,414,1,0,2,1,0,0,0,1,2",
-		"\"RGB 1024x768@70Hz\",1024,768,1024,768,0x3C,778,414,0,0,2,1,0,0,0,1,2",
-		"\"RGB 1024x768@75Hz\",1024,768,1024,768,0x3D,772,414,0,0,2,1,0,0,0,1,2",
-		"\"RGB 1024x768@85Hz\",1024,768,1024,768,0x3E,802,414,0,0,2,1,0,0,0,1,2",
-		"\"RGB 1280x1024@60Hz\",1280,1024,1280,1024,0x4A,990,552,0,0,2,1,0,0,0,0,2",
-		"\"RGB 1280x1024@75Hz\",1280,1024,1280,1024,0x4B,990,552,0,0,2,1,0,0,0,0,2",
+		"\"CFG1 (NTSC , 832x448)\",832,448,940,480,0x02,1914,276,2,0,4,0,1,0,0,1,2",
+		"\"CFG2 (PAL  , 832x512)\",832,512,940,576,0x03,1950,328,2,0,4,0,1,0,0,1,2",
+		"\"CFG3 (480p , 640x400)\",640,400,640,400,0x50,948,276,1,0,4,0,0,0,0,1,2",
+		"\"CFG4 (1080i, 912x512)\",912,512,960,540,0x51,1195,578,1,1,4,0,1,0,0,1,2",
+		"\"CFG5 (1080i,1216x684)\",1216,684,1280,720,0x51,1195,578,0,0,2,1,1,0,0,1,2",
+		"\"CFG6 (720p , 960x540)\",960,540,960,540,0x52,938,384,0,0,4,0,0,0,0,1,2",
+		"\"CFG7 (720p ,1024x576)\",1024,576,1024,576,0x52,938,384,0,0,2,1,0,0,0,1,2",
+		"\"DVD NTSC\",640,448,720,480,0x82,1914,276,3,0,4,0,1,0,0,1,2",
+		"\"DVD PAL\",640,512,720,576,0x83,1950,328,3,0,4,0,1,0,0,1,2",
+		"\"DVD 480p\",684,448,720,480,0xD0,948,276,1,0,4,0,0,0,0,1,2",
+		"\"VGA 60Hz\",640,480,640,480,0x1A,920,258,1,0,4,0,0,0,0,1,2",
+		"\"VGA 72Hz\",640,480,640,480,0x1B,970,258,1,0,4,0,0,0,0,1,2",
+		"\"VGA 75Hz\",640,480,640,480,0x1C,1000,258,1,0,4,0,0,0,0,1,2",
+		"\"VGA 85Hz\",640,480,640,480,0x1D,900,258,1,0,4,0,0,0,0,1,2",
+		"\"SVGA 56Hz\",800,600,800,600,0x2A,1250,325,1,0,4,0,0,0,0,1,2",
+		"\"SVGA 60Hz\",800,600,800,600,0x2B,1265,325,1,0,4,0,0,0,0,1,2",
+		"\"SVGA 72Hz\",800,600,800,600,0x2C,1265,325,1,0,4,0,0,0,0,1,2",
+		"\"SVGA 75Hz\",800,600,800,600,0x2D,1310,325,1,0,4,0,0,0,0,1,2",
+		"\"SVGA 85Hz\",800,600,800,600,0x2E,1300,325,1,0,4,0,0,0,0,1,2",
+		"\"XGA 60Hz\",1024,768,1024,768,0x3B,1604,414,1,0,2,1,0,0,0,1,2",
+		"\"XGA 70Hz\",1024,768,1024,768,0x3C,778,414,0,0,2,1,0,0,0,1,2",
+		"\"XGA 75Hz\",1024,768,1024,768,0x3D,772,414,0,0,2,1,0,0,0,1,2",
+		"\"XGA 85Hz\",1024,768,1024,768,0x3E,802,414,0,0,2,1,0,0,0,1,2",
+		"\"SXGA 60Hz\",1280,1024,1280,1024,0x4A,990,552,0,0,2,1,0,0,0,0,2",
+		"\"SXGA 75Hz\",1280,1024,1280,1024,0x4B,990,552,0,0,2,1,0,0,0,0,2",
 		"\"576p\",684,512,720,576,0x53,976,352,1,0,4,0,0,0,0,1,2",
 		//"name",w,h,w,h,vmode,left,top,magx,magy,psm,dither,interlace,ffmode,vesa, dblbuf,zpsm
 	};
@@ -472,9 +471,11 @@ void InitGSREG(void)
 		strtogsreg(i+1,src[i]);
 		gsregs[i+1].loaded = 1;
 	}
-	if (boot==PCSX_BOOT)
+	if (boot==PCSX_BOOT) {
 		for(i=0;i<3;i++)
 			gsregs[i+1].height=480;
+		gsregs[31].height=480;
+	}
 	gsregs[0].vmode = ITO_VMODE_AUTO;
 }
 
@@ -560,6 +561,7 @@ void InitColorSetting(void)
 	setting->color[COLOR_GRAYTEXT]		= clut[0][9];
 	setting->color[COLOR_PSU]			= clut[0][10];
 	setting->color[COLOR_OUTSIDE]		= clut[0][11];
+	setting->color[COLOR_SHADOWTEXT]	= clut[0][12];
 	setting->flicker_alpha = DEF_FLICKER_ALPHA;
 }
 
@@ -594,20 +596,30 @@ void InitDeviceSetting(void)
 	strcpy(setting->usbkbd_path, "mc:/SYS-CONF/PS2KBD.IRX");
 	setting->usbmouse_flag = DEF_USBMOUSE_FLAG;
 	strcpy(setting->usbmouse_path, "mc:/SYS-CONF/PS2MOUSE.IRX");
+	setting->vmc_flag = DEF_VMC_FLAG;
+	strcpy(setting->vmc_path, "mc:/SYS-CONF/VMC_FS.IRX");
 }
 
 //-------------------------------------------------
 // VIEWER SETTINGを初期化
 void InitViewerSetting(void)
 {
-	setting->txt_linenumber = DEF_TXT_LINENUM;
-	setting->txt_tabmode 	= DEF_TXT_TABMODE;
-	setting->txt_chardisp 	= DEF_TXT_CHARDISP;
-	setting->img_fullscreen = DEF_IMG_FULLSCREEN;
-	setting->txt_wordwrap	= DEF_TXT_WORDWRAP;
-	setting->img_resize 	= DEF_IMG_RESIZE;
-	setting->txt_autodecode = DEF_AUTODECODE;
-	set_viewerconfig(setting->txt_linenumber, setting->txt_tabmode, setting->txt_chardisp, setting->img_fullscreen, setting->txt_wordwrap, setting->img_resize);
+	setting->txt_linenumber		= DEF_TXT_LINENUM;
+	setting->txt_tabmode 		= DEF_TXT_TABMODE;
+	setting->txt_chardisp 		= DEF_TXT_CHARDISP;
+	setting->img_fullscreen		= DEF_IMG_FULLSCREEN;
+	setting->txt_wordwrap		= DEF_TXT_WORDWRAP;
+	setting->img_resize 		= DEF_IMG_RESIZE;
+	setting->txt_autodecode		= DEF_AUTODECODE;
+	setting->img_sdtv_aspect	= DEF_IMG_SDTVASPECT;
+	setting->img_pixel_aspect	= DEF_IMG_PIXELASPECT;
+	setting->img_aniauto 		= DEF_IMG_ANIAUTO;
+	setting->img_position		= DEF_IMG_POSITION;
+	setting->snd_bgplay			= DEF_SND_BGPLAY;
+	setting->snd_volume			= DEF_SND_VOLUME;
+	setting->snd_repeat			= DEF_SND_REPEAT;
+	set_viewerconfig((int[]){setting->txt_linenumber, setting->txt_tabmode, setting->txt_chardisp, setting->img_fullscreen, setting->txt_wordwrap, setting->img_resize, setting->img_aniauto, setting->img_position});
+	
 }
 
 //-------------------------------------------------
@@ -617,7 +629,16 @@ void InitMiscSetting(void)
 	setting->discControl = DEF_DISCCONTROL;
 	setting->language = DEF_LANGUAGE;
 	strcpy(setting->downloadpath, "mc:/BOOT/");
+	setting->screenshotenable = DEF_SCREENSHOT_FLAG;
+	setting->screenshotbutton = DEF_SCREENSHOT_BUTTON;
+	strcpy(setting->screenshotpath, "mc:/SYS-CONF/");
+//	strcpy(setting->screenshotpath, "host:/");
 	setting->kbd_update = DEF_SKBD_UPDATE;
+	setting->wallpaperpath[0] = 0;
+	setting->wallpaper[0].flag = DEF_WALLPAPER;
+	setting->wallpaper[0].clipmode = DEF_WALLPAPERMODE;
+	setting->wallpaper[0].brightness = DEF_WALLPAPERBRIGHT;
+	setting->wallpaper[1].brightness = DEF_WINDOWBRIGHT;
 }
 
 //-------------------------------------------------
@@ -702,7 +723,7 @@ int strtogsreg(int num, char *src)
 	int i,j;
 	int psmtable[] = {ITO_CLUT4, ITO_CLUT8, ITO_RGBA16, ITO_RGB24, ITO_RGBA32};
 	int zpsmtable[] = {ITO_ZBUF16, ITO_ZBUF16S, ITO_ZBUF16, ITO_ZBUF24, ITO_ZBUF32};
-	int ffmodetable[] = {ITO_FIELD, ITO_FRAME};
+//	int ffmodetable[] = {ITO_FIELD, ITO_FRAME, 2, 3};
 	i = explodeconfig(src);
 	
 	if (i != 17){
@@ -729,7 +750,8 @@ int strtogsreg(int num, char *src)
 	gsregs[num].psm = psmtable[tmpi[j++]];
 	gsregs[num].dither = tmpi[j++];
 	gsregs[num].interlace = tmpi[j++];
-	gsregs[num].ffmode = ffmodetable[tmpi[j++]];
+//	gsregs[num].ffmode = ffmodetable[tmpi[j++]];
+	gsregs[num].ffmode = tmpi[j++];
 	gsregs[num].vesa = tmpi[j++];
 
 	gsregs[num].doublebuffer = tmpi[j++];
@@ -745,7 +767,7 @@ int gsregtostr(char *dst, int num)
 {
 	int psmtable[] = {4,3,2,1,0};
 	int zpsmtable[] = {4,3,2,0};
-	int ffmodetable[] = {0,1};
+//	int ffmodetable[] = {0,1,2,2};
 	*dst = 0;
 	if (!gsregs[num].loaded) return 0;
 	if (!gsregs[num].name[0]) return 0;
@@ -767,7 +789,8 @@ int gsregtostr(char *dst, int num)
 	psmtable[gsregs[num].psm & 15],
 	gsregs[num].dither,
 	gsregs[num].interlace,
-	ffmodetable[(int) gsregs[num].ffmode],
+//	ffmodetable[(int) gsregs[num].ffmode],
+	gsregs[num].ffmode,
 	gsregs[num].vesa,
 
 	gsregs[num].doublebuffer,
@@ -980,6 +1003,8 @@ void saveConfig(char *mainMsg)
 	if(cnf_setstr("color_psu_file", tmp)<0) goto error;
 	sprintf(tmp, "%08lX", setting->color[COLOR_OUTSIDE]);
 	if(cnf_setstr("color_outside", tmp)<0) goto error;
+	sprintf(tmp, "%08lX", setting->color[COLOR_SHADOWTEXT]);
+	if(cnf_setstr("color_shadow_text", tmp)<0) goto error;
 	sprintf(tmp, "%d", setting->flicker_alpha);
 	if(cnf_setstr("flicker_alpha", tmp)<0) goto error;
 	//font
@@ -1060,6 +1085,9 @@ void saveConfig(char *mainMsg)
 	sprintf(tmp, "%d", setting->usbmouse_flag);
 	if(cnf_setstr("usbms", tmp)<0) goto error;
 	if(cnf_setstr("usbmsfile", setting->usbmouse_path)<0) goto error;
+	sprintf(tmp, "%d", setting->vmc_flag);
+	if(cnf_setstr("vmc", tmp)<0) goto error;
+	if(cnf_setstr("vmcfile", setting->vmc_path)<0) goto error;
 	sprintf(tmp, "%d", setting->txt_linenumber);
 	if(cnf_setstr("linenumber", tmp)<0) goto error;
 	sprintf(tmp, "%d", setting->txt_tabmode);
@@ -1074,10 +1102,50 @@ void saveConfig(char *mainMsg)
 	if(cnf_setstr("imageresize", tmp)<0) goto error;
 	sprintf(tmp, "%d", setting->txt_autodecode);
 	if(cnf_setstr("autodecode", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->img_sdtv_aspect);
+	if(cnf_setstr("sdtv_aspect", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->img_pixel_aspect);
+	if(cnf_setstr("pixel_aspect", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->img_aniauto);
+	if(cnf_setstr("autoanimation", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->img_position);
+	if(cnf_setstr("imageoffset", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->snd_bgplay);
+	if(cnf_setstr("bgplay_enable", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->snd_volume);
+	if(cnf_setstr("defaultvolume", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->snd_repeat);
+	if(cnf_setstr("repeatmode", tmp)<0) goto error;
 	if(cnf_setstr("downloadpath", setting->downloadpath)<0) goto error;
+	sprintf(tmp, "%d", setting->screenshotenable);
+	if(cnf_setstr("screenshot", tmp)<0) goto error;
+	sprintf(tmp, "0x%08x", setting->screenshotbutton);
+	if(cnf_setstr("screenshotpad", tmp)<0) goto error;
+	if(cnf_setstr("screenshotpath", setting->screenshotpath)<0) goto error;
+	if(cnf_setstr("wallpaperpath", setting->wallpaperpath)<0) goto error;
 	sprintf(tmp, "%d", setting->kbd_update);
 	if(cnf_setstr("kbd_update", tmp)<0) goto error;
 	
+	for(i=0;i<wp_has;i++){
+		sprintf(tmp, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d", 
+			setting->wallpaper[i].flag		,
+			setting->wallpaper[i].clipmode	,
+			setting->wallpaper[i].brightness,
+			setting->wallpaper[i].contrast	,
+			setting->wallpaper[i].sl		,
+			setting->wallpaper[i].st		,
+			setting->wallpaper[i].sw		,
+			setting->wallpaper[i].sh		,
+			setting->wallpaper[i].dl		,
+			setting->wallpaper[i].dt		,
+			setting->wallpaper[i].dw		,
+			setting->wallpaper[i].dh		
+		);
+		sprintf(temp, "wallpaper%d", i+1);
+		if(cnf_setstr(temp, tmp)<0) goto error;
+	}
+//	sprintf(tmp, "%d", setting->wallpaper);
+//	if(cnf_setstr("wallpaper", tmp)<0) goto error;
 	ret = 0;
 	for(i=6;i<MAX_GSREG;i++){
 		sprintf(temp, "gsreg%d", i);
@@ -1265,6 +1333,8 @@ void loadConfig(char *mainMsg)
 				setting->color[COLOR_PSU] = strtoul(tmp, NULL, 16);
 			if(cnf_getstr("color_outside", tmp, "")>=0)
 				setting->color[COLOR_OUTSIDE] = strtoul(tmp, NULL, 16);
+			if(cnf_getstr("color_shadow_text", tmp, "")>=0)
+				setting->color[COLOR_SHADOWTEXT] = strtoul(tmp, NULL, 16);
 			if(cnf_getstr("flicker_alpha", tmp, "")>=0)
 				settingcheck(&setting->flicker_alpha, tmp, 0, 128, DEF_FLICKER_ALPHA);
 			//font
@@ -1347,6 +1417,10 @@ void loadConfig(char *mainMsg)
 				settingcheck(&setting->usbmouse_flag, tmp, 0, 1, DEF_USBMOUSE_FLAG);
 			if(cnf_getstr("usbmsfile", tmp, "")>=0)
 				strcpy(setting->usbmouse_path, tmp);
+			if(cnf_getstr("vmc", tmp, "")>=0)
+				settingcheck(&setting->vmc_flag, tmp, 0, 1, DEF_VMC_FLAG);
+			if(cnf_getstr("vmcfile", tmp, "")>=0)
+				strcpy(setting->vmc_path, tmp);
 			if(cnf_getstr("linenumber", tmp, "")>=0)
 				settingcheck(&setting->txt_linenumber, tmp, 0, 1, DEF_TXT_LINENUM);
 			if(cnf_getstr("tabmode", tmp, "")>=0)
@@ -1361,13 +1435,46 @@ void loadConfig(char *mainMsg)
 				settingcheck(&setting->img_resize, tmp, 0, 15, DEF_IMG_RESIZE);
 			if(cnf_getstr("autodecode", tmp, "")>=0)
 				settingcheck(&setting->txt_autodecode, tmp, 0, 1, DEF_AUTODECODE);
+			if(cnf_getstr("sdtv_aspect", tmp, "")>=0)		settingcheck(&setting->img_sdtv_aspect	, tmp, 0, 1, DEF_IMG_SDTVASPECT);
+			if(cnf_getstr("pixel_aspect", tmp, "")>=0)		settingcheck(&setting->img_pixel_aspect	, tmp, 0, 1, DEF_IMG_PIXELASPECT);
+			if(cnf_getstr("autoanimation", tmp, "")>=0)		settingcheck(&setting->img_aniauto		, tmp, 0, 1, DEF_IMG_ANIAUTO);
+			if(cnf_getstr("imageoffset", tmp, "")>=0)		settingcheck(&setting->img_position		, tmp, 0, 8, DEF_IMG_POSITION);
+			if(cnf_getstr("bgplay_enable", tmp, "")>=0)		settingcheck(&setting->snd_bgplay		, tmp, 0, 1, DEF_SND_BGPLAY);
+			if(cnf_getstr("defaultvolume", tmp, "")>=0)		settingcheck(&setting->snd_volume		, tmp,0,100, DEF_SND_VOLUME);
+			if(cnf_getstr("repeatmode", tmp, "")>=0)		settingcheck(&setting->snd_repeat		, tmp, 0, 4, DEF_SND_REPEAT);
 			if(cnf_getstr("downloadpath", tmp, "")>=0)
 				strcpy(setting->downloadpath, tmp);
-			set_viewerconfig(setting->txt_linenumber, setting->txt_tabmode, setting->txt_chardisp, setting->img_fullscreen, setting->txt_wordwrap, setting->img_resize);
+			if(cnf_getstr("screenshot", tmp, "")>=0)		settingcheck(&setting->screenshotenable	, tmp, 0, 1, DEF_SCREENSHOT_FLAG);
+			if(cnf_getstr("screenshotpad", tmp, "")>=0)		setting->screenshotbutton = strtol(tmp, NULL, 0);//		, tmp, 0, 4, DEF_SCREENSHOT_BUTTON);
+			if(cnf_getstr("screenshotpath", tmp, "")>=0)
+				strcpy(setting->screenshotpath, tmp);
+			if(cnf_getstr("wallpaperpath", tmp, "")>=0)
+				strcpy(setting->wallpaperpath, tmp);
+		//	if(cnf_getstr("wallpaper", tmp, "")>=0)			settingcheck(&setting->wallpaper		, tmp, 0, 2, DEF_WALLPAPER);
+
+			set_viewerconfig((int[]){setting->txt_linenumber, setting->txt_tabmode, setting->txt_chardisp, setting->img_fullscreen, setting->txt_wordwrap, setting->img_resize, setting->img_aniauto, setting->img_position});
 			if(cnf_getstr("kbd_update", tmp, "")>=0)
 				settingcheck(&setting->kbd_update, tmp, 0, 1, DEF_SKBD_UPDATE);
-			
 
+			for(i=0;i<2;i++){
+				sprintf(gsregstr, "wallpaper%d", i+1);
+				if(cnf_getstr(gsregstr, tmp, "")>=0){
+					int k=0,m;
+					m = explodeconfig(tmp);
+					setting->wallpaper[i].flag		 = tmpi[k++];
+					setting->wallpaper[i].clipmode	 = tmpi[k++];
+					setting->wallpaper[i].brightness = tmpi[k++];
+					setting->wallpaper[i].contrast	 = tmpi[k++];
+					setting->wallpaper[i].sl		 = tmpi[k++];
+					setting->wallpaper[i].st		 = tmpi[k++];
+					setting->wallpaper[i].sw		 = tmpi[k++];
+					setting->wallpaper[i].sh		 = tmpi[k++];
+					setting->wallpaper[i].dl		 = tmpi[k++];
+					setting->wallpaper[i].dt		 = tmpi[k++];
+					setting->wallpaper[i].dw		 = tmpi[k++];
+					setting->wallpaper[i].dh		 = tmpi[k++];
+				}
+			}
 			for (i=1; i<MAX_GSREG; i++) {
 				sprintf(gsregstr, "gsreg%d", i);
 				if(cnf_getstr(gsregstr, tmp, "")>=0)
@@ -1394,6 +1501,7 @@ void loadConfig(char *mainMsg)
 		sprintf(mainMsg, "%s (%s)", lang->conf_initializeconfig, path);
 	}
 	cnf_free();
+	wallpapersetup();
 	return;
 }
 
@@ -1615,7 +1723,7 @@ void config_screen_mode(SETTING *setting)
 	int nList=0, sel, top=0, redraw=framebuffers;
 	int pushed=TRUE;
 	int x, y, y0, y1;
-	int i, ret=-1, oldvmode;
+	int i, ret=-1, oldvmode, wp;
 	char config[MAX_GSREG+2][MAX_PATH];
 
 	oldvmode = setting->tvmode;
@@ -1645,22 +1753,29 @@ void config_screen_mode(SETTING *setting)
 					ret = -1;
 					break;
 				} else if ((sel == 1) || ((gsregs[sel-1].loaded == 1) && ((gsregs[sel-1].vmode != 0x53) || (getromver() >= 200)) && drawDarks(1) && (MessageBox(lang->conf_screenmodemsg1, LBF_VER, MB_OKCANCEL) == IDOK))){
+					void screen_clear(void) {
+						//	int i;
+						for(i=0;i<framebuffers;i++){
+							clrScr(setting->color[COLOR_BACKGROUND]);
+							setScrTmp(msg0, msg1);
+							drawDark();
+							drawScr();
+						}
+					}
+					wp = wallpaper;
 					setting->tvmode = sel-1;
 					SetScreenPosVM();
 					itoGsReset();
 					setupito(setting->tvmode);
 					SetHeight();
-					clrScr(setting->color[COLOR_BACKGROUND]);
-					setScrTmp(msg0, msg1);
-					drawDark();
-					drawScr();
-					clrScr(setting->color[COLOR_BACKGROUND]);
-					setScrTmp(msg0, msg1);
-					drawDark();
-					drawScr();
+					wallpaper = 0;
+					screen_clear();
+				//	wallpapersetup();
+				//	if (wallpaper)	screen_clear();
 					if ((sel == 1) || (MessageBox(lang->conf_screenmodemsg2, LBF_VER, MB_OKCANCEL|MB_DEFBUTTON2|MB_USETIMEOUT) == IDOK)) {
 						ret = sel-1;
 						oldvmode = setting->tvmode;
+						wallpapersetup();
 						break;
 					}
 					setting->tvmode = oldvmode;
@@ -1668,6 +1783,10 @@ void config_screen_mode(SETTING *setting)
 					itoGsReset();
 					setupito(setting->tvmode);
 					SetHeight();
+				//	wallpaper = 0;
+				//	screen_clear();
+				//	wallpapersetup();
+					wallpaper = wp;
 				}
 			}
 			else if(new_pad & PAD_CROSS){	//×
@@ -1751,6 +1870,8 @@ void config_screen_edit(SETTING *setting)
 	int pushed=TRUE;
 	int x, y, y0, y1;
 	int i, tvmode;
+	int oldsize,oldpsm,olddither,oldinter,oldframe;
+	int size,psm,dith,inter,frame;
 	char config[16][MAX_PATH];
 	char pst[5][8] = {	"4bpp", "8bpp", "16bpp", "24bpp", "32bpp"};
 	char fft[2][8] = {"FIELD", "FRAME"};
@@ -1762,6 +1883,11 @@ void config_screen_edit(SETTING *setting)
 	tvmode =  setting->tvmode;
 	if (tvmode == 0) tvmode = ITO_VMODE_AUTO-1;
 	if (gsregs[tvmode].loaded != 1) tvmode = ITO_VMODE_AUTO-1;
+	oldframe = 	frame	= setting->screen_ffmode[tvmode] > 0 ? (setting->screen_ffmode[tvmode]-1):(gsregs[tvmode].ffmode & 3);
+	oldinter =	inter	= setting->screen_interlace[tvmode] > 0 ? (setting->screen_interlace[tvmode]-1):(gsregs[tvmode].interlace & 1);
+	oldpsm =	psm		= setting->screen_depth[tvmode] > 0 ? (5-setting->screen_depth[tvmode]):gsregs[tvmode].psm;
+	oldsize = 	size	= setting->screen_scan[tvmode];
+	olddither =	dith	= setting->screen_dither[tvmode] > 0 ? (setting->screen_dither[tvmode]-1):gsregs[tvmode].dither;
 	
 	while(1){
 		waitPadReady(0, 0);
@@ -1904,11 +2030,29 @@ void config_screen_edit(SETTING *setting)
 			setScrTmp(msg0, msg1);
 			drawScr();
 			redraw--;
+			if (!redraw) {
+				frame	= setting->screen_ffmode[tvmode] > 0 ? (setting->screen_ffmode[tvmode]-1):(gsregs[tvmode].ffmode & 3);
+				inter	= setting->screen_interlace[tvmode] > 0 ? (setting->screen_interlace[tvmode]-1):(gsregs[tvmode].interlace & 1);
+				psm		= setting->screen_depth[tvmode] > 0 ? (5-setting->screen_depth[tvmode]):gsregs[tvmode].psm;
+				size	= setting->screen_scan[tvmode];
+				dith	= setting->screen_dither[tvmode] > 0 ? (setting->screen_dither[tvmode]-1):gsregs[tvmode].dither;
+				if (wallpaper && (oldframe!=frame||oldinter!=inter||psm!=oldpsm||size!=oldsize||dith!=olddither)) {
+					oldframe = frame;
+					oldinter = inter;
+					oldpsm = psm;
+					oldsize = size;
+					olddither = dith;
+					wallpapersetup();
+					redraw = fieldbuffers;
+				}
+			}
 		} else {
 			itoVSync();
 		}
 	}
 	//return ret;
+	if (setting->wallpaper[0].flag && setting->wallpaperpath[0] && (oldframe!=frame||oldinter!=inter||psm!=oldpsm||size!=oldsize||dith!=olddither))
+		wallpapersetup();
 	return;
 }
 
@@ -1922,12 +2066,13 @@ void gsconfig_easy(GSREG *gsregs)
 	int nList=0, sel=0, top=0, redraw=framebuffers;
 	int pushed=TRUE;
 	int x, y, y0, y1;
-	int i, num=6, tvmode=ITO_VMODE_AUTO-1;
-	int width=640,height=448,depth=ITO_RGBA32,dbl=TRUE;
+	int i, num=6, tvmode=ITO_VMODE_AUTO-1, p=0, otv=0, odbl=0;
+	int width[3]={640,720,720},height[3]={448,480,480},depth=ITO_RGBA32,dbl=TRUE;
 	char config[16][MAX_PATH];
 	char tmp[MAX_PATH];
 	char psmtable[5][6] = {	"32bpp", "24bpp", "16bpp", "8bpp", "4bpp"};
-	char *onoff[3] = {lang->conf_off, lang->conf_on, "FIELD"};
+	char *onoff[4] = {lang->conf_off, lang->conf_on, "FRAME", "FRAME2x"};
+	char *size[3] = {lang->conf_screen_scan_crop, lang->conf_screen_scan_full, lang->gse_magnify};
 /*	char vmodesrc[22][8] = {
 		"AUTO","NTSC","PAL","480p","576p","1080i","720p",
 		"VGA@60","VGA@72","VGA@75","VGA@85",
@@ -1941,7 +2086,7 @@ void gsconfig_easy(GSREG *gsregs)
 	
 	maxwidth = gsregs[tvmode].defwidth * (gsregs[tvmode].magx +1);
 	maxheight = gsregs[tvmode].defheight * (gsregs[tvmode].magy +1);
-	if (maxwidth>2048) maxwidth = 2048;
+//	if (maxwidth>2048) maxwidth = 2048;
 	
 	while(1){
 		waitPadReady(0, 0);
@@ -1975,44 +2120,45 @@ void gsconfig_easy(GSREG *gsregs)
 					}
 				} else if (sel == GSE_VMODE) {
 					if (tvmode < 5) tvmode++; else tvmode = 1;
-					maxwidth = gsregs[tvmode].defwidth * (gsregs[tvmode].magx +1);
-					maxheight = gsregs[tvmode].defheight * (gsregs[tvmode].magy +1);
-					if (maxwidth>2048) maxwidth = 2048;
-					if (width>maxwidth) width = maxwidth;
-					if (height>maxheight) height = maxheight;
 					changed = TRUE; saved = 0;
+				} else if (sel == GSE_SIZENUM) {
+					p = (p +1) % 3;
+					changed = TRUE;
 				} else if (sel == GSE_WIDTH) {
 					if (paddata & PAD_SQUARE)
-						width += 64;
+						width[p] += 32;
 					else
-						width += 4;
-					if (width>maxwidth) width = 128;
+						width[p] += 2;
+					if (width[p]>maxwidth) width[p] = 128;
 					changed = TRUE; saved = 0;
 				} else if (sel == GSE_HEIGHT) {
 					if (paddata & PAD_SQUARE)
-						height += 32;
+						height[p] += 32;
 					else
-						height += 4;
-					if (height>maxheight) height = 128;
+						height[p] += 4;
+					if (height[p]>maxheight) height[p] = 128;
 					changed = TRUE; saved = 0;
 				} else if (sel == GSE_DEPTH) {
 					depth = depth == ITO_RGBA32 ? ITO_RGBA16:ITO_RGBA32;
 					changed = TRUE; saved = 0;
 				} else if (sel == GSE_DOUBLE) {
-					dbl = (dbl +1) % 3;
+					if (tvmode < 3)	dbl = (dbl +1) % 4;
+					else			dbl = (dbl +1) % 3;
 					changed = TRUE; saved = 0;
 				} else if (sel == GSE_AUTOAPPLY) {
 					autoapply ^= 1;
 				} else if (sel == GSE_CONVERT) {
 					gsregs[num] = gsregs[0];
 					if (gsregs[num].name[0] == 0)
-						sprintf(gsregs[num].name, "CFG (%s,%dx%d)", gsregs[tvmode].name, width, height);
+						sprintf(gsregs[num].name, "CFG (%s, %dx%d)", gsregs[tvmode].name, width[0], height[0]);
 					gsregs[num].loaded = TRUE;
 					saved = 1;
 				} else if (sel == GSE_INIT) {
 					//tvmode=ITO_VMODE_AUTO-1;
-					width=gsregs[tvmode].width;
-					height=gsregs[tvmode].height;
+					width[0]=gsregs[tvmode].width;
+					height[0]=gsregs[tvmode].height;
+					width[1]=width[2]=gsregs[tvmode].defwidth;
+					height[1]=height[2]=gsregs[tvmode].defheight;
 					depth=gsregs[tvmode].psm;
 					dbl=gsregs[tvmode].doublebuffer;
 					changed = TRUE; saved = 0;
@@ -2023,31 +2169,23 @@ void gsconfig_easy(GSREG *gsregs)
 					name[0] = 0;
 				} else if (sel==GSE_VMODE) {
 					if (tvmode > 1) tvmode--; else tvmode = 5;
-					maxwidth = gsregs[tvmode].defwidth * (gsregs[tvmode].magx +1);
-					maxheight = gsregs[tvmode].defheight * (gsregs[tvmode].magy +1);
-					if (maxwidth>2048) maxwidth = 2048;
-					if (width>maxwidth) width = maxwidth;
-					if (height>maxheight) height = maxheight;
 					changed = TRUE; saved = 0;
+				} else if (sel == GSE_SIZENUM) {
+					p = (p +3 -1) % 3;
+					changed = TRUE;
 				} else if (sel==GSE_WIDTH) {
 					if (paddata & PAD_SQUARE)
-						width -= 64;
+						width[p] -= 32;
 					else
-						width -= 4;
-					if (width<128) width = maxwidth;
+						width[p] -= 2;
+					if (width[p]<128) width[p] = maxwidth;
 					changed = TRUE; saved = 0;
 				} else if (sel==GSE_HEIGHT) {
 					if (paddata & PAD_SQUARE)
-						height -= 32;
+						height[p] -= 32;
 					else
-						height -= 4;
-					if (height<128) height = maxheight;
-					changed = TRUE; saved = 0;
-				} else if (sel == GSE_INIT) {
-					width=gsregs[tvmode].defwidth;
-					height=gsregs[tvmode].defheight;
-					depth=gsregs[tvmode].psm;
-					dbl=gsregs[tvmode].doublebuffer;
+						height[p] -= 4;
+					if (height[p]<128) height[p] = maxheight;
 					changed = TRUE; saved = 0;
 				}
 			}
@@ -2058,60 +2196,86 @@ void gsconfig_easy(GSREG *gsregs)
 				} else if (sel==GSE_HEIGHT) {
 					height = gsregs[tvmode].height;
 					changed = TRUE;
-				} else */if (sel==GSE_INIT) {
+				} else */
+				if (sel==GSE_INIT) {
 					if ((gsregs[num].loaded == 1) && (gsregs[num].width * gsregs[num].height)) {
 						for(i=1;i<=5;i++)
 							if (gsregs[i].vmode == gsregs[num].vmode) {
 								tvmode = i;
 								break;
 							}
-						width=gsregs[num].width;
-						height=gsregs[num].height;
+						width[0]=gsregs[num].width;
+						height[0]=gsregs[num].height;
+						width[1] =gsregs[num].defwidth;
+						height[1]=gsregs[num].defheight;
+						width[2] =gsregs[tvmode].defwidth;
+						height[2]=gsregs[tvmode].defheight;
 						depth=gsregs[num].psm;
 						dbl=gsregs[num].doublebuffer;
 						if (gsregs[num].ffmode) {
-							dbl = 2;
-							height <<= 1;
+							dbl = gsregs[num].ffmode +1;
+							height[0] <<= 1;
+							height[1] <<= 1;
 						}
 						changed = TRUE; saved = 0;
-						maxwidth = gsregs[tvmode].defwidth * (gsregs[tvmode].magx +1);
-						maxheight = gsregs[tvmode].defheight * (gsregs[tvmode].magy +1);
-						if (maxwidth>2048) maxwidth = 2048;
-						if (width>maxwidth) width = maxwidth;
-						if (height>maxheight) height = maxheight;
 					}
 				}
 			}
 		}
+		if ((otv != tvmode) || ((dbl==3) != (odbl==3))) {
+			if ((tvmode > 2) && (dbl > 2)) dbl = 2;
+			otv = tvmode; odbl = dbl;
+			maxwidth = gsregs[tvmode].defwidth * (gsregs[tvmode].magx +1);
+			maxheight = gsregs[tvmode].defheight * (gsregs[tvmode].magy +1) * ((dbl == 3) +1);
+			if (maxwidth>2048) maxwidth = 2048;
+			if (maxheight>2048) maxheight = 2048;
+			for(i=0;i<3;i++){
+				if (width[i] >maxwidth ) width[i]  = maxwidth ;
+				if (height[i]>maxheight) height[i] = maxheight;
+			}
+		}
+		if (setting->screen_scan[0] != (p & 1)) {
+			setting->screen_scan[0] = p & 1;
+		}
 		// 画面反映
 		if (changed) {
 			gsregs[0] 				= gsregs[tvmode];
-			gsregs[0].width			= width;
-			gsregs[0].height		= height >> (dbl > 1);
-			i						= (gsregs[tvmode].defwidth * (gsregs[0].magx +1)) / width;
-			if (i < 1) i = 1;
-			if (i > 16) i = 16;
-			gsregs[0].magx			= --i;
-			if (dbl < 2) {
-				i					= (gsregs[tvmode].defheight * (gsregs[0].magy +1)) / height;
-				if (i < 1) i = 1;
-				if (i > 4) i = 4;
-				gsregs[0].magy		= --i;
-			} else {
+			gsregs[0].width			= width[(p==2)*2];
+			gsregs[0].height		= height[(p==2)*2] >> (dbl > 1);
+			if (dbl == 3) {
+				gsregs[0].magx		= 1;
 				gsregs[0].magy		= 0;
+			} else {
+				int w,h;
+				if (p < 2) {
+					w = width[0]; if (width[1] > w) w = width[1];
+					h = height[0];if (height[1]> h) h = height[1];
+				} else {
+					w = width[p]; h = height[p];
+				}
+				i					= (width[2] * (gsregs[0].magx +1)) / w;
+				if (i < 1) i = 1;
+				if (i > 16) i = 16;
+				gsregs[0].magx		= --i;
+				if (dbl < 2) {
+					i				= (height[2] * (gsregs[0].magy +1)) / h;
+					if (i < 1) i = 1;
+					if (i > 4) i = 4;
+					gsregs[0].magy	= --i;
+				} else {
+					gsregs[0].magy	= 0;
+				}
 			}
 			gsregs[0].psm			= depth;
-			gsregs[0].dither		= 0;
+			gsregs[0].dither		= (depth == 2);
 			gsregs[0].doublebuffer	= dbl > 0;
-			gsregs[0].ffmode		= dbl > 1;
-			gsregs[0].defwidth		= width;
-			gsregs[0].defheight		= height >> (dbl > 1);
+			gsregs[0].ffmode		= (dbl - 1) * (dbl > 1);
+			gsregs[0].defwidth		= width[1];
+			gsregs[0].defheight		= height[1] >> (dbl > 1);
 			gsregs[0].loaded		= TRUE;
 			strcpy(gsregs[0].name, name);
 			if (autoapply) {
 				if (!vmoded) {
-					SCREEN_LEFT = 0;
-					SCREEN_TOP = 0;
 					font_half = 0;
 					font_vhalf = 0;
 					fonthalfmode = 0;
@@ -2119,6 +2283,8 @@ void gsconfig_easy(GSREG *gsregs)
 					SetFontBold(setting->FontBold);
 					vmoded = TRUE;
 				}
+				SCREEN_LEFT = 0;
+				SCREEN_TOP = 0;
 				changed = FALSE;
 				setupito(0);
 			}
@@ -2133,7 +2299,8 @@ void gsconfig_easy(GSREG *gsregs)
 			changed = TRUE;
 		}
 		//totalsize = ((((width+63)&-64) * (height >> (dbl > 1))+8191) & -8192) * ((dbl>0)+1) * ((depth == 0)*2+2);
-		totalsize = ((((width+63)&-64) * (( (height >> (dbl > 1))+(63>>((depth==0)+(dbl==0)*8)) )&(-(64>>((depth==0)+(dbl==0)*8))-(dbl==0)) ) +8191) & -8192) * ((dbl>0)+1) * ((depth == 0)*2+2);
+		//	totalsize = ((((width+63)&-64) * (( (height >> (dbl > 1))+(63>>((depth==0)+(dbl==0)*8)) )&(-(64>>((depth==0)+(dbl==0)*8))-(dbl==0)) ) +8191) & -8192) * ((dbl>0)+1) * ((depth == 0)*2+2);
+		totalsize = ((width[p]+63)&~63) * (((height[p] >> (dbl > 1))+(63>>(depth==0)))&~(63>>(depth==0))) * ((dbl > 0) +1) * (4-depth);
 
 		//
 		if (redraw) {
@@ -2146,16 +2313,18 @@ void gsconfig_easy(GSREG *gsregs)
 						sprintf(config[i], "%s: (auto)", lang->gs_name);
 				else if (i==GSE_VMODE)
 					sprintf(config[i], "%s: %s", lang->gs_vmode, gsregs[tvmode].name);
+				else if (i==GSE_SIZENUM)
+					sprintf(config[i], "%s: %s", lang->gse_editsize, size[p]);
 				else if (i==GSE_WIDTH)
-					sprintf(config[i], "%s:%4d", lang->gs_width, width);
+					sprintf(config[i], "%s:%5d", lang->gs_width, width[p]);
 				else if (i==GSE_HEIGHT)
-					sprintf(config[i], "%s:%4d", lang->gs_height, height);
+					sprintf(config[i], "%s:%5d", lang->gs_height, height[p]);
 				else if (i==GSE_DEPTH)
 					sprintf(config[i], "%s: %s", lang->gs_depth, psmtable[depth]);
 				else if (i==GSE_DOUBLE)
 					sprintf(config[i], "%s: %s", lang->gs_double, onoff[dbl]);
 				else if (i==GSE_INFO)
-					sprintf(config[i], "%s: %4dKB/4096KB ", lang->gs_vramsize, (totalsize+1023)>>10);
+					sprintf(config[i], "%s:%5dKB/ 4096KB ", lang->gs_vramsize, (totalsize+1023)>>10);
 				else if (i==GSE_CONVERT) {
 					if (gsregs[num].loaded != 1) {
 						sprintf(config[i+1], "[%2d:(none)]", num);
@@ -2255,7 +2424,322 @@ void gsconfig_easy(GSREG *gsregs)
 }
 
 void gsconfig_detail(GSREG *gsregs)
-{
+{/*//
+	//GSCONFIG/DETAILMODE
+	enum{
+	//	GSD_NUMBER=1,
+		GSD_NAME=1,		// display name
+		GSD_WIDTH,		// screen size (normal)
+		GSD_HEIGHT,
+		GSD_WIDTHF,		// screen size (full)
+		GSD_HEIGHTF,
+		GSD_VMODE,		// video mode number
+		GSD_LEFT,		// screen position (position is center point of screen)
+		GSD_TOP,
+		GSD_MAG_X,		// smoothing
+		GSD_MAG_Y,
+		GSD_DEPTH,		// default	color depth
+		GSD_DITHER,		// 			dithering flag
+		GSD_INTERLACE,	// 			interlaced flag
+		GSD_FFMODE,		// 			ffmode
+		GSD_VESA,		// power save mode
+		GSD_DOUBLE,		// double buffer flag
+	//	GSD_APPLY,		// apply (not automatic)
+		GSD_INFO,		// information (use VRAM size)
+		GSD_TARGET,		// information (display selected GSCONFIG name)
+		GSD_WRITE,		// write to GSCONFIG array
+		GSD_READ,		// read from GSCONFIG array
+		GSD_INIT,		// reset to default of vmode
+		GSD_ITEMS,
+	};
+	uint64 color;
+	int i,x,y,fast;
+	int itm=1,itms=GSD_ITEMS,cy=0,cz=0,oy=0,oz=0,red=fieldbuffers,rem=0,totaln=0,totalf=0;
+	GSREG tempdata[24];//=&gsregs[0];
+	char config[GSD_ITEMS][128], help[16][128], msg0[MAX_PATH];
+	char *c;
+#define	_ary(member)	offsetof(GSREG,member)
+	struct {char *lang; int type; int min; int max; ptrdiff_t data;} src[GSD_ITEMS] = {
+		{.lang = NULL, 				.type = 0,	.min =  0, .max =    0,	.data = 0,	},
+		{.lang = lang->gs_name,		.type = 3,	.min =  0, .max =    0,	.data = _ary(name),	},
+		{.lang = lang->gs_vmode,	.type = 5,	.min =  0, .max =  255,	.data = _ary(vmode),	},
+		{.lang = lang->gs_width,	.type = 2,	.min =128, .max = 2048,	.data = _ary(width),	},
+		{.lang = lang->gs_height,	.type = 2,	.min =128, .max = 2048,	.data = _ary(height),	},
+		{.lang = lang->gs_widthf,	.type = 2,	.min =128, .max = 2048,	.data = _ary(defwidth),	},
+		{.lang = lang->gs_heightf,	.type = 2,	.min =128, .max = 2048,	.data = _ary(defheight),	},
+		{.lang = lang->gs_left,		.type = 2,	.min =128, .max = 2048,	.data = _ary(left),	},
+		{.lang = lang->gs_top,		.type = 2,	.min =128, .max = 2048,	.data = _ary(top),	},
+		{.lang = lang->gs_mag_x,	.type = 1,	.min =  0, .max =   15,	.data = _ary(magx),	},
+		{.lang = lang->gs_mag_y,	.type = 1,	.min =  0, .max =    3,	.data = _ary(magy),	},
+		{.lang = lang->gs_depth,	.type = 6,	.min =  2, .max =    4,	.data = _ary(psm),	},
+		{.lang = lang->gs_dither,	.type = 7,	.min =  0, .max =    1,	.data = _ary(dither),	},
+		{.lang = lang->gs_interlace,.type = 7,	.min =  0, .max =    1,	.data = _ary(interlace),	},
+		{.lang = lang->gs_ffmode,	.type = 9,	.min =  0, .max =    1,	.data = _ary(ffmode),	},
+		{.lang = lang->gs_vesa,		.type = 1,	.min =  0, .max =    3,	.data = _ary(vesa),	},
+		{.lang = lang->gs_double,	.type = 7,	.min =  0, .max =    1,	.data = _ary(doublebuffer),	},
+	//	{.lang = lang->gs_apply,	.type = 0,	.min =  0, .max =    1,	.data = 0,	},
+		{.lang = lang->gs_vramsize,	.type =14,	.min =  0, .max =    0,	.data = 0,	},
+		{.lang = lang->gs_target,	.type =15,	.min =  0, .max =    0,	.data = 0,	},
+		{.lang = lang->gs_write,	.type =11,	.min =  0, .max =    0,	.data = 0,	},
+		{.lang = lang->gs_read,		.type =10,	.min =  0, .max =    0,	.data = 0,	},
+		{.lang = lang->gs_preset,	.type =13,	.min =  0, .max =    0,	.data = 0,	},
+	};
+#undef	_ary
+	char vmodelist[] = {
+		0x00,0x02,0x03,0x50,
+		0x51,0x52,0x53,0x1a,
+		0x1b,0x1c,0x1d,0x2a,
+		0x2b,0x2c,0x2d,0x2e,
+		0x3b,0x3c,0x3d,0x3e,
+		0x4a,0x4b,
+		0x82,0x83,0xD0,0xD3,
+	};
+	char vmodename[][16] = {
+		"unknown",	"NTSC",		"PAL",		"480p",		
+		"1080i",	"720p",		"576p",		"VGA 60Hz",	
+		"VGA 72Hz",	"VGA 75Hz",	"VGA 85Hz",	"SVGA 56Hz",
+		"SVGA 60Hz","SVGA 72Hz","SVGA 75hz","SVGA 85Hz",
+		"XGA 60Hz",	"XGA 70Hz",	"XGA 75Hz",	"XGA 85Hz",	
+		"SXGA 60Hz","SXGA 75Hz",
+		"DVD NTSC",	"DVD PAL",	"DVD 480p",	"DVD 576p",
+	};
+	char ffmodename[2][8] = {"FIELD", "FRAME"};
+	char onoffname[2][4] = {"OFF", "ON"};
+	char depthname[5][8] = {"4bpp", "8bpp", "16bpp", "24bpp", "32bpp"};
+	char *gssrc[] = {
+		"",
+		"\"NTSC\",640,448,720,480,0x02,1914,276,3,0,4,0,1,0,0,1,2",
+		"\"PAL\",640,512,720,576,0x03,1950,328,3,0,4,0,1,0,0,1,2",
+		"\"480p\",684,448,720,480,0x50,948,276,1,0,4,0,0,0,0,1,2",
+		"\"1080i\",1824,1024,1920,1080,0x51,1194,578,0,0,2,1,1,0,0,0,2",
+		"\"720p\",1216,684,1280,720,0x52,938,384,0,0,2,1,0,0,0,1,2",
+		"\"576p\",684,512,720,576,0x53,976,352,1,0,4,0,0,0,0,1,2",
+		"\"VGA 60Hz\",640,480,640,480,0x1A,920,258,1,0,4,0,0,0,0,1,2",
+		"\"VGA 72Hz\",640,480,640,480,0x1B,970,258,1,0,4,0,0,0,0,1,2",
+		"\"VGA 75Hz\",640,480,640,480,0x1C,1000,258,1,0,4,0,0,0,0,1,2",
+		"\"VGA 85Hz\",640,480,640,480,0x1D,900,258,1,0,4,0,0,0,0,1,2",
+		"\"SVGA 56Hz\",800,600,800,600,0x2A,1250,325,1,0,4,0,0,0,0,1,2",
+		"\"SVGA 60Hz\",800,600,800,600,0x2B,1265,325,1,0,4,0,0,0,0,1,2",
+		"\"SVGA 72Hz\",800,600,800,600,0x2C,1265,325,1,0,4,0,0,0,0,1,2",
+		"\"SVGA 75Hz\",800,600,800,600,0x2D,1310,325,1,0,4,0,0,0,0,1,2",
+		"\"SVGA 85Hz\",800,600,800,600,0x2E,1300,325,1,0,4,0,0,0,0,1,2",
+		"\"XGA 60Hz\",1024,768,1024,768,0x3B,1604,414,1,0,2,1,0,0,0,1,2",
+		"\"XGA 70Hz\",1024,768,1024,768,0x3C,778,414,0,0,2,1,0,0,0,1,2",
+		"\"XGA 75Hz\",1024,768,1024,768,0x3D,772,414,0,0,2,1,0,0,0,1,2",
+		"\"XGA 85Hz\",1024,768,1024,768,0x3E,802,414,0,0,2,1,0,0,0,1,2",
+		"\"SXGA 60Hz\",1280,1024,1280,1024,0x4A,990,552,0,0,2,1,0,0,0,0,2",
+		"\"SXGA 75Hz\",1280,1024,1280,1024,0x4B,990,552,0,0,2,1,0,0,0,0,2",
+	};
+	char vmodeindex[256];
+	memset(&tempdata, 0, sizeof(tempdata));
+//	for (i=1;i<sizeof(vmodelist);i++) {
+	for (i=1;i<sizeof(gssrc)>>2;i++) {
+		strtogsreg(0, gssrc[i]);
+		memcpy(&tempdata[i], &gsregs[0], sizeof(GSREG));
+		tempdata[i].loaded = 1;
+	}
+	strcpy(config[0], "..");
+	sprintf(msg0, "GSCONFIG/%s", lang->gs_detailmode);
+	memset(&vmodeindex, 0, sizeof(vmodeindex));
+	for(i=0;i<sizeof(vmodelist);i++) vmodeindex[(unsigned char)vmodelist[i]] = i;
+	sprintf(help[0], "○:%s △:%s", lang->conf_up, lang->conf_up);
+	sprintf(help[3], "○:%s ×:%s △:%s", lang->conf_edit, lang->conf_clear, lang->conf_up);
+	sprintf(help[5], "○:%s ×:%s +□:%s △:%s", lang->gs_next, lang->gs_prev, lang->conf_fast, lang->conf_up);
+	sprintf(help[2], "○:%s ×:%s +□:%s △:%s", lang->conf_add, lang->conf_away, lang->conf_fast, lang->conf_up);
+	sprintf(help[1], "○:%s ×:%s △:%s", lang->conf_add, lang->conf_away, lang->conf_up);
+	sprintf(help[6], "○:%s △:%s", lang->conf_change, lang->conf_up);
+	sprintf(help[7], "○:%s △:%s", lang->conf_change, lang->conf_up);
+	sprintf(help[9], "○:%s △:%s", lang->conf_change, lang->conf_up);
+	sprintf(help[14], "△:%s", lang->conf_up);
+	sprintf(help[15], "L1:%s R1:%s △:%s", lang->gs_prev, lang->gs_next, lang->conf_up);
+	sprintf(help[10], "○:%s △:%s", lang->gen_ok, lang->conf_up);
+	sprintf(help[11], "○:%s △:%s", lang->gen_ok, lang->conf_up);
+	sprintf(help[13], "○:%s △:%s", lang->gen_ok, lang->conf_up);
+	memcpy(&tempdata[0], &gsregs[setting->tvmode], sizeof(GSREG));
+	while(1) {
+		if(readpad()){
+			//if (new_pad) {redraw = fieldbuffers;}
+			if (new_pad & PAD_TRIANGLE) break;
+			if ((new_pad & PAD_CIRCLE) && (cy == 0)) break;
+			if (new_pad & PAD_UP) 		cy--;
+			if (new_pad & PAD_DOWN) 	cy++;
+			if (new_pad & PAD_LEFT)		cy -= MAX_ROWS >> 1;
+			if (new_pad & PAD_RIGHT)	cy += MAX_ROWS >> 1;
+			if (cy >= itms) 			cy = itms-1;
+			if (cy < 0) 				cy = 0;
+			if (cy >= cz + MAX_ROWS)	cz = cy - MAX_ROWS +1;
+			if (cy < cz)				cz = cy;
+			if (cz + MAX_ROWS > itms)	cz = itms - MAX_ROWS;
+			if (cz < 0)					cz = 0;
+			if (paddata & PAD_SQUARE)	fast = 1; else fast = 0;
+			if (new_pad & PAD_CIRCLE) {
+				// 次へ・決定
+				switch(src[cy].type) {
+					case 1:	// char
+						(*(((char*)&tempdata)+src[cy].data)) ++;
+						if (*(((char*)&tempdata)+src[cy].data) > src[cy].max)
+							*(((char*)&tempdata)+src[cy].data) = src[cy].min;
+						red++;
+						break;
+					case 2:	// short
+						(*(short*)(((char*)&tempdata)+src[cy].data)) += 2 + 62 * fast;
+						if (*(short*)(((char*)&tempdata)+src[cy].data) > src[cy].max)
+							*(short*)(((char*)&tempdata)+src[cy].data) = src[cy].min;
+						red++;
+						break;
+					case 3:	// name
+						strcpy(tmps[0], tempdata[0].name);
+						if(keyboard(SKBD_TITLE, tmps[0], 64)>=0){
+							//if (strcmp(tempdata[0].name, tmps[0])) saved = 0;
+							strcpy(tempdata[0].name, tmps[0]);
+							red++;
+						}
+						rem = fieldbuffers;
+						break;
+					case 5:	// vmode
+						(*(((unsigned char*)&tempdata)+src[cy].data)) += 1 + 15 * fast;
+						if (*(((unsigned char*)&tempdata)+src[cy].data) > src[cy].max)
+							*(((unsigned char*)&tempdata)+src[cy].data) = src[cy].min;
+						red++;
+						break;
+					case 6:	// depth
+					case 7:	// onoff
+					case 9:	// ffmode
+						(*(((char*)&tempdata)+src[cy].data)) ++;
+						if (*(((char*)&tempdata)+src[cy].data) > src[cy].max)
+							*(((char*)&tempdata)+src[cy].data) = src[cy].min;
+						red++;
+						break;
+					case 10:// read
+					case 11:// write
+					case 13:// preset
+						break;
+					case 15:// target
+						break;
+				}
+			}
+			if (new_pad & PAD_CROSS) {
+				// 前へ・クリア
+				switch(src[cy].type) {
+					case 1:	// char
+						(*(((char*)&tempdata)+src[cy].data)) --;
+						if (*(((char*)&tempdata)+src[cy].data) < src[cy].min)
+							*(((char*)&tempdata)+src[cy].data) = src[cy].max;
+						red++;
+						break;
+					case 2:	// short
+						(*(short*)(((char*)&tempdata)+src[cy].data)) -= 2 + 62 * fast;
+						if (*(short*)(((char*)&tempdata)+src[cy].data) < src[cy].min)
+							*(short*)(((char*)&tempdata)+src[cy].data) = src[cy].max;
+						red++;
+						break;
+					case 3:	// name
+						tempdata[0].name[0] = 0;
+						red++;
+						break;
+					case 5:	// vmode
+						(*(((unsigned char*)&tempdata)+src[cy].data)) -= 1 + 15 * fast;
+						if (*(((unsigned char*)&tempdata)+src[cy].data) < src[cy].min)
+							*(((unsigned char*)&tempdata)+src[cy].data) = src[cy].max;
+						red++;
+						break;
+				}
+			}
+			if (new_pad & PAD_L1) {
+				if (itm > 1) itm--;
+				red++;
+			}
+			if (new_pad & PAD_R1) {
+				if (itm < MAX_GSREG-1) itm++;
+				red++;
+			}
+		}
+		if (red) {
+			// メニュー再作成
+			for (i=1; i<GSD_ITEMS; i++){
+				switch(src[i].type) {
+					case 10: case 11: case 13:
+					case 0:	// message only
+						strcpy(config[i], src[i].lang);
+						break;
+					case 1:	// char
+						sprintf(config[i], "%s: %3d", src[i].lang, *(((char*)&tempdata)+src[i].data));
+						break;
+					case 2:	// short
+						sprintf(config[i], "%s: %4d", src[i].lang, *(short*)(((char*)&tempdata)+src[i].data));
+						break;
+					case 3:	// char[]	// char name[]
+						c = (((char*)&tempdata)+src[i].data);
+						if (*c) 
+							sprintf(config[i], "%s: %s", src[i].lang, c);
+						else
+							sprintf(config[i], "%s: (auto)", src[i].lang);
+						break;
+					case 5:	// vmode
+						y = *(((unsigned char*)&tempdata)+src[i].data);
+						sprintf(config[i], "%s: %2Xh (%s)", src[i].lang, y, vmodename[(unsigned char)vmodeindex[y]]);
+						break;
+					case 6:	// depth
+						sprintf(config[i], "%s: %s", src[i].lang, depthname[*(((char*)&tempdata)+src[i].data) & 7]);
+						break;
+					case 7:	// boolean
+						sprintf(config[i], "%s: %s", src[i].lang, onoffname[*(((char*)&tempdata)+src[i].data) & 1]);
+						break;
+					case 9:	// ffmode
+						sprintf(config[i], "%s: %s", src[i].lang, ffmodename[*(((char*)&tempdata)+src[i].data) & 1]);
+						break;
+					case 14:// vramsize
+						totaln = ((((tempdata[0].width+63)&-64) * (( (tempdata[0].height >> (tempdata[0].ffmode != 0))+(63>>((tempdata[0].psm==4)+(tempdata[0].doublebuffer==0)*8)) )&(-(64>>((tempdata[0].psm==4)+(tempdata[0].doublebuffer==0)*8))-(tempdata[0].doublebuffer==0)) ) +8191) & -8192) * ((tempdata[0].doublebuffer>0)+1) * ((tempdata[0].psm == 0)*2+2);
+						totalf = ((((tempdata[0].defwidth+63)&-64) * (( (tempdata[0].defheight >> (tempdata[0].ffmode != 0))+(63>>((tempdata[0].psm==4)+(tempdata[0].doublebuffer==0)*8)) )&(-(64>>((tempdata[0].psm==4)+(tempdata[0].doublebuffer==0)*8))-(tempdata[0].doublebuffer==0)) ) +8191) & -8192) * ((tempdata[0].doublebuffer>0)+1) * ((tempdata[0].psm == 0)*2+2);
+						sprintf(config[i], "%s:%5dKB (%5dKB ) / 4096KB", src[i].lang, (totaln + 1023) >> 10, (totalf + 1023) >> 10);
+						break;
+					case 15:// target
+						if (gsregs[itm].loaded != 1) {
+							sprintf(tmps[0], "[%2d:(none)]", itm);
+						} else {
+							sprintf(tmps[0], "[%2d:%s]", itm, gsregs[itm].name);
+						}
+						sprintf(config[i], "%s %s", src[i].lang, tmps[0]);
+						break;
+				}
+				//printf("%s\n", config[i]);
+			}
+			red--;
+			rem = fieldbuffers;
+		}
+		if ((cy != oy) || (cz != oz)) rem = fieldbuffers;
+		if (rem) {
+			// 画面描画開始
+			clrScr(setting->color[COLOR_BACKGROUND]);
+
+			x = FONT_WIDTH*3;
+			y = SCREEN_MARGIN+FONT_HEIGHT*3;
+
+			//カーソル表示
+			printXY(">", x, y + FONT_HEIGHT*(cy-cz), setting->color[COLOR_HIGHLIGHTTEXT], TRUE);
+
+			// メニュー再描画
+			for (i=cz; i<cz+MAX_ROWS; i++){
+				if (i >= GSD_ITEMS) break;
+				if (i == cy) color = setting->color[COLOR_HIGHLIGHTTEXT]; else color = setting->color[COLOR_TEXT];
+				//リスト表示
+				printXY(config[i], x+FONT_WIDTH*2, y, color, TRUE);
+				y += FONT_HEIGHT;
+			}
+			
+			// スクロールバー描画
+			if (itms > MAX_ROWS)
+				drawBar((MAX_ROWS_X+8)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3, (MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3), setting->color[COLOR_FRAME], cz, MAX_ROWS, itms);
+			
+			oy = cy; oz = cz;
+			setScrTmp(msg0, help[src[cy].type]);
+			drawScr();
+			rem--;
+		} else {
+			itoVSync();
+		}
+	}
+	//*/
 	return;
 }
 
@@ -2531,16 +3015,16 @@ void config_button(SETTING *setting)
 						}
 					textsize-=2;
 					sprintf(c, "%s/%s", msg0, lang->conf_launch_list);
-					set_viewerconfig(0, 0, 0, 0, 0, 0);
+					set_viewerconfig((int[]){0, 0, 0, 0, 0, 0, 0, 0});
 					txtedit(0, c, textbuffer, textsize);
-					set_viewerconfig(setting->txt_linenumber, setting->txt_tabmode, setting->txt_chardisp, setting->img_fullscreen, setting->txt_wordwrap, setting->img_resize);
+					set_viewerconfig((int[]){setting->txt_linenumber, setting->txt_tabmode, setting->txt_chardisp, setting->img_fullscreen, setting->txt_wordwrap, setting->img_resize, setting->img_aniauto, setting->img_position});
 				}
 				else if (sel == LAUNCH_NAME) {
 					strcpy(c, setting->dirElf[btn].name);
 					if (keyboard(SKBD_TITLE, c, MAX_TITLE)>=0) strcpy(setting->dirElf[btn].name, c);
 				} else if (sel == LAUNCH_PADMSK) {
 					if (btn != 0) {
-						drawDark();
+						drawDarks(0);
 						drawMsg(lang->conf_launch_pad0);
 						timeout=-1;
 						i=0;
@@ -2784,7 +3268,7 @@ void config_color(SETTING *setting)
 					if(sel_x==1) {g+=i; if(g>255) g=255;}
 					if(sel_x==2) {b+=i; if(b>255) b=255;}
 					setting->color[colorid] = ITO_RGBA(r, g, b, 0);
-					if (sel==COLOR12) itoSetBgColor(setting->color[COLOR_OUTSIDE]);
+					if (sel==COLOR13) itoSetBgColor(setting->color[COLOR_OUTSIDE]);
 				} else if (sel == FLICKER_ALPHA) {
 					setting->flicker_alpha+=i;
 					if (setting->flicker_alpha>128)
@@ -2835,7 +3319,7 @@ void config_color(SETTING *setting)
 				if(i==0){
 					sprintf(config[i], "..");
 				}
-				else if(i>=COLOR1 && i<=COLOR12){	//COLOR
+				else if(i>=COLOR1 && i<=COLOR13){	//COLOR
 					colorid = clutnum[i];
 					r = setting->color[colorid] & 0xFF;
 					g = setting->color[colorid] >> 8 & 0xFF;
@@ -2846,13 +3330,14 @@ void config_color(SETTING *setting)
 					if(i==COLOR3) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_normaltext, r, g, b);
 					if(i==COLOR4) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_highlighttext, r, g, b);
 					if(i==COLOR5) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_disabletext, r, g, b);
-					if(i==COLOR6) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_folder, r, g, b);
-					if(i==COLOR7) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_file, r, g, b);
-					if(i==COLOR8) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_ps2save, r, g, b);
-					if(i==COLOR9) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_ps1save, r, g, b);
-					if(i==COLOR10) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_elffile, r, g, b);
-					if(i==COLOR11) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_psufile, r, g, b);
-					if(i==COLOR12) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_outside, r, g, b);
+					if(i==COLOR6) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_shadowtext, r, g, b);
+					if(i==COLOR7) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_folder, r, g, b);
+					if(i==COLOR8) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_file, r, g, b);
+					if(i==COLOR9) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_ps2save, r, g, b);
+					if(i==COLOR10) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_ps1save, r, g, b);
+					if(i==COLOR11) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_elffile, r, g, b);
+					if(i==COLOR12) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_psufile, r, g, b);
+					if(i==COLOR13) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_outside, r, g, b);
 				}
 				else if(i==FLICKER_ALPHA)
 					sprintf(config[i], "%s: %02X", lang->conf_flicker_alpha, setting->flicker_alpha);
@@ -3552,6 +4037,7 @@ void config_viewer(SETTING *setting)
 	int i;
 	char config[32][MAX_PATH];
 	char *onoff[2] = {lang->conf_off, lang->conf_on};
+	char *sdtv[2] = {lang->conf_sdtv_square, lang->conf_sdtv_wide};
 
 	while(1){
 		waitPadReady(0, 0);
@@ -3590,11 +4076,34 @@ void config_viewer(SETTING *setting)
 				else if(sel==TXT_AUTODECODE){
 					setting->txt_autodecode ^= 1;
 				}
+				else if(sel==IMG_SDTVASPECT){
+					setting->img_sdtv_aspect ^= 1;
+				}
+				else if(sel==IMG_PIXELASPECT){
+					setting->img_pixel_aspect ^= 1;
+				}
+				else if(sel==IMG_ANIAUTO){
+					setting->img_aniauto ^= 1;
+				}
+				else if(sel==IMG_POSITION){
+					setting->img_position = (setting->img_position +1) % 9;
+				}
+				else if(sel==SND_BGPLAY){
+					setting->snd_bgplay ^= 1;
+				}
+				else if(sel==SND_VOLUME){
+					if (paddata & PAD_SQUARE)	setting->snd_volume += 5;
+					else						setting->snd_volume += 1;
+					if (setting->snd_volume>100)setting->snd_volume =100;
+				}
+				else if(sel==SND_REPEAT){
+					setting->snd_repeat = (setting->snd_repeat +1) % 2;
+				}
 				else if(sel==VIEWERINIT){
 					//init
 					InitViewerSetting();
 				}
-				set_viewerconfig(setting->txt_linenumber, setting->txt_tabmode, setting->txt_chardisp, setting->img_fullscreen, setting->txt_wordwrap, setting->img_resize);
+				set_viewerconfig((int[]){setting->txt_linenumber, setting->txt_tabmode, setting->txt_chardisp, setting->img_fullscreen, setting->txt_wordwrap, setting->img_resize, setting->img_aniauto, setting->img_position});
 			}
 			else if(new_pad & PAD_CROSS){	//×
 				if(sel==TXT_TABSPACES){
@@ -3602,9 +4111,17 @@ void config_viewer(SETTING *setting)
 						setting->txt_tabmode = setting->txt_tabmode - 2;
 					else
 						setting->txt_tabmode = 12;
-					set_viewerconfig(setting->txt_linenumber, setting->txt_tabmode, setting->txt_chardisp, setting->img_fullscreen, setting->txt_wordwrap, setting->img_resize);
+					set_viewerconfig((int[]){setting->txt_linenumber, setting->txt_tabmode, setting->txt_chardisp, setting->img_fullscreen, setting->txt_wordwrap, setting->img_resize, setting->img_aniauto, setting->img_position});
 				} else if(sel==IMG_RESIZE){
 					setting->img_resize-=1;
+				}
+				else if(sel==IMG_POSITION){
+					setting->img_position = (setting->img_position +8) % 9;
+				}
+				else if(sel==SND_VOLUME){
+					if (paddata & PAD_SQUARE)	setting->snd_volume -= 5;
+					else						setting->snd_volume -= 1;
+					if (setting->snd_volume < 0)setting->snd_volume  = 0;
 				}
 			}
 		}
@@ -3635,6 +4152,27 @@ void config_viewer(SETTING *setting)
 				}
 				else if(i==TXT_AUTODECODE) {
 					sprintf(config[i], "%s: %s", lang->conf_autodecode, onoff[setting->txt_autodecode & 1]);
+				}
+				else if(i==IMG_SDTVASPECT){
+					sprintf(config[i], "%s: %s", lang->conf_sdtv_aspect, sdtv[setting->img_sdtv_aspect & 1]);
+				}
+				else if(i==IMG_PIXELASPECT){
+					sprintf(config[i], "%s: %s", lang->conf_pixelaspect, onoff[setting->img_pixel_aspect & 1]);
+				}
+				else if(i==IMG_ANIAUTO){
+					sprintf(config[i], "%s: %s", lang->conf_aniauto, onoff[setting->img_aniauto & 1]);
+				}
+				else if(i==IMG_POSITION){
+					sprintf(config[i], "%s: %s", lang->conf_position, lang->conf_imgpos[setting->img_position]);
+				}
+				else if(i==SND_BGPLAY){
+					sprintf(config[i], "%s: %s", lang->conf_bgplay, onoff[setting->snd_bgplay & 1]);
+				}
+				else if(i==SND_VOLUME){
+					sprintf(config[i], "%s: %2d%%", lang->conf_volume, setting->snd_volume);
+				}
+				else if(i==SND_REPEAT){
+					sprintf(config[i], "%s: %s", lang->conf_repeat, onoff[setting->snd_repeat != 0]);
 				}
 				else if(i==VIEWERINIT){
 					strcpy(config[i], lang->conf_viewerinit);
@@ -3718,13 +4256,15 @@ void config_misc(SETTING *setting)
 	int pushed=TRUE;
 	int x, y, y0, y1;
 	int i;
-	char config[8][MAX_PATH];
+	char config[16][MAX_PATH];
 	char *onoff[2] = {lang->conf_off, lang->conf_on};
-
+	char *onoffw[4] = {lang->conf_off, lang->conf_wp_on[0], lang->conf_wp_on[1]};
+	
 	while(1){
 		waitPadReady(0, 0);
 		if(readpad()){
 			if(new_pad) {pushed=TRUE; redraw = fieldbuffers;}
+			if (paddata & PAD_SQUARE) i = 8; else i = 1;
 			if(new_pad & PAD_UP)
 				sel--;
 			else if(new_pad & PAD_DOWN)
@@ -3749,8 +4289,59 @@ void config_misc(SETTING *setting)
 					if(!strncmp(setting->downloadpath, "cdfs", 2))
 						setting->downloadpath[0]='\0';
 				}
+				else if(sel==SCRNSHOTFLAG)
+					setting->screenshotenable ^= 1;
+				else if(sel==SCRNSHOTPAD) {
+						int timeout;
+						drawDarks(0);
+						drawMsg(lang->conf_launch_pad0);
+						timeout=-1;
+						i=0;
+						while(timeout != 0){
+							itoVSync();
+							if (readpad()) {
+								if(new_pad) {
+									i|=new_pad;
+									timeout=8;
+								};
+								if(new_pad & (PAD_LEFT|PAD_RIGHT|PAD_UP|PAD_DOWN))
+									break;
+							}
+							if (timeout > 0) timeout--;
+						}
+						if (!(i & (PAD_LEFT|PAD_RIGHT|PAD_UP|PAD_DOWN))) {
+							if (setting->screenshotbutton != i)
+								new_pad = 0;
+							setting->screenshotbutton=i;
+						}
+				}
+				else if(sel==SCRNSHOTPATH) {
+					getFilePath(setting->screenshotpath, DIR);
+					if(!strncmp(setting->screenshotpath, "cdfs", 2))
+						setting->screenshotpath[0]='\0';
+				}
 				else if(sel==SKBDUPDATE)
 					setting->kbd_update = !setting->kbd_update;
+				else if(sel==WALLPAPERFLAG)
+					setting->wallpaper[0].flag = (setting->wallpaper[0].flag +1) % 3;
+				else if(sel==WALLPAPERPATH) {
+					getFilePath(setting->wallpaperpath, JPG_FILE);
+				}
+				else if(sel==WALLPAPERMODE)
+					setting->wallpaper[0].clipmode = (setting->wallpaper[0].clipmode +1) % 5;
+				else if(sel==WALLPAPERBRIGHT) {
+					setting->wallpaper[0].brightness += i;
+					if (setting->wallpaper[0].brightness > 128)
+						setting->wallpaper[0].brightness = 128;
+				}
+				else if(sel==WINDOWBRIGHT) {
+					setting->wallpaper[1].brightness += i;
+					if (setting->wallpaper[1].brightness > 128)
+						setting->wallpaper[1].brightness = 128;
+				}
+				else if(sel==WALLPAPERPREVIEW) {
+					wallpapersetup();
+				}
 				else if(sel==MISCINIT){
 					//init
 					InitMiscSetting();
@@ -3759,10 +4350,54 @@ void config_misc(SETTING *setting)
 					//pushed = FALSE;
 				}
 			}
+			else if(new_pad & PAD_CROSS) {
+				if (paddata & PAD_SQUARE) i = 8; else i = 1;
+				if (sel==DOWNLOADPATH) {
+				}
+				else if(sel==SCRNSHOTPATH) {
+				}
+				else if(sel==SCRNSHOTPAD)
+					setting->screenshotbutton = 0;
+				else if(sel==WALLPAPERFLAG)
+					setting->wallpaper[0].flag = (setting->wallpaper[0].flag +3 -1) % 3;
+				else if(sel==WALLPAPERPATH) {
+					getFilePath(setting->wallpaperpath, DIR);
+				}
+				else if(sel==WALLPAPERMODE)
+					setting->wallpaper[0].clipmode = (setting->wallpaper[0].clipmode +5 -1) % 5;
+				else if(sel==WALLPAPERBRIGHT) {
+					setting->wallpaper[0].brightness -= i;
+					if (setting->wallpaper[0].brightness < -128)
+						setting->wallpaper[0].brightness = -128;
+				}
+				else if(sel==WINDOWBRIGHT) {
+					setting->wallpaper[1].brightness -= i;
+					if (setting->wallpaper[1].brightness < -128)
+						setting->wallpaper[1].brightness = -128;
+				}
+			}
 			else if(new_pad & PAD_SQUARE) {
 				if (sel==DOWNLOADPATH) {
 					strcpy(setting->downloadpath, "mc:/BOOT/");
 				}
+				else if(sel==SCRNSHOTPATH) {
+					strcpy(setting->screenshotpath, "mc:/SYS-CONF/");
+				}
+				else if(sel==SCRNSHOTPAD)
+					setting->screenshotbutton = DEF_SCREENSHOT_BUTTON;
+				else if(sel==WALLPAPERPATH) {
+					setting->wallpaperpath[0] = 0;
+				}
+			}
+			else if(new_pad & PAD_L1) {
+				if(sel==WALLPAPERBRIGHT) {
+					setting->wallpaper[0].brightness = DEF_WALLPAPERBRIGHT;
+				}
+				else if(sel==WINDOWBRIGHT) {
+					setting->wallpaper[1].brightness = DEF_WINDOWBRIGHT;
+				}
+				else if(sel==SCRNSHOTPAD)
+					setting->screenshotbutton = DEF_SCREENSHOT_BUTTON;
 			}
 		}
 
@@ -3784,8 +4419,36 @@ void config_misc(SETTING *setting)
 			else if(i==DOWNLOADPATH) {	//DOWNLOAD PATH
 				sprintf(config[i], "%s: %s", lang->conf_downloadpath, setting->downloadpath);
 			}
+			else if(i==SCRNSHOTFLAG) {
+				sprintf(config[i], "%s: %s", lang->conf_screenshotflag, onoff[setting->screenshotenable & 1]);
+			}
+			else if(i==SCRNSHOTPAD) {
+				padmsktostr(config[i+1], setting->screenshotbutton, "(none)");
+				sprintf(config[i], "%s: %s", lang->conf_screenshotpad, config[i+1]);
+			}
+			else if(i==SCRNSHOTPATH) {	//SCREENSHOT PATH
+				sprintf(config[i], "%s: %s", lang->conf_screenshotpath, setting->screenshotpath);
+			}
 			else if(i==SKBDUPDATE) {	//
 				sprintf(config[i], "%s: %s", lang->kbd_update, onoff[setting->kbd_update & 1]);
+			}
+			else if(i==WALLPAPERPATH) {	//WALLPAPER PATH
+				sprintf(config[i], "%s: %s", lang->conf_wallpaperpath, setting->wallpaperpath);
+			}
+			else if(i==WALLPAPERFLAG) {	//
+				sprintf(config[i], "%s: %s", lang->conf_wallpaperuse, onoffw[setting->wallpaper[0].flag & 3]);
+			}
+			else if(i==WALLPAPERMODE) {
+				sprintf(config[i], "%s: %s", lang->conf_wallpapermode, lang->conf_wp_mode[setting->wallpaper[0].clipmode & 7]);
+			}
+			else if(i==WALLPAPERBRIGHT) {
+				sprintf(config[i], "%s: %4d", lang->conf_wallpaperbrightness, setting->wallpaper[0].brightness);
+			}
+			else if(i==WINDOWBRIGHT) {
+				sprintf(config[i], "%s: %4d", lang->conf_wallpaperwindow, setting->wallpaper[1].brightness);
+			}
+			else if(i==WALLPAPERPREVIEW) {
+				strcpy(config[i], lang->conf_preview);
 			}
 			else if(i==MISCINIT){	//INIT
 				strcpy(config[i], lang->conf_miscsettinginit);
@@ -3847,10 +4510,23 @@ void config_misc(SETTING *setting)
 				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
 			else if(sel==DOWNLOADPATH)
 				sprintf(msg1, "○:%s □:%s △:%s", lang->conf_change, lang->conf_default, lang->conf_up);
+			else if(sel==SCRNSHOTPATH)
+				sprintf(msg1, "○:%s □:%s △:%s", lang->conf_change, lang->conf_default, lang->conf_up);
 			else if(sel==SKBDUPDATE)
 				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
+			else if(sel==WALLPAPERPATH)
+				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
+		//	else if(sel==WALLPAPERFLAG)
+		//	else if(sel==WALLPAPERMODE)
+			else if(sel==WALLPAPERBRIGHT||i==WINDOWBRIGHT)
+				sprintf(msg1, "○:%s ×:%s +□:%s △:%s L1:%s", lang->conf_add, lang->conf_away, lang->conf_fast, lang->conf_up, lang->conf_default);
+			else if(sel==WALLPAPERPREVIEW)
+				sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
 			else if(sel==MISCINIT)
 				sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
+			else
+				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
+			
 			setScrTmp(msg0, msg1);
 			drawScr();
 			redraw--;
@@ -4298,6 +4974,7 @@ void config(char *mainMsg)
 //	*setting = *tmpsetting;
 	// memcpy(dist, src, size)
 	memcpy(tmpsetting, setting, sizeof(SETTING));
+	wallpapercache(1);
 
 	while(1){
 		waitPadReady(0, 0);
@@ -4329,6 +5006,7 @@ void config(char *mainMsg)
 					free(tmpsetting);
 					saveConfig(mainMsg);
 					SetFontMargin(LINE_MARGIN, setting->LineMargin);
+					wallpapersetup();
 					break;
 				}
 				if(sel==CANCEL){	//cansel
@@ -4358,7 +5036,8 @@ void config(char *mainMsg)
 					itoGsReset();
 					setupito(setting->tvmode);
 					SetHeight();
-					set_viewerconfig(setting->txt_linenumber, setting->txt_tabmode, setting->txt_chardisp, setting->img_fullscreen, setting->txt_wordwrap, setting->img_resize);
+					set_viewerconfig((int[]){setting->txt_linenumber, setting->txt_tabmode, setting->txt_chardisp, setting->img_fullscreen, setting->txt_wordwrap, setting->img_resize, setting->img_aniauto, setting->img_position});
+					wallpapersetup();
 					mainMsg[0] = 0;
 					break;
 				}
@@ -4436,5 +5115,6 @@ void config(char *mainMsg)
 			itoVSync();
 		}
 	}
+	wallpaperfree();
 	return;
 }

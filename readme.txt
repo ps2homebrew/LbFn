@@ -1,5 +1,5 @@
 --------------------------------------------
-LbFn version 0.70.16src by nika (2010/09/04)
+LbFn version 0.70.17src by nika (2010/10/10)
 --------------------------------------------
 
 ƒ\[ƒX‚ğ‰ü•Ï‚·‚é‚±‚Æ‚É§ŒÀ‚Í‚ ‚è‚Ü‚¹‚ñ
@@ -9,7 +9,7 @@ LbF‚ÆLbFn‚ª‚»‚ê‚¼‚êLaunchELF‚ÆLbF‚ğ‰ü•Ï‚µ‚½‚à‚Ì‚Æ‚¢‚¤‚±‚Æ‚ğ‚í‚©‚é‚æ‚¤‚É‚µ‚Ä‚­‚¾‚
 ‰ü•ÏŒã‚Ìƒ\[ƒXŒöŠJ‚Í”CˆÓ‚Å‚·
 
 œ–ÆÓ
-Eƒ‰ƒCƒZƒ“ƒX‚ÍALaunchELF‚Æ“¯‚¶
+Eƒ‰ƒCƒZƒ“ƒX‚ÍAŠî–{“I‚ÉLbF‚âLaunchELF‚Æ“¯‚¶
 E©ŒÈÓ”C‚Åg‚Á‚Ä‚­‚¾‚³‚¢B”z•z©—RB
 ELbFn‚Å‰ü•Ï‚µ‚½•”•ª‚ğyi‚É–â‚¢‡‚í‚¹‚½‚è‚µ‚È‚¢‚Å‚­‚¾‚³‚¢B
 Etek“WŠJƒ‹[ƒ`ƒ“(tek.c)‚âJPEG“WŠJƒ‹[ƒ`ƒ“(jpeg.c)‚Ìƒ‰ƒCƒZƒ“ƒX‚ÍKL-01‚Å‚·B
@@ -17,11 +17,11 @@ LbF‚ÆLbFn‚ª‚»‚ê‚¼‚êLaunchELF‚ÆLbF‚ğ‰ü•Ï‚µ‚½‚à‚Ì‚Æ‚¢‚¤‚±‚Æ‚ğ‚í‚©‚é‚æ‚¤‚É‚µ‚Ä‚­‚¾‚
 œÓ«
 ELbF
   yi
-  http://yi-ps2.hp.infoseek.co.jp/
+  http://sky.geocities.jp/yi4xx/
 
 ELaunchELF
   ‚İ‚ç‚«‚¿
-  http://mirakichi.hp.infoseek.co.jp/software/
+  http://mirakichi.karou.jp/software/
 
 EUnofficial LaunchELF
   EP + dlanor + various contributors

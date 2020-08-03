@@ -31,7 +31,7 @@
 #include <libmouse.h>
 
 // バージョン
-#define LBFN_VER "LbFn v0.70.16"
+#define LBFN_VER "LbFn v0.70.17"
 
 // 垂直スキャンレート
 //#define SCANRATE (ITO_VMODE_AUTO==ITO_VMODE_PAL ? 50:60)
@@ -68,6 +68,7 @@ enum
 	COLOR_HIGHLIGHTTEXT,
 //	COLOR_CONTROLTEXT,
 	COLOR_GRAYTEXT,
+	COLOR_SHADOWTEXT,
 	COLOR_DIR,
 	COLOR_FILE,
 	COLOR_PS2SAVE,
@@ -76,7 +77,18 @@ enum
 	COLOR_PSU,
 	COLOR_TXT,
 	COLOR_OUTSIDE,
-	NUM_COLOR
+	NUM_COLOR,
+	
+	HTML_BACK=0,
+	HTML_TEXT,
+	HTML_GRAYTEXT,
+	HTML_LINK,
+	HTML_ALINK,
+	HTML_VLINK,
+	HTML_NONE,
+	HTML_FOUND,
+	HTML_TRIP,
+	HTML_COLORS,
 };
 
 enum
@@ -156,10 +168,27 @@ typedef struct
 
 typedef struct
 {
+	int flag;
+	int clipmode;
+	int brightness;
+	int contrast;
+	int sl,st,sw,sh;	// src/nouse
+	int dl,dt,dw,dh;	// dst/nouse
+} WALLPAPER;
+
+enum{
+	WP_SCREEN, 
+	WP_WINDOW, 
+	wp_has
+};
+
+typedef struct
+{
 	DIRELF dirElf[MAX_BUTTON];
 	int timeout;
 	int filename;
 	int fileall;
+	uint64 clr[HTML_COLORS];
 	uint64 color[NUM_COLOR];
 	int flicker_alpha;
 	int discControl;
@@ -178,10 +207,10 @@ typedef struct
 	int sortdir;
 	int sortext;
 	int language;
-	char lang_path[MAX_PATH];
+//	char lang_path[MAX_PATH];
 	char AsciiFont[MAX_PATH];
 	char KanjiFont[MAX_PATH];
-	char LangFont[MAX_PATH];
+//	char LangFont[MAX_PATH];
 	int fontcache;
 	int disablectrl;
 	int CharMargin;
@@ -191,8 +220,8 @@ typedef struct
 	int AsciiMarginLeft;
 	int KanjiMarginTop;
 	int KanjiMarginLeft;
-	int	LangMarginTop;
-	int	LangMarginLeft;
+//	int	LangMarginTop;
+//	int	LangMarginLeft;
 	int usbd_flag;
 	char usbd_path[MAX_PATH];
 	int usbmass_flag;
@@ -204,21 +233,29 @@ typedef struct
 	int usbmdevs;
 	int vmc_flag;
 	char vmc_path[MAX_PATH];
-	int mcraw_flag;
-	char mcdump_path[MAX_PATH];
-	char mcstore_path[MAX_PATH];
-	char kbd_sbcspath[MAX_PATH];
-	char kbd_dbcspath[MAX_PATH];
-	char kbd_dicpath[MAX_PATH];
+//	int mcraw_flag;
+//	char mcdump_path[MAX_PATH];
+//	char mcstore_path[MAX_PATH];
+//	char kbd_sbcspath[MAX_PATH];
+//	char kbd_dbcspath[MAX_PATH];
+//	char kbd_dicpath[MAX_PATH];
 	int kbd_update;
+	int screenshotbutton;
+	int screenshotformat;
+	int screenshotenable;
+	int screenshotconfig[16][4];
+	char screenshotpath[MAX_PATH];
 	char downloadpath[MAX_PATH];
-	char sav_db_path[MAX_PATH];
-	int sav_ps1save;
-	int sav_ps2save;
-	int sav_pspsave;
-	int sav_psusave;
-	int sav_startup;
-	int sav_mode;
+	char wallpaperpath[MAX_PATH];	// source image
+	WALLPAPER wallpaper[wp_has];// fullscreen and popup window
+//	char temphtmlpath[MAX_PATH];
+//	char sav_db_path[MAX_PATH];
+//	int sav_ps1save;
+//	int sav_ps2save;
+//	int sav_pspsave;
+//	int sav_psusave;
+//	int sav_startup;
+//	int sav_mode;
 	int cnf_compress;
 	int txt_linenumber;
 	int txt_tabmode;
@@ -227,6 +264,13 @@ typedef struct
 	int img_fullscreen;
 	int img_resize;
 	int txt_autodecode;
+	int img_aniauto;
+	int img_position;
+	int snd_bgplay;
+	int snd_volume;
+	int snd_repeat;
+	int img_sdtv_aspect;
+	int img_pixel_aspect;
 	short screen_left[MAX_GSREG];
 	short screen_top[MAX_GSREG];
 	short screen_width[MAX_GSREG];
@@ -241,8 +285,8 @@ typedef struct
 	char font_scaler[MAX_GSREG];
 	char font_bold[MAX_GSREG];
 	char flickerfilter[MAX_GSREG];
-	char skin_image[MAX_PATH];
-	SKINDATA skin[MAX_SKIN];
+//	char skin_image[MAX_PATH];
+//	SKINDATA skin[MAX_SKIN];
 } SETTING;
 
 /* main.c */
@@ -363,7 +407,9 @@ extern int framebuffers;
 extern int fieldbuffers;
 extern int ffmode, interlace;
 extern int fieldnow;
+extern int screen_depth;
 extern int SCANRATE;
+extern int wallpaper;
 extern char *font_ascii, *font_kanji;
 extern unsigned int font_ascii_size, font_kanji_size;
 extern uint64 totalcount;
@@ -398,6 +444,9 @@ int checkFONTX2header(const char *path);
 void drawChar_JIS(unsigned int c, int x, int y, uint64 fcol, uint64 scol, unsigned char *ctrlchars);
 int printXY(const unsigned char *s, int x, int y, uint64 color, int draw);
 int drawString(const unsigned char *s, int charset, int x, int y, uint64 fcol, uint64 scol, unsigned char *ctrlchars);
+int drawStringLimit(const unsigned char *s, int charset, int sx, int sy, uint64 fcol, uint64 scol, unsigned char *ctrlchars, int right);
+int drawStringAAS(const unsigned char *s, int sx, int sy, uint64 *col, int sl, int sr);
+int drawStringWindow(const unsigned char *s, int charset, int sx, int sy, uint64 fcol, int sl, int sr);
 int mkfontcache(int c, void *dist, int ofs, int limit);
 int mkfontcaches(int start, int chars, void *dist, int ofs, int limit);
 int mkfontcacheset(void);
@@ -445,26 +494,28 @@ enum	//getFilePath
 	FMB_FILE,
 };
 /* MessageBox */
-#define MB_OK           0x00000000
-#define MB_OKCANCEL     0x00000001
-#define MB_YESNOCANCEL  0x00000003
-#define MB_YESNO        0x00000004
-#define MB_MC0MC1CANCEL 0x0000000F
-#define MB_DEFBUTTON1   0x00000000
-#define MB_DEFBUTTON2   0x00000100
-#define MB_DEFBUTTON3   0x00000200
-#define MB_USETRIANGLE  0x00100000
-#define MB_USESQUARE    0x00200000
-#define	MB_USETIMEOUT	0x00400000
-#define IDOK         0x0001
-#define IDCANCEL     0x0002
-#define IDYES        0x0006
-#define IDNO         0x0007
-#define IDMC0        0x0010
-#define IDMC1        0x0011
-#define IDTRIANGLE   0x0100
-#define IDSQUARE     0x0200
-#define	IDTIMEOUT    0x0400
+enum{
+	MB_OK           = 0x00000000, 
+	MB_OKCANCEL     = 0x00000001, 
+	MB_YESNOCANCEL  = 0x00000003, 
+	MB_YESNO        = 0x00000004, 
+	MB_MC0MC1CANCEL = 0x0000000F, 
+	MB_DEFBUTTON1   = 0x00000000, 
+	MB_DEFBUTTON2   = 0x00000100, 
+	MB_DEFBUTTON3   = 0x00000200, 
+	MB_USETRIANGLE  = 0x00100000, 
+	MB_USESQUARE    = 0x00200000, 
+	MB_USETIMEOUT   = 0x00400000, 
+	IDOK         = 0x0001, 
+	IDCANCEL     = 0x0002, 
+	IDYES        = 0x0006, 
+	IDNO         = 0x0007, 
+	IDMC0        = 0x0010, 
+	IDMC1        = 0x0011, 
+	IDTRIANGLE   = 0x0100, 
+	IDSQUARE     = 0x0200, 
+	IDTIMEOUT    = 0x0400, 
+};
 int MessageBox(const char *Text, const char *Caption, int type);
 char* getExtension(const char *path);
 int newdir(const char *path, const char *name);
@@ -472,6 +523,28 @@ int newdir(const char *path, const char *name);
 int psb(const char *psbpath);
 #endif
 void getFilePath(char *out, const int cnfmode);
+//PS2TIME uLaunchELF
+typedef struct
+{
+	unsigned char unknown;
+	unsigned char sec;	// date/time (second)
+	unsigned char min;	// date/time (minute)
+	unsigned char hour;	// date/time (hour)
+	unsigned char day;	// date/time (day)
+	unsigned char month;	// date/time (month)
+	unsigned short year;	// date/time (year)
+} PS2TIME __attribute__((aligned (2)));
+typedef struct{
+	PS2TIME createtime;
+	PS2TIME modifytime;
+	unsigned long fileSizeByte;
+	unsigned short attr;
+	char title[16*4+1];
+	char name[256];
+	int type;
+	unsigned int timestamp;
+	int num;
+} FILEINFO;
 
 /* language.c */
 //extern char *lang[];
@@ -514,20 +587,48 @@ int viewer_file(int mode, char *file);
 int viewer(int mode, char *file, unsigned char *buffer, unsigned int size);
 int fntview_file(int mode, char *file);
 int fntview(int mode, char *file, unsigned char *buffer, unsigned int size);
+int bbsview(int mode, char *file, unsigned char *c, unsigned int size);
+int sndview(int mode, char *file, unsigned char *c, unsigned int size);
 int pcmpause(void);
 int pcmplay(void);
 int pcmclear(void);
 int pcmconfig(int mode, int rate, int channels, int bits);
 int pcmspeed(int rate);
 int pcmadd(char *buffer, int size);
+int pcmadds(char *buffer, int sample, int rate, int ch, int bits, int type);
 int pcmvolume(int volume);
 int pcmregist(void (*callback)(void));
 int pcmdelete(void);
 int pcmquit(void);
+int is_psu(unsigned char *buff, unsigned int size);
+int is_video(unsigned char *buff, unsigned int size);
+int is_audio(unsigned char *buff, unsigned int size);
+int is_image(unsigned char *buff, unsigned int size);
+int is_video_file(char *file);
+int is_audio_file(char *file);
+int is_image_file(char *file);
 int formatcheck(unsigned char *buff, unsigned int size);
 int formatcheckfile(char *file);
-int set_viewerconfig(int linedisp, int tabspaces, int chardisp, int screenmode, int textwrap, int drawtype);
-//int set_viewerconfig(int *conf);
+//int set_viewerconfig(int linedisp, int tabspaces, int chardisp, int screenmode, int textwrap, int drawtype);
+int set_viewerconfig(int *conf);
+void X_itoVSync(void);
+void X_itoSprite(int left, int top, int right, int bottom, int type);
+void X_clrScr(void);
+void itoNoVSync(void);
+int wallpapercache(int type);	// (bpp=0:only filecache)
+int wallpaperfree(void);
+void wallpapersetup(void);
+int stretchblt(char *dist, char *src, 
+				int ds, int ss, int db, int sb, int dp, int sp,
+				int dl, int dt, int sl, int st, 
+				int dw, int dh, int sw, int sh, 
+				int ff, int dither, int filter);
+int bitblt(char *dist, char *src, 
+				int ds, int ss, int db, int sb, int dp, int sp,
+				int left, int top, int width, int height,
+				int ffmode, int field, int dither);
+extern int sndview_redraw, pcmnplay;
+extern unsigned char sndview_totaltime[16];
 
 /* misc.c */
 enum{
@@ -542,6 +643,31 @@ int NetworkDownload(char* msg0);
 unsigned int CRC32Check(unsigned char *buff, unsigned int size);
 unsigned int CRC32file(char *file);
 
+/* deflate.c */
+int inflate_chunk_add(u8 *src, u32 size);			// データチャンク追加用
+void inflate_chunk_clr(void);						// データチャンクリスト初期化
+void inflate_chunk_dst(u8 *dst, u32 limit);			// 展開先指定用
+int inflate_chunk_exe(void);		// deflate圧縮のデコード開始
+int gz_getsize(u8 *src, u32 size);					// 展開後のサイズ取得(ファイル全体)
+int gzdecode(u8 *dst, u32 limit, u8 *src, u32 size);// deflate圧縮のデコード
+
+/* fileio.c */
+int nopen(char *path, int attr);
+int nclose(int fd);
+int nquit(char *path);
+int nremove(char *path);
+int nmkdir(char *path, char *dir, int attr);
+int nrmdir(char *path);
+int nseek(int fd, signed long ofs, int mode);
+int ndopen(char *path);
+int ndclose(int fd);
+int ndread(int fd, void *dst);
+unsigned int ngetc(int fd, char data);
+unsigned int nputc(int fd, char data);
+unsigned int ngets(int fd, void *dst, unsigned int limit);
+unsigned int nread(int fd, void *dst, unsigned int size);
+unsigned int nwrite(int fd, void *src, unsigned int size);
+
 /* Libito0.2.1modify/itogsprims.c */
 void itoPoint2c(uint64 color0, uint16 x0, uint16 y0, uint64 color1, uint16 x1, uint16 y1);
 void itoAddVertex2(uint64 color1, uint16 x1, uint16 y1, uint64 color2, uint16 x2, uint16 y2);
@@ -550,4 +676,6 @@ void itoLineX(uint64 color, uint16 x1, uint16 y1, uint16 x2, uint16 y2);
 void itoPointX(uint64 color, uint16 x, uint16 y);
 void itoPoint2X(uint64 color, uint16 x0, uint16 y0, uint16 x1, uint16 y1);
 void itoSpriteX(uint64 color, uint16 x1, uint16 y1, uint16 x2, uint16 y2);
+
+#define	itoVSync	X_itoVSync
 #endif

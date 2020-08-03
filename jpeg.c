@@ -716,9 +716,9 @@ int jpeg_decode_yuv(JPEG *jpeg, int h, int v, unsigned char *rgb, int b_type,
 	      r = (~r) >> 24;
 	    //dest[x] = b | g << 8 | r << 16;
 		if (b_type >= 0x0003) {
-			dest[x*4] = b;
+			dest[x*4+0] = r;
 			dest[x*4+1] = g;
-			dest[x*4+2] = r;
+			dest[x*4+2] = b;
 			if (b_type == 0x0004) 
 				dest[x*4+3] = 0;
 		} else if (b_type == 0x0002) {

@@ -241,13 +241,15 @@ int decode_GIF(char *dist, char *src, int size, int bpp0)
 	unsigned char *c=(unsigned char *) src, *temp=NULL, *dstt=NULL, gifback;
 	unsigned int   *d32 = (unsigned int *)   dist;
 	unsigned short *d16 = (unsigned short *) dist;
-	int siz,bpp,all;
+	int siz,bpp,all,*wait,an;
 	//unsigned char bgcolor;
 	int i,m,pp;
 	int cnt,imgs;
 	c+=6; imgs=changes=pp=0;
 	bpp = bpp0 & 0x00FF;
-	all = (bpp0 >> 8) != 0;
+	an = bpp0 >> 8;
+	all = an != 0;
+	wait = NULL;
 	//if (bpp) printf("decode_GIF: bpp=%d\n", bpp);
 	lzwtable = (LZWDATA*)malloc(sizeof(LZWDATA)*4096);
 	if (lzwtable == NULL) return -2;
@@ -263,6 +265,12 @@ int decode_GIF(char *dist, char *src, int size, int bpp0)
 	} else {
 		dstt = dist;
 	}
+	if (bpp && an) {
+		i = width * height * bpp * an;
+		wait = (int*)&dist[(i +3) & ~3];
+		for(i=0;i<an;i++) wait[i] = -1;
+	}
+	if (bpp)	printf("decode_GIF: an=%d, bpp=%2d, wait=%08X\n", an, bpp*8, (int)wait);
 	gifleft = giftop = 0;
 	gifsize = gifwidth * gifheight;
 	gifext = gifoldtmp = NULL;
@@ -363,6 +371,7 @@ int decode_GIF(char *dist, char *src, int size, int bpp0)
 			}
 			if (bpp) {
 				// イメージのデコード
+				//	printf("decode_GIF: gifbuff=%08X\n", (int)dstt);
 				gifbuff = (unsigned char*) dstt;
 				gifstatus = 0;
 				gifx = 0; gify = 0;
@@ -395,10 +404,14 @@ int decode_GIF(char *dist, char *src, int size, int bpp0)
 				if (all || (bpp > 1)) {
 					// 所定の場所へ転送
 					//memcpy(&dstt[(i+giftop)*width+gifleft], &gifoldtmp[i*gifwidth], gifwidth);
-					//printf("decode_GIF: #%03d,all=%d, bpp=%d, d32=%08x, d16=%08x\n", imgs, all, bpp, (int)d32, (int)d16);
+					//	printf("decode_GIF: #%03d,all=%d, bpp=%d, d32=%08x, d16=%08x\n", imgs, all, bpp, (int)d32, (int)d16);
+					if (!all) {
+						d32 = (unsigned int *)   dist;
+						d16 = (unsigned short *) dist;
+					}
 					if (bpp == 1) {
 						// 8bppの場合はそのままコピー
-						memcpy(&dist[width*height*bpp*imgs], &dstt[0], width*height*bpp);
+						memcpy(&dist[width*height*bpp*imgs*all], &dstt[0], width*height*bpp);
 					} else if (bpp == 4) {
 						// 32bppの場合はclutの値に変換して転送
 						for (i=0; i<width*height; i++)
@@ -483,6 +496,10 @@ int decode_GIF(char *dist, char *src, int size, int bpp0)
 					gifext = d;
 					//if (TCI) printf("decode_GIF: graphics extersion: transpent=%d, index=%d (0x%02X)\n", TCF, TCI, TCI);
 					if (bpp) printf("decode_GIF: graphics: desp=%d, user=%d, trans=%d, delay=%d, index=%d (0x%02X)\n", (d[1] >> 2) & 7, (d[1] >> 1) & 1, TCF, delaytime, TCI, TCI);
+					if (bpp && wait) {
+					//	printf("decode_GIF: wait[%3d]=%7d\n", imgs, delaytime * 10000);
+						wait[imgs] = delaytime * 10000;
+					}
 					//if (TCF && (imgs == 0) && (TCI != gifback)/* && (((d[1] >> 2) & 7) > 1) */) globalclut[gifback] &= 0x00FFFFFF;
 					break;
 				case 0xFE:

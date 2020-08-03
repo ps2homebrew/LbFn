@@ -144,7 +144,7 @@ static uint64 iconclut[16];
 extern uint64 *activeclut;
 int decode_PS1ICO(char *dist, char *src, int size, int bpp)
 {
-	int i,x,y,z,w;
+	int i,x,y,z,*wait;
 	short *s = (short*)src, r, g, b;
 	for (i=0; i<16; i++) {
 		r = (s[48+i] & 0x001F) << 3;
@@ -163,7 +163,12 @@ int decode_PS1ICO(char *dist, char *src, int size, int bpp)
 			}
 		}
 	}//*/
+	z = 16 * 16 * (bpp & 15) * (src[2] & 15);
+	//printf("ps1ico: %d\n", z);
+	wait = (int*)&dist[z];
 	for (z=0,i=128; z<(src[2]&15); z++) {
+		//wait[z] = 133333;
+		wait[z] = 133333;
 		for (y=0; y<16; y++) {
 			for (x=0; x<16; x+=2,i++) {
 				dist[y*16+z*256+x+0] = src[i] & 15;

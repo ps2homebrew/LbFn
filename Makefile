@@ -15,16 +15,18 @@ PS2_IP=192.168.0.10
 EE_BIN = LbFn.ELF
 
 EE_OBJS = main.o pad.o config.o elf.o draw.o loader.o  filer.o cd.o language.o\
-	cnf.o tek.o viewer.o shiftjis.o bmp.o jpeg.o gif.o ps2ico.o fmcb_cfg.o misc.o\
+	cnf.o tek.o deflate.o viewer.o sound.o wave.o mp3.o shiftjis.o bmp.o jpeg.o gif.o ps2ico.o png.o fmcb_cfg.o misc.o fio.o \
 	poweroff.o iomanX.o fileXio.o ps2atad.o ps2dev9.o ps2hdd.o ps2fs.o\
-	usbd.o usbhdfsd.o cdvd.o ps2ip.o ps2smap.o ps2ftpd.o dns.o ps2http.o fakehost.o
+	usbd.o usbhdfsd.o cdvd.o ps2ip.o ps2smap.o ps2ftpd.o dns.o ps2http.o fakehost.o\
+	audsrv.o freesd.o screenshot.o libgs.o
 #	vmc_fs.o
 
 EE_INCS := -I$(LIBITO)/include -I$(PS2DEV)/libcdvd/ee
 
 EE_LDFLAGS := -L$(LIBITO)/lib -L$(PS2DEV)/libcdvd/lib -s
 
-EE_LIBS = -lpad -lito -lmc -lhdd -lcdvd -lcdvdfs -lfileXio -lpatches -lpoweroff -lkbd -lmouse -ldebug\
+EE_LIBS = -lpad -lito -lmc -lhdd -lcdvd -lcdvdfs -lfileXio -lpatches -lpoweroff -lkbd -lmouse -laudsrv
+#  -ldebug\
 
 # EE_CFLAGS := -O3
 
@@ -86,7 +88,9 @@ endif
 icon.s:image/icon.iif
 	bin2s image/icon.iif icon.s icon_iif
 
-cd.o config.o draw.o elf.o filer.o main.o pad.o viewer.o language.o cnf.o misc.o fmcb_cfg.o:launchelf.h language.h
+cd.o config.o draw.o elf.o filer.o main.o pad.o viewer.o sound.o language.o cnf.o misc.o fmcb_cfg.o:launchelf.h language.h
+
+libgs.o: libgs.h
 
 #------------------------------------
 include $(PS2SDK)/samples/Makefile.pref

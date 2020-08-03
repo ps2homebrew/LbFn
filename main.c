@@ -1,4 +1,5 @@
 #include "launchelf.h"
+#include <audsrv.h>
 
 //#define	MAX_UCS_CODE	0x10000
 extern u8 *iomanX_irx;
@@ -41,6 +42,10 @@ extern u8 *dns_irx;
 extern int size_dns_irx;
 extern u8 *vmc_fs_irx;
 extern int size_vmc_fs_irx;
+extern u8 *freesd_irx;
+extern int size_freesd_irx;
+extern u8 *audsrv_irx;
+extern int size_audsrv_irx;
 
 //#define DEBUG
 #ifdef DEBUG
@@ -500,16 +505,17 @@ void	load_iomanx(void)
 }
 
 //--------------------------------------------------------------
+int loaded_filexio=0;
 void	load_filexio(void)
 {
 	int ret;
-	static int loaded=FALSE;
+	//static int loaded=FALSE;
 	smod_mod_info_t	mod_t;
 
-	if(!loaded){
+	if(!loaded_filexio){
 		if(smod_get_mod_by_name( "IOX/File_Manager_Rpc", &mod_t )==0)
 			X_SifExecModuleBuffer(&fileXio_irx, size_fileXio_irx, 0, NULL, &ret);
-		loaded=TRUE;
+		loaded_filexio=TRUE;
 	}
 }
 
@@ -642,6 +648,44 @@ void	load_dns(char *dnsarg)
 		X_SifExecModuleBuffer(&dns_irx, size_dns_irx, strlen(dnsarg), dnsarg, &ret);
 		loaded=TRUE;
 	}
+}
+
+//--------------------------------------------------------------
+int loaded_libsd=0;
+int loaded_sound=0;
+int		load_libsd(void)
+{
+	int ret;
+	smod_mod_info_t	mod_t;
+	
+	if (loaded_libsd) return loaded_libsd;
+	else if (	smod_get_mod_by_name( "libsd", &mod_t  )!=0 ) {
+		loaded_libsd = 1;
+	} else if (	smod_get_mod_by_name( "freesd", &mod_t  )!=0 ) {
+		loaded_libsd = 2;
+	} else {
+		if (load_irxdriver("rom0:LIBSD", 0, NULL) >= 0) {
+			loaded_libsd = 1;
+		} else {
+			X_SifExecModuleBuffer(&freesd_irx, size_freesd_irx, 0, NULL, &ret);
+			loaded_libsd = 2;
+		}
+	}
+	return loaded_libsd;
+}
+int		load_sound(void)
+{
+	int ret;
+	smod_mod_info_t mod_t;
+	
+	if (loaded_sound) return loaded_sound;
+	else if( smod_get_mod_by_name( "audsrv", &mod_t  )!=0 )
+		loaded_sound = 1;
+	else {
+		X_SifExecModuleBuffer(&audsrv_irx, size_audsrv_irx, 0, NULL, &ret);
+		loaded_sound = 1;
+	}
+	return loaded_sound;
 }
 
 //--------------------------------------------------------------
@@ -861,6 +905,28 @@ void loadUsbMouseModules(void)
 }
 
 //--------------------------------------------------------------
+//loadSoundModules
+int loadSoundModules(void)
+{
+	static int loaded=FALSE;
+	int i=1;
+	
+	if (!loaded) {
+		i = 0;
+		if (load_libsd() && load_sound()) {
+			i = audsrv_init();
+			if (i != 0)
+			{
+				printf("sample: failed to initialize audsrv\n");
+				printf("audsrv returned error string: %s\n", audsrv_get_error_string());
+			}
+			loaded = TRUE;
+		}
+	}
+	return i;
+}
+
+//--------------------------------------------------------------
 //loadCdModules
 void loadCdModules(void)
 {
@@ -924,13 +990,14 @@ void showfont(void)
 	while(1){
 		waitPadReady(0, 0);
 		if(readpad()){
-			if (new_pad) break;
+			if (new_pad & (PAD_TRIANGLE | PAD_CROSS | PAD_CIRCLE | PAD_SELECT)) break;
 		}
 		if (redraw) {
 			itoSprite(setting->color[COLOR_FRAME], left, top, left+width, top+height, 0);
 			for(y=0; y<17; y++)
 				for (x=0; x<17; x++)
-					itoSprite(setting->color[COLOR_BACKGROUND], left+2+dx*x, top+2+dy*y, left+2+dx*x+dw, top+2+dy*y+dh, 0);
+					if (wallpaper > 1)	X_itoSprite(left+2+dx*x, top+2+dy*y, left+2+dx*x+dw, top+2+dy*y+dh, 1);
+					else itoSprite(setting->color[COLOR_BACKGROUND], left+2+dx*x, top+2+dy*y, left+2+dx*x+dw, top+2+dy*y+dh, 0);
 			for(y=0; y<16; y++) {
 				c = y + 0x30 + (y>9)*7;
 				drawChar_JIS(c, tl+dx*(y+1), tt, setting->color[COLOR_GRAYTEXT], setting->color[COLOR_GRAYTEXT], NULL);
@@ -1983,6 +2050,8 @@ int main(int argc, char *argv[])
 		itoSetActiveFrameBuffer(itoGetActiveFrameBuffer()^1);
 	}
 	
+	loadSoundModules();
+	
 	//cd
 	if(boot==CD_BOOT)
 		loadCdModules();
@@ -2068,6 +2137,8 @@ int main(int argc, char *argv[])
 		drawScr();
 		MessageBox("Screen Setting Initialize", LBF_VER, MB_OK);
 	}
+	if (!wallpaper && setting->wallpaper[0].flag)
+		wallpapersetup();
 
 	//ƒ‰ƒ“ƒ`ƒƒ[ƒƒCƒ“
 	LaunchMain();

@@ -156,13 +156,19 @@ void dputs(void *dist, int w, int h, int bpp, int x, int y, uint64 color)
 		}
 	} else if (bpp == 3) {
 		unsigned char *dst = (unsigned char *) dist;
-		unsigned int i = (y*w+h)*3;
+		unsigned int i = (y*w+x)*3;
 		dst[i++] = color & 0x0000FF;
 		dst[i++] = (color & 0x00FF00) >> 8;
 		dst[i++] = (color & 0xFF0000) >>16;
 	} else if (bpp == 4) {
-		unsigned int *dst = (unsigned int *) dist;
-		dst[y*w+x] = color;
+	//	unsigned int *dst = (unsigned int *) dist;
+	//	dst[y*w+x] = color;
+		unsigned char *dst = (unsigned char *) dist;
+		unsigned int i = (y*w+x)*4;
+		dst[i++] = (color & 0xFF0000) >>16;
+		dst[i++] = (color & 0x00FF00) >> 8;
+		dst[i++] = color & 0x0000FF;
+		dst[i++] = (color >> 24) & 0xFF;
 	}
 }
 int decode_BMP(char *dist, char *src, int size, int bpp)

@@ -1,4 +1,5 @@
 #include "launchelf.h"
+#define	itoSetActiveFrameBuffer	itoSetActiveFrameBufferWithMatrix
 #define tmpbuffersize	256*256
 //----------------------------------------------------------
 #if 1
@@ -108,6 +109,7 @@ int FONT_WIDTH;
 int FONT_HEIGHT;
 int MAX_ROWS;
 int MAX_ROWS_X;
+int screen_depth = 0;
 
 int char_Margin;	//文字の間隔
 int line_Margin;	//行の間隔
@@ -120,6 +122,9 @@ int ffmode;
 int interlace;
 int flickerfilter;
 int fieldnow;
+int shadow=0;
+int wallpaper=0;
+extern int bgmredraw;
 /*
 uint64 matrix[2] = {
 	0x4026264040262640,
@@ -240,9 +245,11 @@ int texCreate(int fd, int tw, int th);
 // VSYNC
 void int_vsync()
 {
-	fieldnow^=1;
+	if ((ffmode & 1) || ((ffmode & 2) && (totalcount & 1)))
+		fieldnow^=1;
 	//if (fieldbuffers == 2)
-	if (ffmode == ITO_FRAME)
+	//if (ffmode == ITO_FRAME)
+	if (ffmode)
 		itoSetVisibleFrameBuffer(fieldnow^(screen_env.screen.y&1));
 	totalcount++;
 	itoEI();
@@ -262,7 +269,7 @@ void setup_vsync()
 void setupito(int tvmode)
 {
 	int	vmode, height_t, gstop, vx, vy;
-	int width, height, dither, depth;
+	int width, height, dither, depth, fm;
 	vmode = tvmode;
 	if (!gsregs[tvmode].loaded) vmode = (ITO_VMODE_AUTO)-1;
 	// screen resolution
@@ -270,7 +277,7 @@ void setupito(int tvmode)
 	
 	//ffmode			= gsregs[vmode].ffmode & 1;
 	//interlace		= gsregs[vmode].interlace & 1;
-	ffmode			= setting->screen_ffmode[vmode] > 0 ? (setting->screen_ffmode[vmode]-1):(gsregs[vmode].ffmode & 1);
+	ffmode			= setting->screen_ffmode[vmode] > 0 ? (setting->screen_ffmode[vmode]-1):(gsregs[vmode].ffmode & 3);
 	interlace		= setting->screen_interlace[vmode] > 0 ? (setting->screen_interlace[vmode]-1):(gsregs[vmode].interlace & 1);
 	depth			= setting->screen_depth[vmode] > 0 ? (5-setting->screen_depth[vmode]):gsregs[vmode].psm;
 	width			= setting->screen_scan[vmode] > 0 ? gsregs[vmode].defwidth:gsregs[vmode].width;
@@ -278,19 +285,23 @@ void setupito(int tvmode)
 	dither			= setting->screen_dither[vmode] > 0 ? (setting->screen_dither[vmode]-1):gsregs[vmode].dither;
 	height_t		= height;
 	gstop			= 1;
+	fm				= ffmode != 0;
+	screen_depth	= depth;
 	if ((gsregs[vmode].vmode == 2) || (gsregs[vmode].vmode == 3) || (gsregs[vmode].vmode == 81) || (gsregs[vmode].vmode == 130) || (gsregs[vmode].vmode == 131)) {
 		if (!interlace){
 			gstop = 2;
 			height_t *= 2;
-		} else if (ffmode)
+		} else if (ffmode & 1)
 			height_t *= 2;
 		if (gsregs[vmode].ffmode != ffmode) {
-			if (ffmode) {
-				height /= 2;
-				height_t /= 2;
-			} else {
-				height *= 2;
-				height_t *= 2;
+			if (ffmode < 2) {
+				if (ffmode) {
+					height /= 2;
+					height_t /= 2;
+				} else {
+					height *= 2;
+					height_t *= 2;
+				}
 			}
 		}
 		if (gsregs[vmode].interlace != interlace) {
@@ -324,7 +335,7 @@ void setupito(int tvmode)
 	screen_env.doublebuffer		= gsregs[vmode].doublebuffer;
 	framebuffers 				= gsregs[vmode].doublebuffer+1;
 	fieldbuffers				= 1;
-	if (ffmode) fieldbuffers = framebuffers;
+	if (ffmode != 0) fieldbuffers = framebuffers;
 	screen_env.zpsm				= gsregs[vmode].zpsm;
 	// scissor 
 	screen_env.scissor_x1		= 0;
@@ -334,17 +345,27 @@ void setupito(int tvmode)
 	//if (setting->screen_scan[vmode] || (gsregs[vmode].ffmode != ffmode) || (gsregs[vmode].interlace != interlace))
 	// misc
 	screen_env.dither			= dither;
-	screen_env.matrix			= ( 0x5D7F91B36E4CA280
-								  & 0xEEEEEEEEEEEEEEEE
-								  ) >> 1;
+//	screen_env.matrix			= ( 0x5D7F91B36E4CA280
+//								  & 0xEEEEEEEEEEEEEEEE
+//								  ) >> 1;
+	if (ffmode) {
+		//	0x4051514040515140, 0x4040404040404040
+		//	0x2637372626373726, 0x2626262626262626
+		screen_env.matrix[0]	= 0x4051514040515140;
+		screen_env.matrix[1]	= 0x2637372626373726;
+	} else {
+		//	0x2637405137265140, 0x2626404026264040
+		screen_env.matrix[0]	= 0x2637405137265140;
+		screen_env.matrix[1]	= screen_env.matrix[0];
+	}
 //	screen_env.matrix			= 0x5D7F91B36E4CA280;
 	screen_env.interlace		= interlace;
-	screen_env.ffmode			= ffmode;
+	screen_env.ffmode			= ffmode & 1;
 	screen_env.vmode			= gsregs[vmode].vmode;
 	screen_env.vesa				= gsregs[vmode].vesa;
 	
 	vmode = gsregs[vmode].vmode;
-	if ((vmode == 2) || (vmode==130) || (vmode == 80) || (vmode == 81) || (vmode == 82) || (vmode == 114)) {
+	if ((vmode == 2) || (vmode==130) || (vmode == 80) || (vmode == 81) || (vmode == 82) || (vmode == 114) || (vmode == 208)) {
 		SCANRATE = 60;
 	} else if ((vmode == 3) || (vmode == 131)) {
 		SCANRATE = 50;
@@ -373,6 +394,8 @@ void setupito(int tvmode)
 	printf("\tscissor: (%d,%d)-(%d,%d)\n", screen_env.scissor_x1, screen_env.scissor_y1, screen_env.scissor_x2, screen_env.scissor_y2);
 	printf("\tdither,interlace,ffmode: %d,%d,%d\n",  screen_env.dither, screen_env.interlace, screen_env.ffmode);
 #endif
+//	printf("\tdither,interlace,ffmode: %d,%d,%d\n",  dither, interlace, ffmode);
+//	printf("\tscreen size: %dx%d, gstop: %d\n", SCREEN_WIDTH, SCREEN_HEIGHT, gstop);
 	//printf("\tscissor: (%d,%d)-(%d,%d)\n", screen_env.scissor_x1, screen_env.scissor_y1, screen_env.scissor_x2, screen_env.scissor_y2);
 	itoGsEnvSubmit(&screen_env);
 	//アルファブレンド
@@ -386,20 +409,26 @@ void setupito(int tvmode)
 	itoZBufferUpdate(FALSE);
 	itoZBufferTest(FALSE, 0);
 	itoSetTextureBufferBase( itoGetZBufferBase() );
-	printf("\tframebuffer0 offset: %08X\n", itoGetFrameBufferBase(0));
-	printf("\tframebuffer1 offset: %08X\n", itoGetFrameBufferBase(1));
-	printf("\tTexture buffer base: %08X\n", itoGetTextureBufferBase());
+//	printf("\tframebuffer0 offset: %08X\n", itoGetFrameBufferBase(0));
+//	printf("\tframebuffer1 offset: %08X\n", itoGetFrameBufferBase(1));
+//	printf("\tTexture buffer base: %08X\n", itoGetTextureBufferBase());
 	itoSetBgColor(setting->color[COLOR_OUTSIDE]);
 	SetHeight();
 	
 	fieldnow = itoGetVisibleFrameBuffer()^1;
 }
-/*		ディザリング
-	組織的ディザ法(4x4,bayer型)
-	 0, 8, 2,10,
-	12, 4,14, 6,
-	 3,11, 1, 9,
-	15, 7,13, 5,
+/*	ディザリング
+	組織的ディザ法	GS設定値
+	(4x4,bayer型)=>(4x4,3bit)
+	 0, 8, 2,10,	0,4,1,5,
+	12, 4,14, 6,	6,2,7,3,
+	 3,11, 1, 9,	1,5,0,4,
+	15, 7,13, 5,	7,3,6,2,
+	----2x2---
+	 0, 2, 0, 2,	0,4,0,4,
+	 3, 1, 3, 1,	6,2,6,2,
+	 0, 2, 0, 2,	0,4,0,4,
+	 3, 1, 3, 1,	6,2,6,2,
 */
 //-------------------------------------------------
 // 半透過カラー取得用 
@@ -440,7 +469,7 @@ void drawDark(void)
 	itoPrimAlphaBlending( TRUE );
 	//
 	itoSprite(ITO_RGBA(0,0,0,0x10),
-		0, SCREEN_MARGIN+FONT_HEIGHT*2.5,
+		0, SCREEN_MARGIN+FONT_HEIGHT*2.5+1,
 		SCREEN_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3.5), 0);
 	//アルファブレンド無効
 	itoPrimAlphaBlending(FALSE);
@@ -459,13 +488,13 @@ int drawDarks(int ret)
 void drawDialogTmp(int x1, int y1, int x2, int y2, uint64 color1, uint64 color2)
 {
 	//
-	itoSprite(color1, x1, y1, x2, y2, 0);
+	if (wallpaper > 1)	X_itoSprite(x1, y1, x2, y2, 1);
+	else				itoSprite(color1, x1, y1, x2, y2, 0);
 	drawFrame(x1+2, y1+2, x2-3, y2-3, color2);
 }
 
 //-------------------------------------------------
 // 画面表示のテンプレート
-int drawStringLimit(const unsigned char *s, int charset, int sx, int sy, uint64 fcol, uint64 scol, unsigned char *ctrlchars, int right);
 void setScrTmp(const char *msg0, const char *msg1)
 {
 	uint64 color1,color;
@@ -475,9 +504,11 @@ void setScrTmp(const char *msg0, const char *msg1)
 	color1 = color|0x80000000;	//不透明
 	color2 = color|(setting->flicker_alpha << 24);	//半透明
 	//color2 = half(color, setting->color[COLOR_BACKGROUND], 0x80);
-	itoSprite(setting->color[COLOR_BACKGROUND], 0, SCREEN_MARGIN,
-		SCREEN_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*2 -line_Margin +flickerfilter, 0);
-	itoSprite(setting->color[COLOR_BACKGROUND], 0, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3.5), SCREEN_WIDTH, SCREEN_HEIGHT, 0);
+//	if (!wallpaper) {
+		//	X_itoSprite(0, SCREEN_MARGIN, SCREEN_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*2 -line_Margin +flickerfilter, 0);
+		X_itoSprite(0, 0, SCREEN_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*2.5, 0);
+		X_itoSprite(0, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3.5), SCREEN_WIDTH, SCREEN_HEIGHT, 0);
+//	}
 
 	// バージョン表記
 	drawString(LBF_VER, TXT_ASCII, FONT_WIDTH*2, SCREEN_MARGIN, setting->color[COLOR_TEXT], setting->color[COLOR_HIGHLIGHTTEXT], 0);
@@ -508,21 +539,26 @@ void setScrTmp(const char *msg0, const char *msg1)
 
 	// 操作説明
 	drawStringLimit(msg1, TXT_SJIS, FONT_WIDTH*1, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+4), setting->color[COLOR_TEXT], setting->color[COLOR_HIGHLIGHTTEXT], 0, SCREEN_WIDTH);
+	bgmredraw=fieldbuffers;
 }
 
 //-------------------------------------------------
 // メッセージ描画
 void drawMsg(const char *msg)
 {
-	itoSprite(setting->color[COLOR_BACKGROUND], 0, SCREEN_MARGIN+FONT_HEIGHT,
-		SCREEN_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*2 -line_Margin +flickerfilter, 0);
+	int t,b;
+	t = SCREEN_MARGIN+FONT_HEIGHT; b = SCREEN_MARGIN+FONT_HEIGHT*2 -line_Margin +flickerfilter;
+//	if (wallpaper)	
+	X_itoSprite(0, t, SCREEN_WIDTH, b, 0);
+//	else	itoSprite(setting->color[COLOR_BACKGROUND], 0, t, SCREEN_WIDTH, b, 0);
 	//メッセージ
 	drawStringLimit(msg, TXT_SJIS, FONT_WIDTH*2, SCREEN_MARGIN+FONT_HEIGHT, setting->color[COLOR_TEXT], setting->color[COLOR_TEXT], 0, SCREEN_WIDTH - FONT_WIDTH*2);
 	itoGsFinish();
 	if (framebuffers == 2) {
 		itoSetActiveFrameBuffer(itoGetActiveFrameBuffer()^1);
-		itoSprite(setting->color[COLOR_BACKGROUND], 0, SCREEN_MARGIN+FONT_HEIGHT,
-			SCREEN_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*2 -line_Margin +flickerfilter, 0);
+	//	if (wallpaper)	
+		X_itoSprite(0, t, SCREEN_WIDTH, b, 0);
+	//	else	itoSprite(setting->color[COLOR_BACKGROUND], 0, t, SCREEN_WIDTH, b, 0);
 		//メッセージ
 		drawStringLimit(msg, TXT_SJIS, FONT_WIDTH*2, SCREEN_MARGIN+FONT_HEIGHT, setting->color[COLOR_TEXT], setting->color[COLOR_TEXT], 0, SCREEN_WIDTH - FONT_WIDTH*2);
 		itoGsFinish();
@@ -531,9 +567,11 @@ void drawMsg(const char *msg)
 }
 
 //-------------------------------------------------
-// 画面のクリア
+// 画面のクリア／壁紙の描画
 void clrScr(uint64 color)
 {
+	bgmredraw=fieldbuffers;
+	if (wallpaper) return X_clrScr();
 	itoSprite(color, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
 }
 
@@ -588,7 +626,7 @@ void drawFrame(int x1, int y1, int x2, int y2, uint64 color)
 void drawBar(int x1, int y1, int x2, int y2, uint64 color, int ofs, int len, int size)
 {
 	long long z0,z1,z2;
-	itoSprite(setting->color[COLOR_BACKGROUND], x1, y1, x2+1, y2+2, 0);
+//	itoSprite(setting->color[COLOR_BACKGROUND], x1, y1, x2+1, y2+2, 0);
 	drawFrame(x1, y1, x2, y2, color);
 	if (x2-x1 > y2-y1) {
 		z0 = x2 - x1;
@@ -630,7 +668,7 @@ void SetHeight(void)
 		FONT_HEIGHT = ascii_data.height;// + line_Margin;
 	else
 		FONT_HEIGHT = kanji_data.height;// + line_Margin;
-	if (ffmode == ITO_FRAME) {
+	if (ffmode) {
 		if (font_vhalf >= 0)
 			FONT_HEIGHT = (FONT_HEIGHT+1)/2;
 		else
@@ -967,9 +1005,18 @@ int InitFontAscii(const char *path)
 
 		if ((dsize = tek_getsize(fullpath))>=0) {
 			//tek展開
+			//(先に)展開先バッファを確保
+			font_ascii = (char*)malloc(dsize);
+			if(font_ascii==NULL){
+				//	free(tekbuff);
+				fioClose(fd);
+				return -1;
+			}
 			//メモリを確保
 			tekbuff = (char*)malloc(size);
 			if(tekbuff==NULL){
+				free(font_ascii);
+				font_ascii=NULL;
 				fioClose(fd);
 				return -1;
 			}
@@ -979,16 +1026,11 @@ int InitFontAscii(const char *path)
 			//クローズ
 			fioClose(fd);
 			
-			//展開先バッファを確保
-			font_ascii = (char*)malloc(dsize);
-			if(font_ascii==NULL){
-				free(tekbuff);
-				return -1;
-			}
 			//tek展開
 			if(tek_decomp(tekbuff, font_ascii, size)<0){
 				free(tekbuff);
 				free(font_ascii);
+				font_ascii=NULL;
 				return -1;
 			}
 			free(tekbuff);
@@ -1203,9 +1245,18 @@ int InitFontKnaji(const char *path)
 
 		if ((dsize = tek_getsize(fullpath))>=0) {
 			//tek展開
+			//(先に)展開先バッファを確保
+			font_kanji = (char*)malloc(dsize);
+			if(font_kanji==NULL){
+				//	free(tekbuff);
+				fioClose(fd);
+				return -1;
+			}
 			//メモリを確保
 			tekbuff = (char*)malloc(size);
 			if(tekbuff==NULL){
+				free(font_kanji);
+				font_kanji=NULL;
 				fioClose(fd);
 				return -1;
 			}
@@ -1215,16 +1266,11 @@ int InitFontKnaji(const char *path)
 			//クローズ
 			fioClose(fd);
 			
-			//展開先バッファを確保
-			font_kanji = (char*)malloc(dsize);
-			if(font_kanji==NULL){
-				free(tekbuff);
-				return -1;
-			}
 			//tek展開
 			if(tek_decomp(tekbuff, font_kanji, size)<0){
 				free(tekbuff);
 				free(font_kanji);
+				font_kanji=NULL;
 				return -1;
 			}
 			free(tekbuff);
@@ -1642,7 +1688,7 @@ error:
 
 //-------------------------------------------------
 // 文字表示
-void drawChar_JIS(unsigned int c, int x, int y, uint64 fcol, uint64 scol, unsigned char *k)
+void drawChar_JIS_(unsigned int c, int x, int y, uint64 fcol, uint64 scol, unsigned char *k)
 {
 	unsigned char *pc;
 	uint64 color = fcol;
@@ -1677,6 +1723,11 @@ void drawChar_JIS(unsigned int c, int x, int y, uint64 fcol, uint64 scol, unsign
 		else if (fonthalfmode == 2)
 			drawChar_filter(pc, x, y, color, font[c].width, font[c].height);
 	}
+}
+void drawChar_JIS(unsigned int c, int x, int y, uint64 fcol, uint64 scol, unsigned char *k) {
+	if (wallpaper) 
+		drawChar_JIS_(c, x+1, y+1, setting->color[COLOR_SHADOWTEXT], setting->color[COLOR_SHADOWTEXT], k);
+	drawChar_JIS_(c, x, y, fcol, scol, k);
 }
 
 //-------------------------------------------------
@@ -1724,7 +1775,7 @@ void drawChar_1bpp(void *src, int x, int y, uint64 color, int w, int h)
 		rpy = -GetFontVHalf()+1; bty = 1;
 	}
 	btz = bty;
-	if (ffmode == ITO_FRAME) {
+	if (ffmode) {
 		if (rpy == 1){
 			bty*=2;
 			if (itoGetActiveFrameBuffer())
@@ -1954,7 +2005,7 @@ void drawChar_8bpp(void *src, int x, int y, uint64 color0, uint64 back, int w, i
 	//アルファブレンド有効
 	itoPrimAlphaBlending( TRUE );
 	// 高速化は後回し
-	if (ffmode * interlace * (framebuffers-1)) {
+	if ((ffmode != 0) * interlace * (framebuffers-1)) {
 		if (itoGetActiveFrameBuffer()) pc+=w;
 		for(i=0;i<h/2;i++,pc+=w)
 			for(j=0;j<w;j++)
@@ -2170,6 +2221,10 @@ int drawStringLimit(const unsigned char *s, int charset, int sx, int sy, uint64 
 	int cs = charset;
 	int i=0,x=sx,y=sy,width=right-sx;
 	extern unsigned char ctrlchar[32];
+	if ((sy < SCREEN_MARGIN+FONT_HEIGHT*2) && (sx < SCREEN_WIDTH/2) && sndview_totaltime[0]) {
+		right = SCREEN_WIDTH - FONT_WIDTH * (strlen(&sndview_totaltime[0]) * 2 + 5);
+		width = right-sx;
+	}
 	if (ctrlchars == NULL) k=&ctrlchar[0]; else k=ctrlchars;
 	if (charset == TXT_AUTO) {
 		if (setting->language == LANG_ENGLISH)
@@ -2232,9 +2287,187 @@ int drawStringLimit(const unsigned char *s, int charset, int sx, int sy, uint64 
 	}
 	return x;
 }
+int drawStringWindow(const unsigned char *s, int charset, int sx, int sy, uint64 fcol, int sl, int sr)
+{
+	unsigned char *k;
+	uint64 fclr = (fcol & 0x00FFFFFF) | 0x80000000;
+	uint64 sclr = (fcol & 0x00FFFFFF) | 0x80000000;
+	int cs = charset;
+	int i=0,x=sx,y=sy;
+	extern unsigned char ctrlchar[32];
+	k=&ctrlchar[0]; 
+	if (charset == TXT_AUTO) {
+		if (setting->language == LANG_ENGLISH)
+			cs = TXT_ASCII;
+		else
+			cs = TXT_SJIS;
+	}
+	if (cs == TXT_ASCII) {
+		int xp;
+		x=sx+ascii_MarginLeft;
+		y=sy+ascii_MarginTop;
+		if (font_half > 0)
+			xp = (ascii_data.width+font_half) / (font_half+1) + char_Margin;
+		else if (font_half == 0)
+			xp = ascii_data.width + char_Margin;
+		else
+			xp = ascii_data.width * (-font_half+1) + char_Margin;
+		for(i = 0; s[i]; i++) {
+			if ((x >= sl) && (x +FONT_WIDTH <= sr))
+				drawChar_JIS(s[i], x, y, fclr, sclr, k);
+			x += xp;
+		}
+	} else {
+		uint16 code;
+		unsigned char a,b;
+		int xa,xk;
+
+		if (font_half > 0) {
+			xa = (ascii_data.width+font_half) / (font_half+1) + char_Margin;
+			xk = (kanji_data.width+font_half) / (font_half+1) + char_Margin * 2;
+		} else if (font_half == 0) {
+			xa = ascii_data.width + char_Margin;
+			xk = kanji_data.width + char_Margin * 2;
+		} else {
+			xa = ascii_data.width * (-font_half+1) + char_Margin;
+			xk = kanji_data.width * (-font_half+1) + char_Margin * 2;
+		}
+		while(s[i]){
+			if ((( s[i]>=0x81 && s[i]<=0x9f ) || ( s[i]>=0xe0 && s[i]<=0xfc )) &&
+				s[i+1]>=0x40 && s[i+1]!=0x7f && s[i+1]<=0xfc ) {	//SJIS
+				a = s[i++]; b = s[i++];
+				code = (a - 0x81 - 0x40*(a>0x9f)) *188 + (b - 0x40 - (b>0x7f)) +256;
+				if((x >= sl) && (x +FONT_WIDTH <= sr))
+						drawChar_JIS(code, x+kanji_MarginLeft, y+kanji_MarginTop, fclr, sclr, k);
+				x+=xk;
+			}
+			else{
+				if((x >= sl) && (x +FONT_WIDTH*2 <= sr))
+					drawChar_JIS(s[i], x+ascii_MarginLeft, y+ascii_MarginTop, fclr, sclr, k);
+				i++;
+				x+=xa;
+			}
+		}
+
+	}
+	return x;
+}
 int drawString(const unsigned char *s, int charset, int sx, int sy, uint64 fcol, uint64 scol, unsigned char *ctrlchars)
 {	return drawStringLimit(s, charset, sx, sy, fcol, scol, ctrlchars, 0);	}
+// ２ちゃんねる掲示板ビューア用可変幅化文字描画
+extern unsigned char monafontwidth[11536];
+int drawStringAAS(const unsigned char *s, int sx, int sy, uint64 *col, int sl, int sr)
+{
+	uint64 fclr,iclr,clstack[8];
+	int i=0,y,ci=0,uu=0,ou=0,ul=0,rclr=0;
+	float x,aw,kw;
+	uint16 code;
+	unsigned char a,b;
+	if (col) fclr = (col[1] & 0x00FFFFFF) | 0x80000000;	// default
+	else fclr = 0x80000000;
+	iclr = (fclr & 0x00FFFFFF) | (setting->flicker_alpha << 24);	//半透明
 
+	if (font_half > 0) {
+		aw = (ascii_data.width+font_half) / (font_half+1);
+		kw = (kanji_data.width+font_half) / (font_half+1);
+	} else if (font_half == 0) {
+		aw = ascii_data.width;
+		kw = kanji_data.width;
+	} else {
+		aw = ascii_data.width * (-font_half+1);
+		kw = kanji_data.width * (-font_half+1);
+	}
+	x = sx + .5; y = sy;
+	aw /= 8.0; kw /= 16.0;
+	//printf("draw: viewport:%4d-%4d, aw:%6.3f, kw:%6.3f\n", sl, sr, aw, kw);
+	while(s[i]){
+		if ((( s[i]>=0x81 && s[i]<=0x9f ) || ( s[i]>=0xe0 && s[i]<=0xfc )) &&
+			s[i+1]>=0x40 && s[i+1]!=0x7f && s[i+1]<=0xfc ) {	//SJIS
+			a = s[i++]; b = s[i++];
+			code = (a - 0x81 - 0x40*(a>0x9f)) *188 + (b - 0x40 - (b>0x7f)) +256;
+			if((x >= sl) && (x < sr) && monafontwidth[code]) {
+				drawChar_JIS(code, x+kanji_MarginLeft-(16-monafontwidth[code])*kw/2, y+kanji_MarginTop, fclr, 0, 0);
+			}
+			//x+= ((float)(kanji_data.width * monafontwidth[code])) / 16.0;
+			x += kw * monafontwidth[code];
+			if (rclr) {
+				rclr = 0;
+				fclr = clstack[--ci];
+				iclr = (fclr & 0x00FFFFFF) | (setting->flicker_alpha << 24);	//半透明
+			}
+		}
+		else if (s[i] > 31) {
+			if((x >= sl) && (x < sr) && monafontwidth[s[i]]) {
+				drawChar_JIS(s[i], x+ascii_MarginLeft-(8-monafontwidth[s[i]])*aw/2, y+ascii_MarginTop, fclr, 0, 0);
+			}
+			//x+= ((float)(ascii_data.width * monafontwidth[s[i]])) / 8.0;
+			x += aw * monafontwidth[s[i]];
+			if (rclr) {
+				rclr = 0;
+				fclr = clstack[--ci];
+				iclr = (fclr & 0x00FFFFFF) | (setting->flicker_alpha << 24);	//半透明
+			}
+			i++;
+		} else {
+			if (s[i] == 27) {	i++;
+				if ((s[i] >= 0x30) && (s[i] <= 0x39)) {
+					// 現在の色を退避して変更
+					clstack[ci++] = fclr;
+					fclr = (col[s[i]-0x30] & 0x00FFFFFF) | 0x80000000;
+					iclr = (fclr & 0x00FFFFFF) | (setting->flicker_alpha << 24);	//半透明
+				} else if (s[i] == 0x23) {
+					i++;
+					fclr = strtoul(&s[i], NULL, 16);
+					iclr = (fclr & 0x00FFFFFF) | (setting->flicker_alpha << 24);	//半透明
+					i+=6;
+				} else if (s[i] == 0x40) {
+					// 色を復帰
+					fclr = clstack[--ci];
+					iclr = (fclr & 0x00FFFFFF) | (setting->flicker_alpha << 24);	//半透明
+				} else if (s[i] == 0x03) {
+					// 1文字だけ色変更
+					rclr = 1;
+					clstack[ci++] = fclr;
+					fclr = 0x80808080;
+					iclr = (fclr & 0x00FFFFFF) | (setting->flicker_alpha << 24);
+				}
+				if (s[i] >= 0x80) {
+					x += aw * (s[i] - 0x80);
+				}
+				if (s[i] == 0x75) {
+					// アンダーライン(リンク用)
+					uu++;
+				} else if (s[i] == 0x55) {
+					// アンダーライン解除
+					uu--;
+				}
+			} else if (s[i] == 9) {
+				x += 12;
+			}
+			i++;
+		}
+		if (!uu != !ou) {
+			int ur=x;
+			if (ul < sl) ul = sl;
+			if (ur > sr) ur = sr;
+			if (!uu) {
+				if ((ul >= sl) && (ur <= sr) && (ul < ur)) {
+					itoLine(fclr, ul, y + ascii_MarginTop + FONT_HEIGHT -1, 0, 
+							fclr, ur, y + ascii_MarginTop + FONT_HEIGHT -1, 0);
+					if (flickerfilter == TRUE) {
+						itoPrimAlphaBlending( TRUE );
+						itoLine(iclr, ul, y + ascii_MarginTop + FONT_HEIGHT, 0, 
+								iclr, ur, y + ascii_MarginTop + FONT_HEIGHT, 0);
+						itoPrimAlphaBlending( FALSE );
+					}
+				}
+			} else ul = x;
+			ou = uu;
+		}
+	}
+	return (int)x;
+}
+//*/
 //-------------------------------------------------
 // 従来互換用
 int printXY(const unsigned char *s, int x, int y, uint64 color, int draw)
