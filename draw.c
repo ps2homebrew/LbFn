@@ -1,7 +1,5 @@
 #include "launchelf.h"
 
-#define LBF_VER "LbF v0.43"
-
 itoGsEnv screen_env;
 
 int initbiosfont=0;
@@ -90,7 +88,7 @@ int InitBIOSFont(void)
 	}
 	
 	//メモリに読み込む
-	fioRead(fd, biosfont, (size_t)size);
+	fioRead(fd, biosfont, size);
 
 	//フォントロード成功
 	initbiosfont=1;
@@ -114,9 +112,14 @@ void drawDark(void)
 	//アルファブレンド有効
 	itoPrimAlphaBlending( TRUE );
 	//
+/*
 	itoSprite(ITO_RGBA(0,0,0,0x10),
 		FONT_WIDTH*1.5, SCREEN_MARGIN+FONT_HEIGHT*2.5,
 		FONT_WIDTH*62.5, SCREEN_MARGIN+FONT_HEIGHT*19.5, 0);
+*/
+	itoSprite(ITO_RGBA(0,0,0,0x10),
+		0, SCREEN_MARGIN+FONT_HEIGHT*2.5,
+		SCREEN_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*19.5, 0);
 	//アルファブレンド無効
 	itoPrimAlphaBlending(FALSE);
 }
@@ -134,17 +137,43 @@ void drawDialogTmp(int x1, int y1, int x2, int y2, uint64 color1, uint64 color2)
 // 画面表示のテンプレート
 void setScrTmp(const char *msg0, const char *msg1)
 {
+	uint64 color;
+	uint64 color2;	//アルファ付き
+
 	// バージョン表記
 	printXY(LBF_VER, FONT_WIDTH*53, SCREEN_MARGIN, setting->color[3], TRUE);
 	
 	// メッセージ
 	printXY(msg0, FONT_WIDTH*2, SCREEN_MARGIN+FONT_HEIGHT*1, setting->color[3], TRUE);
 	
+/*
 	// 枠
 	drawFrame(FONT_WIDTH*1.5, SCREEN_MARGIN+FONT_HEIGHT*2.5,
 		FONT_WIDTH*62.5, SCREEN_MARGIN+FONT_HEIGHT*19.5,
 		setting->color[1]);
-	
+*/
+	// 枠
+	color = setting->color[1]&0x00FFFFFF;	//透明度を除外
+	color = color|0x80000000;	//不透明
+	color2 = color|0x10000000;	//半透明
+
+	//FLICKER CONTROL: ON
+	if(setting->flickerControl){
+		//アルファブレンド有効
+		itoPrimAlphaBlending( TRUE );
+		itoLine(color2, 0, SCREEN_MARGIN+FONT_HEIGHT*2.5+1, 0,
+			color2, SCREEN_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*2.5+1, 0);	
+		itoLine(color2, 0, SCREEN_MARGIN+FONT_HEIGHT*19.5+1, 0,
+			color2, SCREEN_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*19.5+1, 0);	
+		//アルファブレンド無効
+		itoPrimAlphaBlending(FALSE);
+	}
+	itoPrimAlphaBlending( TRUE );
+	itoLine(color, 0, SCREEN_MARGIN+FONT_HEIGHT*2.5, 0,
+		color, SCREEN_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*2.5, 0);	
+	itoLine(color, 0, SCREEN_MARGIN+FONT_HEIGHT*19.5, 0,
+		color, SCREEN_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*19.5, 0);	
+
 	// 操作説明
 	printXY(msg1, FONT_WIDTH*2, SCREEN_MARGIN+FONT_HEIGHT*20, setting->color[3], TRUE);
 }
@@ -208,7 +237,7 @@ void setupito(void)
 		ITO_ALPHA_COLOR_DST, // C = COLOR DEST
 		0x80);				 // Fixed Value
 	//
-	itoSetBgColor(setting->color[0]);
+//	itoSetBgColor(setting->color[0]);
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -388,7 +417,7 @@ int printXY(const unsigned char *s, int x, int y, uint64 color, int draw)
 		if (( s[i]>=0x81 && s[i]<=0x9f ) || ( s[i]>=0xe0 && s[i]<=0xff )){
 			code = s[i++];
 			code = (code<<8) + s[i++];
-			drawChar_SJIS(code, x, y, color);
+			if(draw) drawChar_SJIS(code, x, y, color);
 			x += FONT_WIDTH*2;
 		}           
 		else{
@@ -396,12 +425,11 @@ int printXY(const unsigned char *s, int x, int y, uint64 color, int draw)
 			i++;
 			x += FONT_WIDTH;
 		}
-/*
-		if(x > SCREEN_WIDTH-SCREEN_MARGIN-FONT_WIDTH){
+		//if(x > SCREEN_WIDTH-SCREEN_MARGIN-FONT_WIDTH){
+		if(x > SCREEN_WIDTH-FONT_WIDTH*2){
 			//x=16; y=y+8;
 			return x;
 		}
-*/
 	}
 
 	itoPrimAlphaBlending(FALSE);	//アルファブレンド無効

@@ -1,7 +1,6 @@
 #ifndef LAUNCHELF_H
 #define LAUNCHELF_H
 
-#include <ito.h>
 #include <stdio.h>
 #include <tamtypes.h>
 #include <sifcmd.h>
@@ -23,9 +22,15 @@
 #include <sbv_patches.h>
 #include <sys/fcntl.h>
 #include <debug.h>
+#include <ito.h>
 #include <cdvd_rpc.h>
 #include "cd.h"
 #include "mass_rpc.h"
+
+#include "language.h"
+
+// バージョン
+#define LBF_VER "LbF v0.46"
 
 // 垂直スキャンレート
 #define SCANRATE (ITO_VMODE_AUTO==ITO_VMODE_NTSC ? 60:50)
@@ -46,6 +51,14 @@ enum
 	MAX_PARTITIONS=100
 };
 
+//getFilePathのモード
+enum
+{
+	ANY_FILE = 0,
+	ELF_FILE,
+	DIR
+};
+	
 typedef struct
 {
 	char dirElf[13][MAX_PATH];
@@ -59,6 +72,8 @@ typedef struct
 	int fileicon;
 	int discPs2saveCheck;
 	int discELFCheck;
+	char Exportdir[MAX_PATH];
+	int language;
 } SETTING;
 
 extern char LaunchElfDir[MAX_PATH], LastDir[MAX_NAME];
@@ -99,7 +114,15 @@ void config(char *);
 
 /* filer.c */
 unsigned char *elisaFnt;
-void getFilePath(char *out, const int cnfmode);
+void MessageDialog(const char *message);
+int newdir(const char *path, const char *name);
 int keyboard(char *out, int max);
+void getFilePath(char *out, const int cnfmode);
+
+/* language.c */
+extern LANGUAGE *lang;
+void InitLanguage(void);
+void FreeLanguage(void);
+void SetLanguage(const int langID);
 
 #endif

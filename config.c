@@ -18,10 +18,12 @@ enum
 	DEF_FLICKERCONTROL = TRUE,
 	DEF_FILEICON = TRUE,
 	DEF_DISCPS2SAVECHECK = FALSE,
-	DEF_DISCELFCHECK = FALSE
+	DEF_DISCELFCHECK = FALSE,
+	DEF_LANGUAGE = LANG_ENGLISH
 };
 
-enum{	
+enum
+{
 	BUTTONSETTING=0,
 	SCREENSETTING,
 	NETWORK,
@@ -36,7 +38,7 @@ enum{
 	SCREEN_X=8,
 	SCREEN_Y,
 	FLICKERCONTROL,
-	COLORINIT,
+	SCREENINIT,
 
 	IPADDRESS=0,
 	NETMASK,
@@ -44,12 +46,14 @@ enum{
 	NETWORKSAVE,
 	NETWORKINIT,
 
-	TIMEOUT=0,
+	LANG=0,
+	TIMEOUT,
 	DISCCONTROL,
 	FILENAME,
 	FILEICON,
 	PS2SAVECHECK,
 	ELFCHECK,
+	EXPORTDIR,
 	MISCINIT
 };
 
@@ -77,16 +81,20 @@ int CheckMC(void)
 }
 
 ////////////////////////////////////////////////////////////////////////
-// 設定を初期化
-void InitConfig(void)
+// BUTTON SETTINGを初期化
+void InitButtonSetting(SETTING *setting)
 {
 	int i;
 
 	for(i=0; i<12; i++) setting->dirElf[i][0] = 0;
 
 	strcpy(setting->dirElf[1], "MISC/FileBrowser");
-	setting->timeout = DEF_TIMEOUT;
-	setting->filename = DEF_FILENAME;
+}
+
+////////////////////////////////////////////////////////////////////////
+// SCREEN SETTINGを初期化
+void InitScreenSetting(SETTING *setting)
+{
 	setting->color[0] = DEF_COLOR1;
 	setting->color[1] = DEF_COLOR2;
 	setting->color[2] = DEF_COLOR3;
@@ -97,11 +105,30 @@ void InitConfig(void)
 	setting->color[7] = DEF_COLOR8;
 	setting->screen_x = DEF_SCREEN_X;
 	setting->screen_y = DEF_SCREEN_Y;
-	setting->discControl = DEF_DISCCONTROL;
 	setting->flickerControl = DEF_FLICKERCONTROL;
+}
+
+////////////////////////////////////////////////////////////////////////
+// MISC SETTINGを初期化
+void InitMiscSetting(SETTING *setting)
+{
+	setting->timeout = DEF_TIMEOUT;
+	setting->filename = DEF_FILENAME;
+	setting->discControl = DEF_DISCCONTROL;
 	setting->fileicon = DEF_FILEICON;
 	setting->discPs2saveCheck = DEF_DISCPS2SAVECHECK;
 	setting->discELFCheck = DEF_DISCELFCHECK;
+	setting->Exportdir[0] = 0;
+	setting->language = DEF_LANGUAGE;
+}
+
+////////////////////////////////////////////////////////////////////////
+// 設定を初期化
+void InitSetting(SETTING *setting)
+{
+	InitButtonSetting(setting);
+	InitScreenSetting(setting);
+	InitMiscSetting(setting);
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -110,7 +137,7 @@ void saveConfig(char *mainMsg)
 {
 	int i, ret, fd, size;
 	const char LF[3]={0x0D, 0x0A, 0};
-	char c[MAX_PATH], tmp[30][MAX_PATH];
+	char c[MAX_PATH], tmp[32][MAX_PATH];
 	char* p;
 	
 	// 設定をメモリに格納
@@ -128,43 +155,73 @@ void saveConfig(char *mainMsg)
 	sprintf(tmp[27], "%d", setting->fileicon);
 	sprintf(tmp[28], "%d", setting->discPs2saveCheck);
 	sprintf(tmp[29], "%d", setting->discELFCheck);
+	strcpy(tmp[30], setting->Exportdir);
+	sprintf(tmp[31], "%d", setting->language);
 	
 	p = (char*)malloc(sizeof(SETTING));
 	p[0]=0;
 	size=0;
-	for(i=0; i<30; i++){
+	for(i=0; i<32; i++){
 		strcpy(c, tmp[i]);
 		strcat(c, LF);
 		strcpy(p+size, c);
 		size += strlen(c);
 	}
-	// LaunchELFのディレクトリにCNFがあったらLaunchELFのディレクトリにセーブ
-	strcpy(c, LaunchElfDir);
-	strcat(c, "LBF.CNF");
-	if((fd=fioOpen(c, O_RDONLY)) >= 0)
-		fioClose(fd);
-	else{
-		if(!strncmp(LaunchElfDir, "mc", 2))
-			sprintf(c, "mc%d:/SYS-CONF", LaunchElfDir[2]-'0');
-		else
-			sprintf(c, "mc%d:/SYS-CONF", CheckMC());
-		// SYS-CONFがあったらSYS-CONFにセーブ
+
+	//hostから起動しているか調べる
+	if(!strncmp(LaunchElfDir, "host", 4)){
+		//有効なmcのSYS-CONFフォルダ
+		sprintf(c, "mc%d:/SYS-CONF", CheckMC());
+
+		// SYS-CONFフォルダをオープンしてみる
 		if((fd=fioDopen(c)) >= 0){
+			// SYS-CONFフォルダがあったらSYS-CONFにセーブ
 			fioDclose(fd);
 			strcat(c, "/LBF.CNF");
-		// SYS-CONFがなかったらLaunchELFのディレクトリにセーブ
-		}else{
-			strcpy(c, LaunchElfDir);
-			strcat(c, "LBF.CNF");
+		}
+		else
+			// SYS-CONFフォルダが無いときは保存しない
+			c[0]=0;
+	}
+	else{ 
+		//CNFファイルのパス
+		strcpy(c, LaunchElfDir);
+		strcat(c, "LBF.CNF");
+
+		// LaunchELFのディレクトリにCNFがあったらLaunchELFのディレクトリにセーブ
+		if((fd=fioOpen(c, O_RDONLY)) >= 0)
+			fioClose(fd);
+		// LaunchELFのディレクトリにCNFが無いとき
+		else{
+			//mcから起動しているか調べる
+			if(!strncmp(LaunchElfDir, "mc", 2))
+				//mcのとき
+				sprintf(c, "mc%d:/SYS-CONF", LaunchElfDir[2]-'0');
+			else
+				//mc以外のときは有効なmcのSYS-CONFフォルダ
+				sprintf(c, "mc%d:/SYS-CONF", CheckMC());
+	
+			// SYS-CONFフォルダをオープンしてみる
+			if((fd=fioDopen(c)) >= 0){
+				// SYS-CONFフォルダがあったらSYS-CONFにセーブ
+				fioDclose(fd);
+				strcat(c, "/LBF.CNF");
+			}
+			else{
+				// SYS-CONFフォルダがなかったらLaunchELFのディレクトリにセーブ
+				strcpy(c, LaunchElfDir);
+				strcat(c, "LBF.CNF");
+			}
 		}
 	}
-	strcpy(mainMsg,"Save Failed");
+	strcpy(mainMsg,lang->conf_savefailed);
+
 	// 書き込み
 	if((fd=fioOpen(c,O_CREAT|O_WRONLY|O_TRUNC)) < 0){
 		return;
 	}
 	ret = fioWrite(fd,p,size);
-	if(ret==size) sprintf(mainMsg, "Save Config (%s)", c);
+	if(ret==size) sprintf(mainMsg, "%s (%s)", lang->conf_saveconfig, c);
 	fioClose(fd);
 	free(p);
 }
@@ -175,29 +232,43 @@ void loadConfig(char *mainMsg)
 {
 	int i, j, k, fd, len, mcport;
 	size_t size;
-	char path[MAX_PATH], tmp[30][MAX_PATH], *p;
+	char path[MAX_PATH], tmp[31][MAX_PATH], *p;
 	char cnf_version[16];
+	int ret;
 	
 	setting = (SETTING*)malloc(sizeof(SETTING));
-	// LaunchELFが実行されたパスから設定ファイルを開く
-	sprintf(path, "%s%s", LaunchElfDir, "LBF.CNF");
-	if(!strncmp(path, "cdrom", 5)) strcat(path, ";1");
-	fd = fioOpen(path, O_RDONLY);
-	// 開けなかったら、SYS-CONFの設定ファイルを開く
-	if(fd<0){
-		if(!strncmp(LaunchElfDir, "mc", 2))
-			mcport = LaunchElfDir[2]-'0';
-		else
-			mcport = CheckMC();
-		if(mcport==1 || mcport==0){
-			sprintf(path, "mc%d:/SYS-CONF/LBF.CNF", mcport);
-			fd = fioOpen(path, O_RDONLY);
+
+	//hostから起動しているか調べる
+	if(!strncmp(LaunchElfDir, "host", 4)){
+		//有効なmcのSYS-CONFフォルダ
+		sprintf(path, "mc%d:/SYS-CONF/LBF.CNF", CheckMC());
+		fd = fioOpen(path, O_RDONLY);
+	}
+	else{
+		// LaunchELFが実行されたパスから設定ファイルを開く
+		sprintf(path, "%s%s", LaunchElfDir, "LBF.CNF");
+		if(!strncmp(path, "cdrom", 5)) strcat(path, ";1");
+		fd = fioOpen(path, O_RDONLY);
+		// 開けなかったら、SYS-CONFの設定ファイルを開く
+		if(fd<0){
+			//mcから起動しているか調べる
+			if(!strncmp(LaunchElfDir, "mc", 2))
+				//mcのとき
+				mcport = LaunchElfDir[2]-'0';
+			else
+				//mc以外のときは有効なmcのSYS-CONFフォルダ
+				mcport = CheckMC();
+			if(mcport==1 || mcport==0){
+				sprintf(path, "mc%d:/SYS-CONF/LBF.CNF", mcport);
+				fd = fioOpen(path, O_RDONLY);
+			}
 		}
 	}
 	// どのファイルも開けなかった場合、設定を初期化する
 	if(fd<0){
-		InitConfig();
+		InitSetting(setting);
 		mainMsg[0] = 0;
+		ret=0;
 	}
 	else{
 		// 設定ファイルをメモリに読み込み
@@ -219,8 +290,10 @@ void loadConfig(char *mainMsg)
 		// 26行目はディスクコントロール
 		// 27行目はインターレース
 		// 28行目はアイコン表示
-		// 27行目はdiscPs2saveCheck
-		// 28行目はdiscELFCheck
+		// 29行目はdiscPs2saveCheck
+		// 30行目はdiscELFCheck
+		// 31行目はExportdir
+		// 32行目はlanguage
 		for(i=j=k=0; i<size; i++){
 			if(p[i]==0x0D && p[i+1]==0x0A){
 				if(i-k<MAX_PATH){
@@ -229,12 +302,12 @@ void loadConfig(char *mainMsg)
 				}
 				else
 					break;
-				if(j>=30)
+				if(j>=32)
 					break;
 				k=i+2;
 			}
 		}
-		while(j<30)
+		while(j<32)
 			tmp[j++][0] = 0;
 
 		//cnf version check
@@ -328,17 +401,35 @@ void loadConfig(char *mainMsg)
 				setting->discELFCheck = tmp[29][0]-'0';
 			else
 				setting->discELFCheck = DEF_DISCELFCHECK;
+			strcpy(setting->Exportdir, tmp[30]);
+			// language
+			if(tmp[31][0])
+				setting->language = tmp[31][0]-'0';
+			else
+				setting->language = DEF_LANGUAGE;
 
-			//
-			sprintf(mainMsg, "Load Config (%s)", path);
+			ret=1;
 		}
 		else{
-			//CNF初期化
-			InitConfig();
-			sprintf(mainMsg, "Initialize Config (%s)", path);
+			//Setting初期化
+			InitSetting(setting);
+			ret=2;
 		}
 
 		free(p);
+	}
+
+	SetLanguage(setting->language);
+	if(ret==0){
+		//設定ファイル開けなかった
+	}
+	else if(ret==1){
+		//ロード成功
+		sprintf(mainMsg, "%s (%s)", lang->conf_loadconfig, path);
+	}
+	else if(ret==2){
+		//CNFのバージョンが古い
+		sprintf(mainMsg, "%s (%s)", lang->conf_initializeconfig, path);
 	}
 	return;
 }
@@ -385,7 +476,7 @@ void config(char *mainMsg)
 					if(s==OK-1) s=BUTTONINIT;
 				}
 				else if(page==SCREENSETTING){
-					if(s==OK-1) s=COLORINIT;
+					if(s==OK-1) s=SCREENINIT;
 				}
 				else if(page==NETWORK){
 					if(s==OK-1) s=NETWORKINIT;
@@ -398,21 +489,21 @@ void config(char *mainMsg)
 				s++;
 				if(s>CANCEL) s=0;
 				if(page==BUTTONSETTING){
-					if(s==BUTTONINIT+1) s=OK;	//OKまで移動
+					if(s==BUTTONINIT+1) s=OK;	//OKに移動
 				}
 				else if(page==SCREENSETTING){
-					if(s==COLORINIT+1) s=OK;		//OKまで移動
+					if(s==SCREENINIT+1) s=OK;	//OKに移動
 				}
 				else if(page==NETWORK){
-					if(s==NETWORKINIT+1) s=OK;		//OKまで移動
+					if(s==NETWORKINIT+1) s=OK;	//OKに移動
 				}
 				else if(page==MISC){
-					if(s==MISCINIT+1) s=OK;		//OKまで移動
+					if(s==MISCINIT+1) s=OK;	//OKに移動
 				}
 			}
 			else if(new_pad & PAD_LEFT){	//左
 				if(page==BUTTONSETTING){
-					s=DEFAULT;	//DEFAULTまで移動
+					s=DEFAULT;	//DEFAULTに移動
 				}
 				else if(page==SCREENSETTING){
 					if(s<8){
@@ -420,13 +511,13 @@ void config(char *mainMsg)
 						if(s_x<0) s_x=2;
 					}
 					else
-						s=COLOR1;		//COLOR1まで移動
+						s=COLOR1;		//COLOR1に移動
 				}
 				else if(page==NETWORK){
-					s=IPADDRESS;		//IP ADDRESSまで移動
+					s=IPADDRESS;		//IP ADDRESSに移動
 				}
 				else if(page==MISC){
-					s=TIMEOUT;		//TIMEOUTまで移動
+					s=LANG;		//LANGに移動
 				}
 			}
 			else if(new_pad & PAD_RIGHT){	//右
@@ -461,7 +552,7 @@ void config(char *mainMsg)
 							if(b>0) b--;
 						}
 						setting->color[s] = ITO_RGBA(r, g, b, 0);
-						if(s == 0) itoSetBgColor(setting->color[0]);
+						//if(s == 0) itoSetBgColor(setting->color[0]);
 					}
 					else if(s==SCREEN_X){	//SCREEN X
 						if(setting->screen_x > 0){
@@ -482,20 +573,22 @@ void config(char *mainMsg)
 					if(s==TIMEOUT){
 						if(setting->timeout > 0) setting->timeout--;
 					}
+					if(s==EXPORTDIR){
+						setting->Exportdir[0]=0;
+					}
 				}
 			}
 			else if(new_pad & PAD_CIRCLE){	//○
 				if(page==BUTTONSETTING){
 					if(s<BUTTONINIT){
-						getFilePath(setting->dirElf[s], TRUE);
+						getFilePath(setting->dirElf[s], ELF_FILE);
 						if(!strncmp(setting->dirElf[s], "mc", 2)){
 							sprintf(c, "mc%s", &setting->dirElf[s][3]);
 							strcpy(setting->dirElf[s], c);
 						}
 					}
 					else if(s==BUTTONINIT){
-						for(i=0; i<12; i++) setting->dirElf[i][0] = 0;
-						strcpy(setting->dirElf[1], "MISC/FileBrowser");
+						InitButtonSetting(setting);
 					}
 				}
 				else if(page==SCREENSETTING){
@@ -513,7 +606,7 @@ void config(char *mainMsg)
 							if(b<255) b++;
 						}
 						setting->color[s] = ITO_RGBA(r, g, b, 0);
-						if(s == 0) itoSetBgColor(setting->color[0]);
+						//if(s == 0) itoSetBgColor(setting->color[0]);
 					}
 					else if(s==SCREEN_X){	//SCREEN X
 						setting->screen_x++;
@@ -527,25 +620,16 @@ void config(char *mainMsg)
 					}
 					else if(s==FLICKERCONTROL)	//フリッカーコントロール
 						setting->flickerControl = !setting->flickerControl;
-					else if(s==COLORINIT){	//COLOR SETTING INIT
-						setting->color[0] = DEF_COLOR1;
-						setting->color[1] = DEF_COLOR2;
-						setting->color[2] = DEF_COLOR3;
-						setting->color[3] = DEF_COLOR4;
-						setting->color[4] = DEF_COLOR5;
-						setting->color[5] = DEF_COLOR6;
-						setting->color[6] = DEF_COLOR7;
-						setting->color[7] = DEF_COLOR8;
-						setting->screen_x = DEF_SCREEN_X;
-						setting->screen_y = DEF_SCREEN_Y;
-						setting->flickerControl = DEF_FLICKERCONTROL;
-						//
+					else if(s==SCREENINIT){	//SCREEN SETTING INIT
+						//init
+						InitScreenSetting(setting);
+
 						screen_env.screen.x = setting->screen_x;
 						screen_env.screen.y = setting->screen_y;
 						screen_env.interlace = ITO_INTERLACE;
 						itoGsReset();
 						itoGsEnvSubmit(&screen_env);
-						itoSetBgColor(setting->color[0]);
+						//itoSetBgColor(setting->color[0]);
 						//アルファブレンド
 						itoSetAlphaBlending(
 							ITO_ALPHA_COLOR_SRC, // A = COLOR SOURCE
@@ -580,11 +664,21 @@ void config(char *mainMsg)
 					if(s==NETWORKSAVE){
 						//save
 						sprintf(tmp, "%s %s %s", ip, netmask, gw);
+						//フォルダ作成
+						newdir("mc0:/","SYS-CONF");
 						// 書き込み
 						if((fd=fioOpen("mc0:/SYS-CONF/IPCONFIG.DAT",O_CREAT|O_WRONLY|O_TRUNC)) >= 0){
 							fioWrite(fd, tmp, strlen(tmp));
 							fioClose(fd);
+							sprintf(tmp, "mc0:/SYS-CONF/IPCONFIG.DAT\n%s",lang->conf_ipsaved);
 						}
+						else{
+							sprintf(tmp, "mc0:/SYS-CONF/IPCONFIG.DAT\n%s",lang->conf_ipsavefailed);
+						}
+						drawDark();
+						itoSwitchFrameBuffers();
+						drawDark();
+						MessageDialog(tmp);
 					}
 					if(s==NETWORKINIT){
 						//init
@@ -594,7 +688,12 @@ void config(char *mainMsg)
 					}
 				}
 				else if(page==MISC){
-					if(s==TIMEOUT)
+					if(s==LANG){
+						setting->language++;
+						if(setting->language==NUM_LANG) setting->language=LANG_ENGLISH;
+						SetLanguage(setting->language);
+					}
+					else if(s==TIMEOUT)
 						setting->timeout++;
 					else if(s==FILENAME)
 						setting->filename = !setting->filename;
@@ -606,13 +705,12 @@ void config(char *mainMsg)
 							setting->discPs2saveCheck = !setting->discPs2saveCheck;
 					else if(s==ELFCHECK)
 							setting->discELFCheck = !setting->discELFCheck;
+					else if(s==EXPORTDIR)
+						getFilePath(setting->Exportdir, DIR);
 					else if(s==MISCINIT){
-						setting->timeout = DEF_TIMEOUT;
-						setting->filename = DEF_FILENAME;
-						setting->discControl = DEF_DISCCONTROL;
-						setting->fileicon = DEF_FILEICON;
-						setting->discPs2saveCheck = DEF_DISCPS2SAVECHECK;
-						setting->discELFCheck = DEF_DISCELFCHECK;
+						//init
+						InitMiscSetting(setting);
+						SetLanguage(setting->language);
 					}
 				}
 				//
@@ -627,12 +725,13 @@ void config(char *mainMsg)
 					strcpy(ip,tmpip);
 					strcpy(netmask,tmpnetmask);
 					strcpy(gw,tmpgw);
+					SetLanguage(setting->language);
 					screen_env.screen.x = setting->screen_x;
 					screen_env.screen.y = setting->screen_y;
 					screen_env.interlace = ITO_INTERLACE;	//setting->interlace;
 					itoGsReset();
 					itoGsEnvSubmit(&screen_env);
-					itoSetBgColor(setting->color[0]);
+					//itoSetBgColor(setting->color[0]);
 					//アルファブレンド
 					itoSetAlphaBlending(
 						ITO_ALPHA_COLOR_SRC, // A = COLOR SOURCE
@@ -649,16 +748,16 @@ void config(char *mainMsg)
 				s_x=0;
 				if(page<BUTTONSETTING) page=MISC;
 				if(page==BUTTONSETTING){
-					s=DEFAULT;	//DEFAULTまで移動
+					s=DEFAULT;	//DEFAULTに移動
 				}
 				else if(page==SCREENSETTING){
-					s=COLOR1;		//COLOR1まで移動
+					s=COLOR1;	//COLOR1に移動
 				}
 				else if(page==NETWORK){
-					s=IPADDRESS;		//IPADDRESSまで移動
+					s=IPADDRESS;	//IPADDRESSに移動
 				}
 				else if(page==MISC){
-					s=TIMEOUT;		//TIMEOUTまで移動
+					s=LANG;		//LANGに移動
 				}
 			}
 			else if(new_pad & PAD_R1){
@@ -666,16 +765,16 @@ void config(char *mainMsg)
 				s_x=0;
 				if(page>MISC) page=BUTTONSETTING;
 				if(page==BUTTONSETTING){
-					s=DEFAULT;	//DEFAULTまで移動
+					s=DEFAULT;	//DEFAULTに移動
 				}
 				else if(page==SCREENSETTING){
-					s=COLOR1;		//COLOR1まで移動
+					s=COLOR1;	//COLOR1に移動
 				}
 				else if(page==NETWORK){
-					s=IPADDRESS;		//IPADDRESSまで移動
+					s=IPADDRESS;	//IPADDRESSに移動
 				}
 				else if(page==MISC){
-					s=TIMEOUT;		//TIMEOUTまで移動
+					s=LANG;		//TIMEOUTに移動
 				}
 			}
 			else if(new_pad & PAD_SELECT){
@@ -689,19 +788,21 @@ void config(char *mainMsg)
 		// 画面描画開始
 		clrScr(setting->color[0]);
 
+/*
 		//ページカーソルの枠
 		drawFrame(FONT_WIDTH*1.5, SCREEN_MARGIN+FONT_HEIGHT,
 			FONT_WIDTH*62.5, SCREEN_MARGIN+FONT_HEIGHT*2,
 			setting->color[1]);
+*/
 
 		//ページカーソル
 		itoPrimAlphaBlending( TRUE );	//アルファブレンド有効
 		itoSprite(setting->color[2]|0x10000000,
-			FONT_WIDTH*10+FONT_WIDTH*11*page, SCREEN_MARGIN+FONT_HEIGHT+1,
-			FONT_WIDTH*10+FONT_WIDTH*11+FONT_WIDTH*11*page, SCREEN_MARGIN+FONT_HEIGHT*2, 0);
+			FONT_WIDTH*8+FONT_WIDTH*12*page, SCREEN_MARGIN+FONT_HEIGHT+1,
+			FONT_WIDTH*8+FONT_WIDTH*12+FONT_WIDTH*12*page, SCREEN_MARGIN+FONT_HEIGHT*2, 0);
 		itoPrimAlphaBlending(FALSE);	//アルファブレンド無効
 		//
-		printXY("<L1     BUTTON     SCREEN     NETWORK     MISC       R1>",
+		printXY(lang->conf_menu,
 			FONT_WIDTH*4, SCREEN_MARGIN+FONT_HEIGHT+2, setting->color[3], TRUE);
 
 		// 枠の中
@@ -750,12 +851,19 @@ void config(char *mainMsg)
 					break;
 				}
 				strcat(c, setting->dirElf[i]);
-				printXY(c, x, y, setting->color[3], TRUE);
+				if(s==i)
+					printXY(c, x, y, setting->color[2], TRUE);
+				else
+					printXY(c, x, y, setting->color[3], TRUE);
 				y += FONT_HEIGHT;
 			}
-			printXY("BUTTON SETTING INIT", x, y, setting->color[3], TRUE);
+			strcpy(c,lang->conf_buttonsettinginit);
+			if(s==i)
+				printXY(c, x, y, setting->color[2], TRUE);
+			else
+				printXY(c, x, y, setting->color[3], TRUE);
 		}
-		//COLOR SETTING
+		//SCREEN SETTING
 		if(page==SCREENSETTING){
 			for(i=0;i<8;i++){
 				r = setting->color[i] & 0xFF;
@@ -763,169 +871,267 @@ void config(char *mainMsg)
 				b = setting->color[i] >> 16 & 0xFF;
 				switch(i){
 				case 0:
-					sprintf(c, "BACK GROUND   :   R:%3d   G:%3d   B:%3d", r, g, b);
+					sprintf(c, "%s:   R:%3d   G:%3d   B:%3d", lang->conf_background, r, g, b);
 					break;
 				case 1:
-					sprintf(c, "FRAME         :   R:%3d   G:%3d   B:%3d", r, g, b);
+					sprintf(c, "%s:   R:%3d   G:%3d   B:%3d", lang->conf_frame, r, g, b);
 					break;
 				case 2:
-					sprintf(c, "HIGHLIGHT TEXT:   R:%3d   G:%3d   B:%3d", r, g, b);
+					sprintf(c, "%s:   R:%3d   G:%3d   B:%3d", lang->conf_highlighttext, r, g, b);
 					break;
 				case 3:
-					sprintf(c, "NORMAL TEXT   :   R:%3d   G:%3d   B:%3d", r, g, b);
+					sprintf(c, "%s:   R:%3d   G:%3d   B:%3d", lang->conf_normaltext, r, g, b);
 					break;
 				case 4:
-					sprintf(c, "FOLDER        :   R:%3d   G:%3d   B:%3d", r, g, b);
+					sprintf(c, "%s:   R:%3d   G:%3d   B:%3d", lang->conf_folder, r, g, b);
 					break;
 				case 5:
-					sprintf(c, "FILE          :   R:%3d   G:%3d   B:%3d", r, g, b);
+					sprintf(c, "%s:   R:%3d   G:%3d   B:%3d", lang->conf_file, r, g, b);
 					break;
 				case 6:
-					sprintf(c, "PS2 SAVE      :   R:%3d   G:%3d   B:%3d", r, g, b);
+					sprintf(c, "%s:   R:%3d   G:%3d   B:%3d", lang->conf_ps2save, r, g, b);
 					break;
 				case 7:
-					sprintf(c, "ELF FILE      :   R:%3d   G:%3d   B:%3d", r, g, b);
+					sprintf(c, "%s:   R:%3d   G:%3d   B:%3d", lang->conf_elffile, r, g, b);
 					break;
 				}
-				printXY(c, x, y, setting->color[3], TRUE);
+				if(s==i)
+					printXY(c, x, y, setting->color[2], TRUE);
+				else
+					printXY(c, x, y, setting->color[3], TRUE);
 
-				sprintf(c, "■");	//色のプレビュー
-				printXY(c, x+FONT_WIDTH*42, y, setting->color[i], TRUE);
+				//色のプレビュー
+				//printXY("■", x+FONT_WIDTH*42, y, setting->color[i], TRUE);
+				itoSprite(setting->color[i],
+					x+FONT_WIDTH*42, y,
+					x+FONT_WIDTH*42+16, y+16, 0);
 				y += FONT_HEIGHT;
 			}
-			sprintf(c, "SCREEN X: %3d", setting->screen_x );
-			printXY(c, x, y, setting->color[3], TRUE);
-			y += FONT_HEIGHT;
-
-			sprintf(c, "SCREEN Y: %3d", setting->screen_y );
-			printXY(c, x, y, setting->color[3], TRUE);
-			y += FONT_HEIGHT;
-
-			if(setting->flickerControl)
-				sprintf(c, "FLICKER CONTROL: ON");
+			//SCREEN_X
+			sprintf(c, "%s: %3d", lang->conf_screen_x, setting->screen_x );
+			if(s==SCREEN_X)
+				printXY(c, x, y, setting->color[2], TRUE);
 			else
-				sprintf(c, "FLICKER CONTROL: OFF");
-			printXY(c, x, y, setting->color[3], TRUE);
+				printXY(c, x, y, setting->color[3], TRUE);
 			y += FONT_HEIGHT;
-
-			printXY("COLOR SETTING INIT", x, y, setting->color[3], TRUE);
+			//SCREEN_Y
+			sprintf(c, "%s: %3d", lang->conf_screen_y, setting->screen_y );
+			if(s==SCREEN_Y)
+				printXY(c, x, y, setting->color[2], TRUE);
+			else
+				printXY(c, x, y, setting->color[3], TRUE);
+			y += FONT_HEIGHT;
+			//FLICKERCONTROL
+			if(setting->flickerControl)
+				sprintf(c, "%s: %s", lang->conf_flickercontrol, lang->conf_on);
+			else
+				sprintf(c, "%s: %s", lang->conf_flickercontrol, lang->conf_off);
+			if(s==FLICKERCONTROL)
+				printXY(c, x, y, setting->color[2], TRUE);
+			else
+				printXY(c, x, y, setting->color[3], TRUE);
+			y += FONT_HEIGHT;
+			//SCREENINIT
+			strcpy(c,lang->conf_screensettinginit);
+			if(s==SCREENINIT)
+				printXY(c, x, y, setting->color[2], TRUE);
+			else
+				printXY(c, x, y, setting->color[3], TRUE);
 		}
 		//NETWORK
 		if(page==NETWORK){
-			sprintf(c, "IP ADDRESS: %s", ip);
-			printXY(c, x, y, setting->color[3], TRUE);
+			//IPADDRESS
+			sprintf(c, "%s: %s", lang->conf_ipaddress, ip);
+			if(s==IPADDRESS)
+				printXY(c, x, y, setting->color[2], TRUE);
+			else
+				printXY(c, x, y, setting->color[3], TRUE);
 			y += FONT_HEIGHT;
-
-			sprintf(c, "NETMASK   : %s", netmask);
-			printXY(c, x, y, setting->color[3], TRUE);
+			//NETMASK
+			sprintf(c, "%s: %s", lang->conf_netmask, netmask);
+			if(s==NETMASK)
+				printXY(c, x, y, setting->color[2], TRUE);
+			else
+				printXY(c, x, y, setting->color[3], TRUE);
 			y += FONT_HEIGHT;
-
-			sprintf(c, "GATEWAY   : %s", gw);
-			printXY(c, x, y, setting->color[3], TRUE);
+			//GATEWAY
+			sprintf(c, "%s: %s", lang->conf_gateway, gw);
+			if(s==GATEWAY)
+				printXY(c, x, y, setting->color[2], TRUE);
+			else
+				printXY(c, x, y, setting->color[3], TRUE);
 			y += FONT_HEIGHT;
-
-			printXY("SAVE", x, y, setting->color[3], TRUE);
+			//NETWORKSAVE
+			strcpy(c,lang->conf_ipoverwrite);
+			if(s==NETWORKSAVE)
+				printXY(c, x, y, setting->color[2], TRUE);
+			else
+				printXY(c, x, y, setting->color[3], TRUE);
 			y += FONT_HEIGHT;
-
-			printXY("NETWORK SETTING INIT", x, y, setting->color[3], TRUE);
+			//NETWORKINIT
+			strcpy(c,lang->conf_ipsettinginit);
+			if(s==NETWORKINIT)
+				printXY(c, x, y, setting->color[2], TRUE);
+			else
+				printXY(c, x, y, setting->color[3], TRUE);
 		}
 		//MISC
 		if(page==MISC){
-			sprintf(c, "TIMEOUT: %d", setting->timeout);
-			printXY(c, x, y, setting->color[3], TRUE);
+			//LANG
+			sprintf(c, "%s: ", lang->conf_language);
+			if(setting->language==LANG_ENGLISH)
+				strcat(c, lang->conf_language_us);
+			else if(setting->language==LANG_JAPANESE)
+				strcat(c, lang->conf_language_jp);
+			if(s==LANG)
+				printXY(c, x, y, setting->color[2], TRUE);
+			else
+				printXY(c, x, y, setting->color[3], TRUE);
 			y += FONT_HEIGHT;
-			
+			//TIMEOUT
+			sprintf(c, "%s: %d", lang->conf_timeout, setting->timeout);
+			if(s==TIMEOUT)
+				printXY(c, x, y, setting->color[2], TRUE);
+			else
+				printXY(c, x, y, setting->color[3], TRUE);
+			y += FONT_HEIGHT;
+			//DISC CONTROL
+			sprintf(c, "%s: " ,lang->conf_disc_control);
 			if(setting->discControl)
-				sprintf(c, "DISC CONTROL: ON");
+				strcat(c, lang->conf_on);
 			else
-				sprintf(c, "DISC CONTROL: OFF");
-			printXY(c, x, y, setting->color[3], TRUE);
+				strcat(c, lang->conf_off);
+			if(s==DISCCONTROL)
+				printXY(c, x, y, setting->color[2], TRUE);
+			else
+				printXY(c, x, y, setting->color[3], TRUE);
 			y += FONT_HEIGHT;
-			
+			//PRINT ONLY FILENAME
+			sprintf(c, "%s: " ,lang->conf_print_only_filename);
 			if(setting->filename)
-				sprintf(c, "PRINT ONLY FILENAME: ON");
+				strcat(c, lang->conf_on);
 			else
-				sprintf(c, "PRINT ONLY FILENAME: OFF");
-			printXY(c, x, y, setting->color[3], TRUE);
+				strcat(c, lang->conf_off);
+			if(s==FILENAME)
+				printXY(c, x, y, setting->color[2], TRUE);
+			else
+				printXY(c, x, y, setting->color[3], TRUE);
 			y += FONT_HEIGHT;
-			
+			//FILEICON
+			sprintf(c, "%s: " ,lang->conf_fileicon);
 			if(setting->fileicon)
-				sprintf(c, "FILEICON: ON");
+				strcat(c, lang->conf_on);
 			else
-				sprintf(c, "FILEICON: OFF");
-			printXY(c, x, y, setting->color[3], TRUE);
+				strcat(c, lang->conf_off);
+			if(s==FILEICON)
+				printXY(c, x, y, setting->color[2], TRUE);
+			else
+				printXY(c, x, y, setting->color[3], TRUE);
 			y += FONT_HEIGHT;
-			//
+			//DISC PS2SAVE CHECK
+			sprintf(c, "%s: " ,lang->conf_disc_ps2save_check);
 			if(setting->discPs2saveCheck)
-				sprintf(c, "DISC PS2SAVE CHECK: ON");
+				strcat(c, lang->conf_on);
 			else
-				sprintf(c, "DISC PS2SAVE CHECK: OFF");
-			printXY(c, x, y, setting->color[3], TRUE);
+				strcat(c, lang->conf_off);
+			if(s==PS2SAVECHECK)
+				printXY(c, x, y, setting->color[2], TRUE);
+			else
+				printXY(c, x, y, setting->color[3], TRUE);
+			y += FONT_HEIGHT;
+			//DISC ELF CHECK
+			sprintf(c, "%s: " ,lang->conf_disc_elf_check);
+			if(setting->discELFCheck)
+				strcat(c, lang->conf_on);
+			else
+				strcat(c, lang->conf_off);
+			if(s==ELFCHECK)
+				printXY(c, x, y, setting->color[2], TRUE);
+			else
+				printXY(c, x, y, setting->color[3], TRUE);
+			y += FONT_HEIGHT;
+			//EXPORT DIR
+			sprintf(c, "%s: %s", lang->conf_export_dir, setting->Exportdir);
+			if(s==EXPORTDIR)
+				printXY(c, x, y, setting->color[2], TRUE);
+			else
+				printXY(c, x, y, setting->color[3], TRUE);
 			y += FONT_HEIGHT;
 			//
-			if(setting->discELFCheck)
-				sprintf(c, "DISC ELF CHECK: ON");
+			strcpy(c,lang->conf_miscsettinginit);
+			if(s==MISCINIT)
+				printXY(c, x, y, setting->color[2], TRUE);
 			else
-				sprintf(c, "DISC ELF CHECK: OFF");
-			printXY(c, x, y, setting->color[3], TRUE);
-			y += FONT_HEIGHT;
-			printXY("MISC INIT", x, y, setting->color[3], TRUE);
+				printXY(c, x, y, setting->color[3], TRUE);
 		}
 
-		//OKとCANCEL
+		//OK
 		x = FONT_WIDTH*5;
 		y = SCREEN_MARGIN+FONT_HEIGHT*17;
-		printXY("OK", x, y, setting->color[3], TRUE);
+		strcpy(c,lang->conf_ok);
+		if(s==OK)
+			printXY(c, x, y, setting->color[2], TRUE);
+		else
+			printXY(c, x, y, setting->color[3], TRUE);
 		y += FONT_HEIGHT;
-		printXY("CANCEL", x, y, setting->color[3], TRUE);
+		//CANCEL
+		strcpy(c,lang->conf_cancel);
+		if(s==CANCEL)
+			printXY(c, x, y, setting->color[2], TRUE);
+		else
+			printXY(c, x, y, setting->color[3], TRUE);
 
 		//カーソル
 		x = FONT_WIDTH*3;
 		y = SCREEN_MARGIN+FONT_HEIGHT*3+s*FONT_HEIGHT;
 		if(page==SCREENSETTING)
-			if(s<8) x = FONT_WIDTH*22 + FONT_WIDTH*s_x*8;
-		drawChar('>', x, y, setting->color[3]);
+			if(s<8) x = FONT_WIDTH*21 + FONT_WIDTH*s_x*8;
+		printXY(">", x, y, setting->color[2], TRUE);
 
 		//操作説明
 		if(page==BUTTONSETTING){
 			if (s < BUTTONINIT)
-				sprintf(c, "○:Edit ×:Clear");
+				sprintf(c, "○:%s ×:%s", lang->conf_edit, lang->conf_clear);
 			else
-				sprintf(c, "○:OK");
+				sprintf(c, "○:%s", lang->gen_ok);
 		}
 		if(page==SCREENSETTING){
 			if(s<FLICKERCONTROL)
-				sprintf(c, "○:Add ×:Away");
+				sprintf(c, "○:%s ×:%s", lang->conf_add, lang->conf_away);
 			else if(s==FLICKERCONTROL)
-				sprintf(c, "○:Change");
+				sprintf(c, "○:%s", lang->conf_change);
 			else
-				sprintf(c, "○:OK");
+				sprintf(c, "○:%s", lang->gen_ok);
 		}
 		if(page==NETWORK){
 			if(s==IPADDRESS)
-				sprintf(c, "○:Edit");
+				sprintf(c, "○:%s", lang->conf_edit);
 			else if(s==NETMASK)
-				sprintf(c, "○:Edit");
+				sprintf(c, "○:%s", lang->conf_edit);
 			else if(s==GATEWAY)
-				sprintf(c, "○:Edit");
+				sprintf(c, "○:%s", lang->conf_edit);
 			else
-				sprintf(c, "○:OK");
+				sprintf(c, "○:%s", lang->gen_ok);
 		}
 		if(page==MISC){
-			if(s==TIMEOUT)
-				sprintf(c, "○:Add ×:Away");
+			if(s==LANG)
+				sprintf(c, "○:%s", lang->conf_change);
+			else if(s==TIMEOUT)
+				sprintf(c, "○:%s ×:%s", lang->conf_add, lang->conf_away);
 			else if(s==FILENAME)
-				sprintf(c, "○:Change");
+				sprintf(c, "○:%s", lang->conf_change);
 			else if(s==DISCCONTROL)
-				sprintf(c, "○:Change");
+				sprintf(c, "○:%s", lang->conf_change);
 			else if(s==FILEICON)
-				sprintf(c, "○:Change");
+				sprintf(c, "○:%s", lang->conf_change);
 			else if(s==PS2SAVECHECK)
-				sprintf(c, "○:Change");
+				sprintf(c, "○:%s", lang->conf_change);
 			else if(s==ELFCHECK)
-				sprintf(c, "○:Change");
+				sprintf(c, "○:%s", lang->conf_change);
+			else if(s==EXPORTDIR)
+				sprintf(c, "○:%s ×:%s", lang->conf_edit, lang->conf_clear);
 			else
-				sprintf(c, "○:OK");
+				sprintf(c, "○:%s", lang->gen_ok);
 		}
 		setScrTmp("", c);
 		drawScr();

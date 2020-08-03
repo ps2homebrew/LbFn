@@ -47,7 +47,8 @@ extern int size_ps2ftpd_irx;
 enum
 {
 	BUTTON,
-	DPAD
+	DPAD,
+	DPAD_MISC
 };
 
 int trayopen=FALSE;
@@ -57,7 +58,7 @@ int cancel=FALSE;
 int mode=BUTTON;
 char LaunchElfDir[MAX_PATH], mainMsg[MAX_PATH];
 
-//-----------------------------------
+//--------------------------------------------------------------
 //PS2Net uLaunchELF3.60
 #define IPCONF_MAX_LEN  (3*16)
 char if_conf[IPCONF_MAX_LEN];
@@ -111,117 +112,8 @@ static void getIpConfig(void)
 	sprintf(netConfig, "Net Config:  %-15s %-15s %-15s", ip, netmask, gw);
 
 }
-//------------------------------
-//endfunc getIpConfig
-//--------------------------------------------------------------
-////////////////////////////////////////////////////////////////////////
-// メイン画面の描画
-int drawMainScreen(void)
-{
-	int nElfs=0;
-	int i;
-	int x, y;
-	uint64 color;
-	char c[MAX_PATH+8], f[MAX_PATH];
-	char *p;
-	
-	strcpy(setting->dirElf[12], "CONFIG");
-	
-	clrScr(setting->color[0]);
-	
-	// 枠の中
-	x = FONT_WIDTH*5;
-	y = SCREEN_MARGIN + FONT_HEIGHT*3;
-	if(setting->dirElf[0][0]){
-		if(mode==BUTTON){
-			if(cancel==FALSE)
-				sprintf(c, "TIMEOUT: %d", timeout/SCANRATE);
-			else
-				sprintf(c, "TIMEOUT: -");
-		}
-		else
-			sprintf(c, "TIMEOUT: -");
-		printXY(c, x, y, setting->color[3], TRUE);
-		y += FONT_HEIGHT;
-	}
-	for(i=0; i<13; i++){
-		if(setting->dirElf[i][0]){
-			switch(i){
-			case 0:
-				strcpy(c,"DEFAULT: ");
-				break;
-			case 1:
-				strcpy(c,"     ○: ");
-				break;
-			case 2:
-				strcpy(c,"     ×: ");
-				break;
-			case 3:
-				strcpy(c,"     □: ");
-				break;
-			case 4:
-				strcpy(c,"     △: ");
-				break;
-			case 5:
-				strcpy(c,"     L1: ");
-				break;
-			case 6:
-				strcpy(c,"     R1: ");
-				break;
-			case 7:
-				strcpy(c,"     L2: ");
-				break;
-			case 8:
-				strcpy(c,"     R2: ");
-				break;
-			case 9:
-				strcpy(c,"     L3: ");
-				break;
-			case 10:
-				strcpy(c,"     R3: ");
-				break;
-			case 11:
-				strcpy(c,"  START: ");
-				break;
-			case 12:
-				strcpy(c," SELECT: ");
-				break;
-			}
-			if(setting->filename){
-				if((p=strrchr(setting->dirElf[i], '/')))
-					strcpy(f, p+1);
-				else
-					strcpy(f, setting->dirElf[i]);
-				if((p=strrchr(f, '.')))
-					*p = 0;
-			}else{
-				strcpy(f, setting->dirElf[i]);
-			}
-			strcat(c, f);
-			if(nElfs++==selected && mode==DPAD)
-				color = setting->color[2];
-			else
-				color = setting->color[3];
-			printXY(c, x, y, color, TRUE);
-			y += FONT_HEIGHT;
-		}
-	}
-	
-	// 操作説明
-	x = FONT_WIDTH*3;
-	y = SCREEN_MARGIN+FONT_HEIGHT*20;
-	if(mode==BUTTON)
-		sprintf(c, "PUSH ANY BUTTON or D-PAD!");
-	else
-		sprintf(c, "○:OK ×:Cancel");
-	
-	setScrTmp(mainMsg, c);
-	drawScr();
-	
-	return nElfs;
-}
 
-////////////////////////////////////////////////////////////////////////
+//--------------------------------------------------------------
 // loadModules
 void delay(int count)
 {
@@ -233,6 +125,7 @@ void delay(int count)
 	}
 }
 
+//--------------------------------------------------------------
 void initsbv_patches(void)
 {
 	static int SbvPatchesInited=FALSE;
@@ -245,6 +138,7 @@ void initsbv_patches(void)
 	}
 }
 
+//--------------------------------------------------------------
 void	load_iomanx(void)
 {
 	int ret;
@@ -255,8 +149,7 @@ void	load_iomanx(void)
 		loaded=TRUE;
 	}
 }
-//------------------------------
-//endfunc load_iomanx
+
 //--------------------------------------------------------------
 void	load_filexio(void)
 {
@@ -268,8 +161,7 @@ void	load_filexio(void)
 		loaded=TRUE;
 	}
 }
-//------------------------------
-//endfunc load_filexio
+
 //--------------------------------------------------------------
 void	load_ps2dev9(void)
 {
@@ -282,8 +174,7 @@ void	load_ps2dev9(void)
 		loaded=TRUE;
 	}
 }
-//------------------------------
-//endfunc load_ps2dev9
+
 //--------------------------------------------------------------
 void	load_ps2ip(void)
 {
@@ -297,8 +188,7 @@ void	load_ps2ip(void)
 		loaded=TRUE;
 	}
 }
-//------------------------------
-//endfunc load_ps2ip
+
 //--------------------------------------------------------------
 void	load_ps2atad(void)
 {
@@ -315,8 +205,7 @@ void	load_ps2atad(void)
 		loaded=TRUE;
 	}
 }
-//------------------------------
-//endfunc load_ps2atad
+
 //--------------------------------------------------------------
 void	load_ps2ftpd(void)
 {
@@ -334,8 +223,7 @@ void	load_ps2ftpd(void)
 		loaded=TRUE;
 	}
 }
-//------------------------------
-//endfunc load_ps2ftpd
+
 //--------------------------------------------------------------
 void	load_ps2netfs(void)
 {
@@ -348,8 +236,7 @@ void	load_ps2netfs(void)
 		loaded=TRUE;
 	}
 }
-//------------------------------
-//endfunc load_ps2netfs
+
 //--------------------------------------------------------------
 void loadModules(void)
 {
@@ -363,6 +250,7 @@ void loadModules(void)
 	SifLoadModule("rom0:PADMAN", 0, NULL);
 }
 
+//--------------------------------------------------------------
 void loadCdModules(void)
 {
 	static int loaded=FALSE;
@@ -377,6 +265,7 @@ void loadCdModules(void)
 	}
 }
 
+//--------------------------------------------------------------
 void load_usbd(void)
 {
 	static int loaded=FALSE;
@@ -404,6 +293,7 @@ void load_usbd(void)
 	}
 }
 
+//--------------------------------------------------------------
 void loadUsbModules(void)
 {
 	static int loaded=FALSE;
@@ -419,11 +309,13 @@ void loadUsbModules(void)
 	}
 }
 
+//--------------------------------------------------------------
 void poweroffHandler(int i)
 {
 	hddPowerOff();
 }
 
+//--------------------------------------------------------------
 void loadHddModules(void)
 {
 	static int loaded=FALSE;
@@ -431,7 +323,7 @@ void loadHddModules(void)
 	int i=0;
 	
 	if(!loaded)
-	{	drawMsg("Loading HDD Modules...");
+	{	drawMsg(lang->main_loadhddmod);
 		hddPreparePoweroff();
 		hddSetUserPoweroffCallback((void *)poweroffHandler,(void *)i);
 		SifExecModuleBuffer(&poweroff_irx, size_poweroff_irx, 0, NULL, &ret);
@@ -454,7 +346,7 @@ void loadNetModules(void)
 	if(!loaded){
 		loadHddModules();
 		loadUsbModules();
-		drawMsg("Loading FTP Modules...");
+		drawMsg(lang->main_loadftpmod);
 		
 		// getIpConfig(); //RA NB: I always get that info, early in init
 		// Also, my module checking makes some other tests redundant
@@ -464,10 +356,8 @@ void loadNetModules(void)
 	}
 	strcpy(mainMsg, netConfig);
 }
-//------------------------------
-//endfunc loadNetModules
+
 //--------------------------------------------------------------
-////////////////////////////////////////////////////////////////////////
 // SYSTEM.CNFの読み取り
 int ReadCNF(char *direlf)
 {
@@ -520,7 +410,7 @@ int ReadCNF(char *direlf)
 	return 0;
 }
 
-////////////////////////////////////////////////////////////////////////
+//--------------------------------------------------------------
 // ELFのテストと実行
 void RunElf(const char *path)
 {
@@ -546,14 +436,14 @@ void RunElf(const char *path)
 			if(checkELFheader(fullpath)<0){
 				fullpath[2]='1';
 				if(checkELFheader(fullpath)<0){
-					sprintf(mainMsg, "%s is Not Found.", path);
+					sprintf(mainMsg, "%s%s", path, lang->main_notfound);
 					return;
 				}
 			}
 		} else {
 			strcpy(fullpath, path);
 			if(checkELFheader(fullpath)<0){
-				sprintf(mainMsg, "%s is Not Found.", path);
+				sprintf(mainMsg, "%s%s", path, lang->main_notfound);
 				return;
 			}
 		}
@@ -564,13 +454,13 @@ void RunElf(const char *path)
 		strcpy(fullpath, "mass:");
 		strcat(fullpath, path+6);
 		if(checkELFheader(fullpath)<0){
-			sprintf(mainMsg, "%s is Not Found.", path);
+			sprintf(mainMsg, "%s%s", path, lang->main_notfound);
 			return;
 		}
 	}
 	else if(!stricmp(path, "MISC/PS2Disc")){
-		drawMsg("Reading SYSTEM.CNF...");
-		strcpy(mainMsg, "Failed");
+		drawMsg(lang->main_readsystemcnf);
+		strcpy(mainMsg, lang->main_failed);
 		party[0]=0;
 		trayopen=FALSE;
 		if(!ReadCNF(fullpath)) return;
@@ -580,7 +470,7 @@ void RunElf(const char *path)
 		mainMsg[0] = 0;
 		tmp[0] = 0;
 		LastDir[0] = 0;
-		getFilePath(tmp, FALSE);
+		getFilePath(tmp, ANY_FILE);
 		if(tmp[0]) RunElf(tmp);
 		else return;
 	}
@@ -610,13 +500,14 @@ void RunElf(const char *path)
 	clrScr(ITO_RGBA(0x00, 0x00, 0x00, 0));
 	drawScr();
 	FreeBIOSFont();	//フォントを終了
+	FreeLanguage();
 	free(setting);
 	free(elisaFnt);
 	padPortClose(0,0);
 	RunLoaderElf(fullpath, party);
 }
 
-////////////////////////////////////////////////////////////////////////
+//--------------------------------------------------------------
 // 方向キーで選択されたELFの実行
 void RunSelectedElf(void)
 {
@@ -647,45 +538,210 @@ void Reset()
 	SifInitRpc(0);
 	FlushCache(0);
 	FlushCache(2);
-
 }
-////////////////////////////////////////////////////////////////////////
+
+//--------------------------------------------------------------
+// メイン画面の描画
+int drawMainScreen(void)
+{
+	int nElfs=0;
+	int i;
+	int x, y;
+	uint64 color;
+	char c[MAX_PATH+8], f[MAX_PATH];
+	char *p;
+	char dummyElf[MAX_PATH];
+
+	strcpy(setting->dirElf[12], "CONFIG");
+	
+	clrScr(setting->color[0]);
+	
+	// 枠の中
+	x = FONT_WIDTH*5;
+	y = SCREEN_MARGIN + FONT_HEIGHT*3;
+
+	//DEFAULT
+	if(setting->dirElf[0][0]){
+		if(mode==BUTTON){
+			if(cancel==FALSE)
+				sprintf(c, "TIMEOUT: %d", timeout/SCANRATE);
+			else
+				sprintf(c, "TIMEOUT: -");
+		}
+		else
+			sprintf(c, "TIMEOUT: -");
+		printXY(c, x, y, setting->color[3], TRUE);
+		y += FONT_HEIGHT;
+	}
+
+	if(mode!=DPAD_MISC){
+		for(i=0; i<13; i++){
+			if(setting->dirElf[i][0]){
+				switch(i){
+				case 0:
+					strcpy(c,"DEFAULT: ");
+					break;
+				case 1:
+					strcpy(c,"     ○: ");
+					break;
+				case 2:
+					strcpy(c,"     ×: ");
+					break;
+				case 3:
+					strcpy(c,"     □: ");
+					break;
+				case 4:
+					strcpy(c,"     △: ");
+					break;
+				case 5:
+					strcpy(c,"     L1: ");
+					break;
+				case 6:
+					strcpy(c,"     R1: ");
+					break;
+				case 7:
+					strcpy(c,"     L2: ");
+					break;
+				case 8:
+					strcpy(c,"     R2: ");
+					break;
+				case 9:
+					strcpy(c,"     L3: ");
+					break;
+				case 10:
+					strcpy(c,"     R3: ");
+					break;
+				case 11:
+					strcpy(c,"  START: ");
+					break;
+				case 12:
+					strcpy(c," SELECT: ");
+					break;
+				}
+				//
+				if(setting->filename){
+					if((p=strrchr(setting->dirElf[i], '/')))
+						strcpy(f, p+1);
+					else
+						strcpy(f, setting->dirElf[i]);
+					if((p=strrchr(f, '.')))
+						*p = 0;
+				}
+				else{
+					strcpy(f, setting->dirElf[i]);
+				}
+				strcat(c, f);
+				//文字列の色
+				if(nElfs++==selected && mode==DPAD)
+					color = setting->color[2];
+				else
+					color = setting->color[3];
+				printXY(c, x, y, color, TRUE);
+				y += FONT_HEIGHT;
+			}
+		}
+	}
+	else{	//mode==DPAD_MISC
+		for(i=0; i<5; i++){
+			strcpy(c,"         ");
+			switch(i){
+			case 0:
+				strcpy(dummyElf,"MISC/FileBrowser");
+				break;
+			case 1:
+				strcpy(dummyElf,"MISC/PS2Browser");
+				break;
+			case 2:
+				strcpy(dummyElf,"MISC/PS2Disc");
+				break;
+			case 3:
+				strcpy(dummyElf,"MISC/PS2Net");
+				break;
+			case 4:
+				strcpy(dummyElf,"CONFIG");
+				break;
+			}
+			//
+			if(setting->filename){
+				if((p=strrchr(dummyElf, '/')))
+					strcpy(f, p+1);
+				else
+					strcpy(f, dummyElf);
+			}
+			else{
+				strcpy(f, dummyElf);
+			}
+			strcat(c, f);
+			//文字列の色
+			if(nElfs++==selected)
+				color = setting->color[2];
+			else
+				color = setting->color[3];
+			printXY(c, x, y, color, TRUE);
+			y += FONT_HEIGHT;
+		}
+	}
+	// 操作説明
+	x = FONT_WIDTH*3;
+	y = SCREEN_MARGIN+FONT_HEIGHT*20;
+	if(mode==BUTTON)
+		strcpy(c, lang->main_launch_hint);
+	else
+		sprintf(c, "○:%s ×:%s", lang->gen_ok, lang->gen_cancel);
+	
+	setScrTmp(mainMsg, c);
+	drawScr();
+	
+	return nElfs;
+}
+
+//--------------------------------------------------------------
 // main
 int main(int argc, char *argv[])
 {
 	char *p;
 	int nElfs;
 	CdvdDiscType_t cdmode;
-	
+
 	//ELFのフォルダ名 uLaunchELF3.60
 	strcpy(LaunchElfDir, argv[0]);
 	if	( ((p=strrchr(LaunchElfDir, '/'))==NULL)&&((p=strrchr(LaunchElfDir, '\\'))==NULL) )
 		p=strrchr(LaunchElfDir, ':');
 	if	(p!=NULL)
 		*(p+1)=0;
-	LastDir[0] = 0;
 
 	SifInitRpc(0);
+	loadModules();
 
-	//resetIOP
-	Reset();
-	if(!strncmp(LaunchElfDir, "mass:", 5)){
-		initsbv_patches();
-		loadUsbModules();	//CNFファイルを読み込むためにモジュールをロードする
+	InitBIOSFont();	//フォントを初期化
+	InitLanguage();	//CNFファイルを読み込む前に初期化
+
+	//設定をロード
+	loadConfig(mainMsg);
+
+	//host以外から起動したときは、RESET IOP
+	if(strncmp(LaunchElfDir, "host", 4)){
+		Reset();
+		loadModules();
+
+		//mass
+		if(!strncmp(LaunchElfDir, "mass:", 5)){
+			initsbv_patches();
+			loadUsbModules();
+		}
 	}
 
-	loadModules();
+	if(setting->discControl)
+		loadCdModules();
+
 	mcInit(MC_TYPE_MC);
+	getIpConfig();
 	setupPad();
 	initsbv_patches();
 
-	getIpConfig();
-	loadConfig(mainMsg);
-	if(setting->discControl)
-		loadCdModules();
-	
 	setupito();
-	InitBIOSFont();	//フォントを初期化
+
+	LastDir[0] = 0;
 
 	timeout = (setting->timeout+1)*SCANRATE;
 	while(1){
@@ -694,12 +750,12 @@ int main(int argc, char *argv[])
 			cdmode = cdGetDiscType();
 			if(cdmode==CDVD_TYPE_NODISK){
 				trayopen = TRUE;
-				strcpy(mainMsg, "No Disc");
+				strcpy(mainMsg, lang->main_nodisc);
 			}else if(cdmode>=0x01 && cdmode<=0x04){
-				strcpy(mainMsg, "Detecting Disc");
+				strcpy(mainMsg, lang->main_detectingdisc);
 			}else if(trayopen==TRUE){
 				trayopen=FALSE;
-				strcpy(mainMsg, "Stop Disc");
+				strcpy(mainMsg, lang->main_stopdisc);
 			}
 		}
 		
@@ -709,99 +765,148 @@ int main(int argc, char *argv[])
 		waitPadReady(0,0);
 		if(readpad()){
 			switch(mode){
-			case BUTTON:
-				if(new_pad & PAD_CIRCLE){
-					cancel=TRUE;
-					RunElf(setting->dirElf[1]);
-				}
-				else if(new_pad & PAD_CROSS){
-					cancel=TRUE;
-					RunElf(setting->dirElf[2]);
-				}
-				else if(new_pad & PAD_SQUARE){
-					cancel=TRUE;
-					RunElf(setting->dirElf[3]);
-				}
-				else if(new_pad & PAD_TRIANGLE){
-					cancel=TRUE;
-					RunElf(setting->dirElf[4]);
-				}
-				else if(new_pad & PAD_L1){
-					cancel=TRUE;
-					RunElf(setting->dirElf[5]);
-				}
-				else if(new_pad & PAD_R1){
-					cancel=TRUE;
-					RunElf(setting->dirElf[6]);
-				}
-				else if(new_pad & PAD_L2){
-					cancel=TRUE;
-					RunElf(setting->dirElf[7]);
-				}
-				else if(new_pad & PAD_R2){
-					cancel=TRUE;
-					RunElf(setting->dirElf[8]);
-				}
-				else if(new_pad & PAD_L3){
-					cancel=TRUE;
-					RunElf(setting->dirElf[9]);
-				}
-				else if(new_pad & PAD_R3){
-					cancel=TRUE;
-					RunElf(setting->dirElf[10]);
-				}
-				else if(new_pad & PAD_START){
-					cancel=TRUE;
-					RunElf(setting->dirElf[11]);
-				}
-				else if(new_pad & PAD_SELECT){
-					cancel=TRUE;
-					config(mainMsg);
-					//timeout = (setting->timeout+1)*SCANRATE;
-					if(setting->discControl)
-						loadCdModules();
-				}
-				else if(new_pad & PAD_UP || new_pad & PAD_DOWN){
-					cancel=TRUE;
-					selected=0;
-					mode=DPAD;
-				}
-				else if(new_pad & PAD_LEFT || new_pad & PAD_RIGHT){
-					cancel=TRUE;
-				}
-				break;
-			
-			case DPAD:
-				if(new_pad & PAD_UP){
-					selected--;
-					if(selected<0)
-						selected=nElfs-1;
-				}
-				else if(new_pad & PAD_DOWN){
-					selected++;
-					if(selected>=nElfs)
-						selected=0;
-				}
-				else if(new_pad & PAD_CROSS){
-					mode=BUTTON;
-					//timeout = (setting->timeout+1)*SCANRATE;
-				}
-				else if(new_pad & PAD_CIRCLE){
-					if(selected==nElfs-1){
-						mode=BUTTON;
+				case BUTTON:
+				{
+					if(new_pad & PAD_CIRCLE){
+						cancel=TRUE;
+						RunElf(setting->dirElf[1]);
+					}
+					else if(new_pad & PAD_CROSS){
+						cancel=TRUE;
+						RunElf(setting->dirElf[2]);
+					}
+					else if(new_pad & PAD_SQUARE){
+						cancel=TRUE;
+						RunElf(setting->dirElf[3]);
+					}
+					else if(new_pad & PAD_TRIANGLE){
+						cancel=TRUE;
+						RunElf(setting->dirElf[4]);
+					}
+					else if(new_pad & PAD_L1){
+						cancel=TRUE;
+						RunElf(setting->dirElf[5]);
+					}
+					else if(new_pad & PAD_R1){
+						cancel=TRUE;
+						RunElf(setting->dirElf[6]);
+					}
+					else if(new_pad & PAD_L2){
+						cancel=TRUE;
+						RunElf(setting->dirElf[7]);
+					}
+					else if(new_pad & PAD_R2){
+						cancel=TRUE;
+						RunElf(setting->dirElf[8]);
+					}
+					else if(new_pad & PAD_L3){
+						cancel=TRUE;
+						RunElf(setting->dirElf[9]);
+					}
+					else if(new_pad & PAD_R3){
+						cancel=TRUE;
+						RunElf(setting->dirElf[10]);
+					}
+					else if(new_pad & PAD_START){
+						cancel=TRUE;
+						RunElf(setting->dirElf[11]);
+					}
+					else if(new_pad & PAD_SELECT){
+						cancel=TRUE;
 						config(mainMsg);
-						//timeout = (setting->timeout+1)*SCANRATE;
 						if(setting->discControl)
 							loadCdModules();
-					}else
-						RunSelectedElf();
+					}
+					else if(new_pad & PAD_UP || new_pad & PAD_DOWN){
+						cancel=TRUE;
+						selected=0;
+						mode=DPAD;
+					}
+					else if(new_pad & PAD_LEFT || new_pad & PAD_RIGHT){
+						cancel=TRUE;
+						selected=0;
+						mode=DPAD_MISC;
+					}
+					break;
 				}
-				break;
+				case DPAD:
+				{
+					if(new_pad & PAD_UP){
+						selected--;
+						if(selected<0)
+							selected=nElfs-1;
+					}
+					else if(new_pad & PAD_DOWN){
+						selected++;
+						if(selected>=nElfs)
+							selected=0;
+					}
+					else if(new_pad & PAD_LEFT || new_pad & PAD_RIGHT){
+						selected=0;
+						mode=DPAD_MISC;
+					}
+					else if(new_pad & PAD_CROSS){
+						mode=BUTTON;
+					}
+					else if(new_pad & PAD_CIRCLE){
+						if(selected==nElfs-1){		//CONFIG
+							mode=BUTTON;
+							config(mainMsg);
+							if(setting->discControl)
+								loadCdModules();
+						}
+						else{
+							if(mode==DPAD)
+								RunSelectedElf();		//ランチャー
+						}
+					}
+					break;
+				}
+				case DPAD_MISC:
+				{
+					if(new_pad & PAD_UP){
+						selected--;
+						if(selected<0)
+							selected=nElfs-1;
+					}
+					else if(new_pad & PAD_DOWN){
+						selected++;
+						if(selected>=nElfs)
+							selected=0;
+					}
+					else if(new_pad & PAD_LEFT || new_pad & PAD_RIGHT || new_pad & PAD_CROSS){
+						selected=0;
+						mode=BUTTON;
+					}
+					else if(new_pad & PAD_CIRCLE){
+						if(selected==nElfs-1){		//CONFIG
+							config(mainMsg);
+							if(setting->discControl)
+								loadCdModules();
+						}
+						else{
+							switch(selected){
+							case 0:
+								RunElf("MISC/FileBrowser");
+								break;
+							case 1:
+								RunElf("MISC/PS2Browser");
+								break;
+							case 2:
+								RunElf("MISC/PS2Disc");
+								break;
+							case 3:
+								RunElf("MISC/PS2Net");
+								break;
+							}
+						}
+					}
+					break;
+				}
 			}
 		}
 		if(timeout/SCANRATE==0 && setting->dirElf[0][0] && mode==BUTTON && cancel==FALSE){
 			RunElf(setting->dirElf[0]);
-			//timeout = (setting->timeout+1)*SCANRATE;
 		}
 	}
 }

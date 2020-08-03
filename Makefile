@@ -1,7 +1,11 @@
+#------------------------------------
+LIBITO=$(PS2DEV)\libito
+PS2ETH=$(PS2DEV)\ps2eth
+
 #EE_BIN = LaunchELF.ELF
 EE_BIN = LbF.ELF
 
-EE_OBJS = main.o pad.o config.o elf.o draw.o loader.o  filer.o mass_rpc.o cd.o\
+EE_OBJS = main.o pad.o config.o elf.o draw.o loader.o  filer.o mass_rpc.o cd.o language.o\
 	poweroff.o iomanx.o filexio.o ps2atad.o ps2dev9.o ps2hdd.o ps2fs.o ps2netfs.o\
 	usbd.o usb_mass.o cdvd.o ps2ip.o ps2smap.o ps2ftpd.o
 
@@ -11,8 +15,9 @@ EE_INCS := -I$(LIBITO)/include -I$(PS2DK)/sbv/include\
 EE_LDFLAGS := -L$(LIBITO)/lib -L$(PS2SDK)/sbv/lib\
 	-L$(PS2DEV)/libcdvd/lib -s
 
-EE_LIBS = -lpad -lito -lmc -lhdd -lcdvdfs -lfileXio -lpatches -lpoweroff  -ldebug -lc
+EE_LIBS = -lpad -lito -lmc -lhdd -lcdvdfs -lfileXio -lpatches -lpoweroff  -ldebug
 
+#------------------------------------
 all: $(EE_BIN)
 
 usbd.s:
@@ -56,7 +61,7 @@ loader.s:
 	bin2s loader/loader.elf loader.s loader_elf
 
 ps2smap.s:
-	bin2s $(PS2DEV)/smap/ps2smap.irx ps2smap.s ps2smap_irx
+	bin2s $(PS2ETH)/smap/ps2smap.irx ps2smap.s ps2smap_irx
 
 ps2ip.s:
 	bin2s $(PS2SDK)/iop/irx/ps2ip.irx ps2ip.s ps2ip_irx
@@ -68,8 +73,10 @@ ps2ftpd.s:
 clean:
 	rm *.o *.s
 
-clean_:
-	rm cd.o config.o draw.o elf.o filer.o main.o pad.o
+#------------------------------------
+cd.o config.o draw.o elf.o filer.o main.o pad.o language.o:launchelf.h
+cd.o config.o draw.o elf.o filer.o main.o pad.o language.o:language.h
 
+#------------------------------------
 include $(PS2SDK)/samples/Makefile.pref
 include $(PS2SDK)/samples/Makefile.eeglobal
