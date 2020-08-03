@@ -37,6 +37,7 @@ typedef struct
 	char filer_menu_importpsu[MAX_LANGUAGE_STR];
 	char filer_overwrite[MAX_LANGUAGE_STR];
 	char filer_not_elf[MAX_LANGUAGE_STR];
+	char filer_not_fnt[MAX_LANGUAGE_STR];
 	char filer_copy_to_clip[MAX_LANGUAGE_STR];
 	char filer_delete[MAX_LANGUAGE_STR];
 	char filer_deletemarkfiles[MAX_LANGUAGE_STR];
@@ -54,11 +55,13 @@ typedef struct
 	char filer_importfailed[MAX_LANGUAGE_STR];
 	char filer_importto[MAX_LANGUAGE_STR];
 	char filer_keyboard_hint[MAX_LANGUAGE_STR];
-	char filer_hint1[MAX_LANGUAGE_STR];
-	char filer_hint2[MAX_LANGUAGE_STR];
-	char filer_hint3[MAX_LANGUAGE_STR];
-	char filer_hint4[MAX_LANGUAGE_STR];
-	char filer_hint5[MAX_LANGUAGE_STR];
+	char filer_anyfile_hint1[MAX_LANGUAGE_STR];
+	char filer_anyfile_hint2[MAX_LANGUAGE_STR];
+	char filer_elffile_hint1[MAX_LANGUAGE_STR];
+	char filer_elffile_hint2[MAX_LANGUAGE_STR];
+	char filer_fntfile_hint1[MAX_LANGUAGE_STR];
+	char filer_fntfile_hint2[MAX_LANGUAGE_STR];
+	char filer_dir_hint[MAX_LANGUAGE_STR];
 	char filer_export_files[MAX_LANGUAGE_STR];
 	char filer_export_header[MAX_LANGUAGE_STR];
 	char filer_import_files[MAX_LANGUAGE_STR];
@@ -71,7 +74,11 @@ typedef struct
 	char conf_initializeconfig[MAX_LANGUAGE_STR];
 
 	//config
-	char conf_menu[MAX_LANGUAGE_STR];
+	char conf_setting_button[MAX_LANGUAGE_STR];
+	char conf_setting_screen[MAX_LANGUAGE_STR];
+	char conf_setting_network[MAX_LANGUAGE_STR];
+	char conf_setting_font[MAX_LANGUAGE_STR];
+	char conf_setting_misc[MAX_LANGUAGE_STR];
 	//button
 	char conf_buttonsettinginit[MAX_LANGUAGE_STR];
 	//screen
@@ -85,6 +92,8 @@ typedef struct
 	char conf_elffile[MAX_LANGUAGE_STR];
 	char conf_screen_x[MAX_LANGUAGE_STR];
 	char conf_screen_y[MAX_LANGUAGE_STR];
+	char conf_interlace[MAX_LANGUAGE_STR];
+	char conf_ffmode[MAX_LANGUAGE_STR];
 	char conf_flickercontrol[MAX_LANGUAGE_STR];
 	char conf_screensettinginit[MAX_LANGUAGE_STR];
 	//network
@@ -95,6 +104,17 @@ typedef struct
 	char conf_ipsettinginit[MAX_LANGUAGE_STR];
 	char conf_ipsaved[MAX_LANGUAGE_STR];
 	char conf_ipsavefailed[MAX_LANGUAGE_STR];
+	//font
+	char conf_AsciiFont[MAX_LANGUAGE_STR];
+	char conf_KanjiFont[MAX_LANGUAGE_STR];
+	char conf_CharMargin[MAX_LANGUAGE_STR];
+	char conf_LineMargin[MAX_LANGUAGE_STR];
+	char conf_FontBold[MAX_LANGUAGE_STR];
+	char conf_AsciiMarginTop[MAX_LANGUAGE_STR];
+	char conf_AsciiMarginLeft[MAX_LANGUAGE_STR];
+	char conf_KanjiMarginTop[MAX_LANGUAGE_STR];
+	char conf_KanjiMarginLeft[MAX_LANGUAGE_STR];
+	char conf_fontsettinginit[MAX_LANGUAGE_STR];
 	//misc
 	char conf_language[MAX_LANGUAGE_STR];
 	char conf_language_us[MAX_LANGUAGE_STR];

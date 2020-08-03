@@ -264,12 +264,12 @@ void loadCdModules(void)
 		loaded=TRUE;
 	}
 }
-
+/*
 //--------------------------------------------------------------
 void load_usbd(void)
 {
 	static int loaded=FALSE;
-	int fd,ret;
+	int fd, ret;
 	char path[MAX_PATH];
 
 	if(!loaded){
@@ -284,7 +284,7 @@ void load_usbd(void)
 				ret = SifLoadModule(path, 0, NULL);
 			}
 		}
-		//mcエラーとcdfsとhddのとき
+		//mcエラーとmassとcdfsとhddのとき
 		if (ret<0){
 			//LbF.ELFのUSBD.IRXをロード
 			SifExecModuleBuffer(&usbd_irx, size_usbd_irx, 0, NULL, &ret);
@@ -292,17 +292,73 @@ void load_usbd(void)
 		loaded=TRUE;
 	}
 }
+*/
+//--------------------------------------------------------------
+//
+int load_irxfile(char *filename)
+{
+	int fd, size;
+	char path[MAX_PATH];
+	int ret=-1;
+
+	if(!strncmp(LaunchElfDir, "host", 4)){
+		//hostから起動したときHOSTからIRXをロードしない
+	}
+	if(!strncmp(LaunchElfDir, "mass", 4)){
+		//massから起動したときmassからIRXをロードしない
+	}
+	else{
+		sprintf(path, "%s%s", LaunchElfDir, filename);
+		fd = fioOpen(path, O_RDONLY);
+		if(fd>=0){
+			size = fioLseek(fd, 0, SEEK_END);
+			fioClose(fd);
+			if(size>=0){
+				ret = SifLoadModule(path, 0, NULL);
+				if(ret>=0) return 0;
+			}
+		}
+	}
+
+	sprintf(path, "mc0:/SYS-CONF/%s", filename);
+	fd = fioOpen(path, O_RDONLY);
+	if(fd>=0){
+		size = fioLseek(fd, 0, SEEK_END);
+		fioClose(fd);
+		if(size>=0){
+			ret = SifLoadModule(path, 0, NULL);
+			if(ret>=0) return 0;
+		}
+	}
+
+	sprintf(path, "mc1:/SYS-CONF/%s", filename);
+	fd = fioOpen(path, O_RDONLY);
+	if(fd>=0){
+		size = fioLseek(fd, 0, SEEK_END);
+		fioClose(fd);
+		if(size>=0){
+			ret = SifLoadModule(path, 0, NULL);
+			if(ret>=0) return 0;
+		}
+	}
+	return -1;
+}
 
 //--------------------------------------------------------------
 void loadUsbModules(void)
 {
 	static int loaded=FALSE;
 	int ret;
-	
+
 	if(!loaded){
 		initsbv_patches();
-		load_usbd();
-		SifExecModuleBuffer(&usb_mass_irx, size_usb_mass_irx, 0, NULL, &ret);
+		//USBD.IRX
+		ret = load_irxfile("USBD.IRX");
+		if (ret<0) SifExecModuleBuffer(&usbd_irx, size_usbd_irx, 0, NULL, &ret);
+		//USB_MASS.IRX
+		ret = load_irxfile("USB_MASS.IRX");
+		if (ret<0) SifExecModuleBuffer(&usb_mass_irx, size_usb_mass_irx, 0, NULL, &ret);
+
 		delay(3);
 		ret = usb_mass_bindRpc();
 		loaded=TRUE;
@@ -499,10 +555,10 @@ void RunElf(const char *path)
 	drawScr();
 	clrScr(ITO_RGBA(0x00, 0x00, 0x00, 0));
 	drawScr();
-	FreeBIOSFont();	//フォントを終了
+	FreeFontAscii();	//フォントを終了
+	FreeFontKnaji();
 	FreeLanguage();
 	free(setting);
-	free(elisaFnt);
 	padPortClose(0,0);
 	RunLoaderElf(fullpath, party);
 }
@@ -682,8 +738,6 @@ int drawMainScreen(void)
 		}
 	}
 	// 操作説明
-	x = FONT_WIDTH*3;
-	y = SCREEN_MARGIN+FONT_HEIGHT*20;
 	if(mode==BUTTON)
 		strcpy(c, lang->main_launch_hint);
 	else
@@ -713,31 +767,45 @@ int main(int argc, char *argv[])
 	SifInitRpc(0);
 	loadModules();
 
-	InitBIOSFont();	//フォントを初期化
-	InitLanguage();	//CNFファイルを読み込む前に初期化
+	//CNFファイルを読み込む前に初期化
+	InitLanguage();
 
 	//設定をロード
 	loadConfig(mainMsg);
 
-	//host以外から起動したときは、RESET IOP
-	if(strncmp(LaunchElfDir, "host", 4)){
+	//RESET IOP
+	if(!strncmp(LaunchElfDir, "host", 4)){
+		//hostから起動したときリセットしない
+	}
+	else{
+		//host以外から起動したときリセット
 		Reset();
 		loadModules();
-
-		//mass
-		if(!strncmp(LaunchElfDir, "mass:", 5)){
-			initsbv_patches();
-			loadUsbModules();
-		}
 	}
 
+	//
+	mcInit(MC_TYPE_MC);
+	setupPad();
+	initsbv_patches();
+
+	//discControl
 	if(setting->discControl)
 		loadCdModules();
 
-	mcInit(MC_TYPE_MC);
+	//フォント
+	if(InitFontAscii(setting->AsciiFont)<0)
+		InitFontAscii("systemfont");
+	if(InitFontKnaji(setting->KanjiFont)<0)
+		InitFontKnaji("systemfont");
+	SetFontMargin(CHAR_MARGIN, setting->CharMargin);
+	SetFontMargin(LINE_MARGIN, setting->LineMargin);
+	SetFontBold(setting->FontBold);
+	SetFontMargin(ASCII_FONT_MARGIN_TOP, setting->AsciiMarginTop);
+	SetFontMargin(ASCII_FONT_MARGIN_LEFT, setting->AsciiMarginLeft);
+	SetFontMargin(KANJI_FONT_MARGIN_TOP, setting->KanjiMarginTop);
+	SetFontMargin(KANJI_FONT_MARGIN_LEFT, setting->KanjiMarginLeft);
+
 	getIpConfig();
-	setupPad();
-	initsbv_patches();
 
 	setupito();
 
@@ -761,7 +829,7 @@ int main(int argc, char *argv[])
 		
 		if(cancel==FALSE) timeout--;
 		nElfs = drawMainScreen();
-		
+
 		waitPadReady(0,0);
 		if(readpad()){
 			switch(mode){
@@ -860,6 +928,11 @@ int main(int argc, char *argv[])
 								RunSelectedElf();		//ランチャー
 						}
 					}
+/*
+					//デバッグ
+					else if(new_pad & PAD_R1){
+					}
+*/
 					break;
 				}
 				case DPAD_MISC:

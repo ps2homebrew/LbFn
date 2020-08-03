@@ -28,9 +28,10 @@
 #include "mass_rpc.h"
 
 #include "language.h"
+#include "cnf.h"
 
 // バージョン
-#define LBF_VER "LbF v0.46"
+#define LBF_VER "LbF v0.47"
 
 // 垂直スキャンレート
 #define SCANRATE (ITO_VMODE_AUTO==ITO_VMODE_NTSC ? 60:50)
@@ -38,16 +39,16 @@
 enum
 {
 	SCREEN_WIDTH = 640,
-	SCREEN_HEIGHT = 448,
-	SCREEN_MARGIN = 14,
-	FONT_WIDTH = 10,
-	FONT_HEIGHT = 20,
+//	SCREEN_HEIGHT = 448,
+//	SCREEN_MARGIN = 14,
+//	FONT_WIDTH = 10,
+//	FONT_HEIGHT = 20,
 	LINE_THICKNESS = 2,
 	
 	MAX_NAME = 256,
 	MAX_PATH = 1025,
 	MAX_ENTRY = 2048,
-	MAX_ROWS = 16,
+//	MAX_ROWS = 16,
 	MAX_PARTITIONS=100
 };
 
@@ -56,9 +57,10 @@ enum
 {
 	ANY_FILE = 0,
 	ELF_FILE,
-	DIR
+	DIR,
+	FNT_FILE
 };
-	
+
 typedef struct
 {
 	char dirElf[13][MAX_PATH];
@@ -69,11 +71,22 @@ typedef struct
 	int screen_y;
 	int discControl;
 	int flickerControl;
+	int interlace;
+	int ffmode;
 	int fileicon;
 	int discPs2saveCheck;
 	int discELFCheck;
 	char Exportdir[MAX_PATH];
 	int language;
+	char AsciiFont[MAX_PATH];
+	char KanjiFont[MAX_PATH];
+	int CharMargin;
+	int LineMargin;
+	int FontBold;
+	int AsciiMarginTop;
+	int AsciiMarginLeft;
+	int KanjiMarginTop;
+	int KanjiMarginLeft;
 } SETTING;
 
 extern char LaunchElfDir[MAX_PATH], LastDir[MAX_NAME];
@@ -87,9 +100,39 @@ int checkELFheader(const char *filename);
 void RunLoaderElf(char *filename, char *);
 
 /* draw.c */
+//SetFontMarginとGetFontMarginの種類
+enum
+{
+	CHAR_MARGIN = 0,
+	LINE_MARGIN,
+	ASCII_FONT_MARGIN_TOP,
+	ASCII_FONT_MARGIN_LEFT,
+	KANJI_FONT_MARGIN_TOP,
+	KANJI_FONT_MARGIN_LEFT
+};
+
+//GetCurrentPosの種類
+enum
+{
+	CURRENTPOS_X = 0,
+	CURRENTPOS_Y
+};
+
+//GetFontSizeの種類
+enum
+{
+	ASCII_FONT_WIDTH = 0,
+	ASCII_FONT_HEIGHT,
+	KANJI_FONT_WIDTH,
+	KANJI_FONT_HEIGHT
+};
+
 extern itoGsEnv screen_env;
-int InitBIOSFont(void);
-void FreeBIOSFont(void);
+extern int SCREEN_HEIGHT;
+extern int SCREEN_MARGIN;
+extern int FONT_WIDTH;
+extern int FONT_HEIGHT;
+extern int MAX_ROWS;
 void drawDark(void);
 void drawDialogTmp(int x1, int y1, int x2, int y2, uint64 color1, uint64 color2);
 void setScrTmp(const char *msg0, const char *msg1);
@@ -97,9 +140,23 @@ void drawMsg(const char *msg);
 void setupito(void);
 void clrScr(uint64 color);
 void drawScr(void);
+void SetHeight(void);
 void drawFrame(int x1, int y1, int x2, int y2, uint64 color);
+int InitFontAscii(const char *path);
+int InitFontKnaji(const char *path);
+void FreeFontAscii(void);
+void FreeFontKnaji(void);
+int SetFontMargin(int type, int Margin);
+int GetFontMargin(int type);
+int SetCurrentPos(int x, int y);
+int GetCurrentPos(int type);
+int GetFontSize(int type);
+void SetFontBold(int flag);
+int GetFontBold(void);
+int checkFONTX2header(const char *path);
 void drawChar(unsigned char c, int x, int y, uint64 colour);
-int printXY(const unsigned char *s, int x, int y, uint64 colour, int);
+int printXY(const unsigned char *s, int x, int y, uint64 colour, int draw);
+int printXY2(const unsigned char *s, uint64 color, int draw);
 
 /* pad.c */
 extern u32 new_pad;
@@ -113,7 +170,6 @@ void loadConfig(char *);
 void config(char *);
 
 /* filer.c */
-unsigned char *elisaFnt;
 void MessageDialog(const char *message);
 int newdir(const char *path, const char *name);
 int keyboard(char *out, int max);

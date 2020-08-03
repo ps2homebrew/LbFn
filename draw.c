@@ -1,9 +1,57 @@
 #include "launchelf.h"
 
+//----------------------------------------------------------
+typedef struct {
+	char Identifier[6];	// "FONTX2"
+	char FontName[8];		// Font名
+	unsigned char XSize;
+	unsigned char YSize;
+	unsigned char CodeType;
+	unsigned char Tnum;	// テーブルのエントリ数
+	struct {
+		unsigned short Start;	// 領域の始まりの文字コード
+		unsigned short End;	// 領域の終わりの文字コード
+	} Block[];
+} FONTX_HEADER;
+
+typedef struct {
+	char font_name[9];
+	int width;
+	int height;
+	int size;	//1文字分のサイズ
+	int Tnum;
+	int offset;
+} FONTX_DATA;
+
+//----------------------------------------------------------
 itoGsEnv screen_env;
 
 int initbiosfont=0;
 char *biosfont=NULL;
+int SCREEN_HEIGHT = 448;
+int SCREEN_MARGIN;
+int FONT_WIDTH;
+int FONT_HEIGHT;
+int MAX_ROWS;
+
+int char_Margin;	//文字の間隔
+int line_Margin;	//行の間隔
+int font_bold;
+int CurrentPos_x;	//カレントポジションx
+int CurrentPos_y;	//カレントポジションy
+
+//ascii
+int init_ascii=0;	//初期化したかしていないかのフラグ
+char *font_ascii=NULL;	//フォントのバッファ
+FONTX_DATA ascii_data;	//フォントの情報
+int ascii_MarginTop;	//上のマージン
+int ascii_MarginLeft;	//左のマージン
+//kanji
+int init_kanji=0;
+char *font_kanji=NULL;
+FONTX_DATA kanji_data;
+int kanji_MarginTop;
+int kanji_MarginLeft;
 
 unsigned short font_sjis_table[] = {
 0x8140,0x817e,
@@ -59,72 +107,21 @@ unsigned short font_sjis_table[] = {
 0x9840,0x9872
 };
 
-//------------------------------------------------------------
-int InitBIOSFont(void)
-{
-	int fd=0;
-	size_t size;
-	int ret=0;
-
-	//すでにロードしている
-	if(initbiosfont) return 0;
-
-	//フォントファイルオープン
-	fd = fioOpen("rom0:KROM", O_RDONLY);
-	if(fd<0){
-		ret=-1;
-		goto error;
-	}
-
-	//サイズを調べる
-	size = fioLseek(fd,0,SEEK_END);
-	fioLseek(fd,0,SEEK_SET);	//シークを0に戻す
-
-	//メモリを確保
-	biosfont = (char*)malloc(size);
-	if(biosfont==NULL){
-		ret=-2;
-		goto error;
-	}
-	
-	//メモリに読み込む
-	fioRead(fd, biosfont, size);
-
-	//フォントロード成功
-	initbiosfont=1;
-
-error:
-	if(fd>0) fioClose(fd);
-	return ret;
-}
-
-//------------------------------------------------------------
-void FreeBIOSFont(void)
-{
-	free(biosfont);
-	initbiosfont=0;
-}
-
-//------------------------------------------------------------
+//-------------------------------------------------
 // 暗くする(半透明の黒い四角)
 void drawDark(void)
 {
 	//アルファブレンド有効
 	itoPrimAlphaBlending( TRUE );
 	//
-/*
-	itoSprite(ITO_RGBA(0,0,0,0x10),
-		FONT_WIDTH*1.5, SCREEN_MARGIN+FONT_HEIGHT*2.5,
-		FONT_WIDTH*62.5, SCREEN_MARGIN+FONT_HEIGHT*19.5, 0);
-*/
 	itoSprite(ITO_RGBA(0,0,0,0x10),
 		0, SCREEN_MARGIN+FONT_HEIGHT*2.5,
-		SCREEN_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*19.5, 0);
+		SCREEN_WIDTH, SCREEN_HEIGHT-SCREEN_MARGIN-FONT_HEIGHT*1.5, 0);
 	//アルファブレンド無効
 	itoPrimAlphaBlending(FALSE);
 }
 
-//------------------------------------------------------------
+//-------------------------------------------------
 // ダイアログの背景
 void drawDialogTmp(int x1, int y1, int x2, int y2, uint64 color1, uint64 color2)
 {
@@ -133,52 +130,45 @@ void drawDialogTmp(int x1, int y1, int x2, int y2, uint64 color1, uint64 color2)
 	drawFrame(x1+2, y1+2, x2-2, y2-2, color2);
 
 }
-////////////////////////////////////////////////////////////////////////
+//-------------------------------------------------
 // 画面表示のテンプレート
 void setScrTmp(const char *msg0, const char *msg1)
 {
 	uint64 color;
 	uint64 color2;	//アルファ付き
 
-	// バージョン表記
-	printXY(LBF_VER, FONT_WIDTH*53, SCREEN_MARGIN, setting->color[3], TRUE);
-	
-	// メッセージ
-	printXY(msg0, FONT_WIDTH*2, SCREEN_MARGIN+FONT_HEIGHT*1, setting->color[3], TRUE);
-	
-/*
-	// 枠
-	drawFrame(FONT_WIDTH*1.5, SCREEN_MARGIN+FONT_HEIGHT*2.5,
-		FONT_WIDTH*62.5, SCREEN_MARGIN+FONT_HEIGHT*19.5,
-		setting->color[1]);
-*/
-	// 枠
 	color = setting->color[1]&0x00FFFFFF;	//透明度を除外
 	color = color|0x80000000;	//不透明
 	color2 = color|0x10000000;	//半透明
 
+	// バージョン表記
+	printXY(LBF_VER, SCREEN_WIDTH-FONT_WIDTH*11, SCREEN_MARGIN, setting->color[3], TRUE);
+	
+	// メッセージ
+	printXY(msg0, FONT_WIDTH*2, SCREEN_MARGIN+FONT_HEIGHT*1, setting->color[3], TRUE);
+	
 	//FLICKER CONTROL: ON
 	if(setting->flickerControl){
 		//アルファブレンド有効
 		itoPrimAlphaBlending( TRUE );
 		itoLine(color2, 0, SCREEN_MARGIN+FONT_HEIGHT*2.5+1, 0,
 			color2, SCREEN_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*2.5+1, 0);	
-		itoLine(color2, 0, SCREEN_MARGIN+FONT_HEIGHT*19.5+1, 0,
-			color2, SCREEN_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*19.5+1, 0);	
+		itoLine(color2, 0, SCREEN_MARGIN+(MAX_ROWS+3.5)*FONT_HEIGHT+1, 0,
+			color2, SCREEN_WIDTH, SCREEN_MARGIN+(MAX_ROWS+3.5)*FONT_HEIGHT+1, 0);	
 		//アルファブレンド無効
 		itoPrimAlphaBlending(FALSE);
 	}
-	itoPrimAlphaBlending( TRUE );
+
 	itoLine(color, 0, SCREEN_MARGIN+FONT_HEIGHT*2.5, 0,
 		color, SCREEN_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*2.5, 0);	
-	itoLine(color, 0, SCREEN_MARGIN+FONT_HEIGHT*19.5, 0,
-		color, SCREEN_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*19.5, 0);	
+	itoLine(color, 0, SCREEN_MARGIN+(MAX_ROWS+3.5)*FONT_HEIGHT, 0,
+		color, SCREEN_WIDTH, SCREEN_MARGIN+(MAX_ROWS+3.5)*FONT_HEIGHT, 0);	
 
 	// 操作説明
-	printXY(msg1, FONT_WIDTH*2, SCREEN_MARGIN+FONT_HEIGHT*20, setting->color[3], TRUE);
+	printXY(msg1, FONT_WIDTH*2, SCREEN_MARGIN+(MAX_ROWS+4)*FONT_HEIGHT, setting->color[3], TRUE);
 }
 
-////////////////////////////////////////////////////////////////////////
+//-------------------------------------------------
 // メッセージ描画
 void drawMsg(const char *msg)
 {
@@ -189,7 +179,7 @@ void drawMsg(const char *msg)
 	drawScr();
 }
 
-////////////////////////////////////////////////////////////////////////
+//-------------------------------------------------
 // setup ito
 void setupito(void)
 {
@@ -223,8 +213,8 @@ void setupito(void)
 	
 	// misc
 	screen_env.dither			= TRUE;
-	screen_env.interlace		= ITO_INTERLACE;
-	screen_env.ffmode			= ITO_FIELD;
+	screen_env.interlace		= setting->interlace;
+	screen_env.ffmode			= setting->ffmode;
 	screen_env.vmode			= ITO_VMODE_AUTO;
 	
 	itoGsEnvSubmit(&screen_env);
@@ -236,18 +226,16 @@ void setupito(void)
 		ITO_ALPHA_VALUE_SRC, // C = ALPHA VALUE SOURCE
 		ITO_ALPHA_COLOR_DST, // C = COLOR DEST
 		0x80);				 // Fixed Value
-	//
-//	itoSetBgColor(setting->color[0]);
 }
 
-////////////////////////////////////////////////////////////////////////
+//-------------------------------------------------
 // 画面のクリア
 void clrScr(uint64 color)
 {
-	itoSprite(color, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
+	itoSprite(color, 0, 0, SCREEN_WIDTH, 448, 0);
 }
 
-////////////////////////////////////////////////////////////////////////
+//-------------------------------------------------
 // 画面の描画
 void drawScr(void)
 {
@@ -256,7 +244,7 @@ void drawScr(void)
 	itoSwitchFrameBuffers();
 }
 
-////////////////////////////////////////////////////////////////////////
+//-------------------------------------------------
 // 枠の描画
 void drawFrame(int x1, int y1, int x2, int y2, uint64 color)
 {
@@ -288,63 +276,495 @@ void drawFrame(int x1, int y1, int x2, int y2, uint64 color)
 	itoLine(color, x1, y2, 0, color, x1, y1, 0);
 }
 
-////////////////////////////////////////////////////////////////////////
+//-------------------------------------------------
+//
+void SetHeight(void)
+{
+	//SCREEN_HEIGHT
+	if(setting->ffmode == FALSE && setting->interlace==TRUE)
+		SCREEN_HEIGHT = 448;
+	else
+		SCREEN_HEIGHT = 224;
+
+	//FONT_WIDTH
+	FONT_WIDTH = ascii_data.width + char_Margin;
+
+	//FONT_HEIGHT
+	if(ascii_data.height>=kanji_data.height)
+		FONT_HEIGHT = ascii_data.height + line_Margin;
+	else
+		FONT_HEIGHT = kanji_data.height + line_Margin;
+
+	//MAX_ROWS
+	MAX_ROWS = SCREEN_HEIGHT/FONT_HEIGHT-6;
+
+	//SCREEN_MARGIN
+	SCREEN_MARGIN = (SCREEN_HEIGHT - ((MAX_ROWS+5) * FONT_HEIGHT))/2;
+
+}
+//------------------------------------------------------------
+//アスキーフォント
+int InitFontAscii(const char *path)
+{
+	int fd=0;
+	size_t size;
+	FONTX_HEADER *fontx_header_ascii;
+	char fullpath[MAX_PATH];
+
+	if(init_ascii==1) FreeFontAscii();
+
+	if(strcmp(path,"rom0:KROM")==0 || strcmp(path,"systemfont")==0){
+		//BIOSFont
+		//フォントファイルオープン
+		fd = fioOpen("rom0:KROM", O_RDONLY);
+		if(fd<0) return -1;
+	
+		//メモリを確保 仮想FONTX2 KROM
+		size=17 + 15*256;	//ヘッダサイズ + 1文字のサイズ*256文字
+		font_ascii = (char*)malloc(size);
+		memset(font_ascii,0,size);
+		if(font_ascii==NULL){
+			fioClose(fd);
+			return -1;
+		}
+		
+		//メモリに読み込む
+		fioLseek(fd, 0x198DF, SEEK_SET);
+		fioRead(fd, font_ascii + 18 + 15*33, 15*95);//ヘッダサイズ + 1文字のサイズ*33文字, 1文字のサイズ*95文字
+
+		//クローズ
+		fioClose(fd);
+
+		//ヘッダのポインタ
+		fontx_header_ascii = (FONTX_HEADER*)font_ascii;
+
+		//ヘッダ作成
+		strncpy(fontx_header_ascii->Identifier, "FONTX2", 6);
+		strncpy(fontx_header_ascii->FontName, "KROM", 8);
+		fontx_header_ascii->XSize = 8;
+		fontx_header_ascii->YSize =15;
+		fontx_header_ascii->CodeType = 0;
+/*
+		KROMのアスキーフォントをFONTX2でダンプ
+		{
+			fd=fioOpen("host:KROM.fnt",O_WRONLY | O_TRUNC | O_CREAT);
+			fioWrite(fd, font_ascii, size);
+			fioClose(fd);
+		}
+*/
+	}
+	else{
+		//FONTX2
+		if(!strncmp(path, "mc:", 3)){
+			strcpy(fullpath, "mc0:");
+			strcat(fullpath, path+3);
+			if(checkFONTX2header(fullpath)<0){
+				fullpath[2]='1';
+				if(checkFONTX2header(fullpath)<0)
+					fullpath[0]=0;
+			}
+		}
+		else
+			strcpy(fullpath, path);
+
+		//mass
+		if(!strncmp(fullpath, "mass:", 5)) loadUsbModules();
+
+		//フォントファイルオープン
+		fd = fioOpen(fullpath, O_RDONLY);
+		if(fd<0) return -1;
+	
+		//サイズを調べる
+		size = fioLseek(fd,0,SEEK_END);
+		fioLseek(fd,0,SEEK_SET);	//シークを0に戻す
+
+		//メモリを確保
+		font_ascii = (char*)malloc(size);
+		if(font_ascii==NULL){
+			fioClose(fd);
+			return -1;
+		}
+		
+		//メモリに読み込む
+		fioRead(fd, font_ascii, (size_t)size);
+
+		//クローズ
+		fioClose(fd);
+	}
+
+	//ヘッダのポインタ
+	fontx_header_ascii = (FONTX_HEADER*)font_ascii;
+
+	//ヘッダチェック
+	if(strncmp(fontx_header_ascii->Identifier, "FONTX2", 6)!=0)
+		return -1;
+	if(fontx_header_ascii->CodeType!=0)
+		return -1;
+
+	//フォントの情報
+	strncpy(ascii_data.font_name, fontx_header_ascii->FontName, 8);
+	ascii_data.font_name[8] = '\0';
+	//1文字のサイズ
+	ascii_data.width = fontx_header_ascii->XSize;
+	ascii_data.height = fontx_header_ascii->YSize;
+	//1文字のサイズ算出
+	ascii_data.size = ((ascii_data.width-1)/8+1) * ascii_data.height;
+	//
+	ascii_data.Tnum = 0;
+	//
+	ascii_data.offset = 17;
+
+	SetHeight();
+
+	//フォントロード成功
+	init_ascii=1;
+	return 0;
+}
+//------------------------------------------------------------
+//漢字フォント
+int InitFontKnaji(const char *path)
+{
+	int fd=0;
+	size_t size;
+	FONTX_HEADER *fontx_header_kanji;
+	char fullpath[MAX_PATH];
+
+	if(init_kanji==1) FreeFontKnaji();
+	
+	if(strcmp(path,"rom0:KROM")==0 || strcmp(path,"systemfont")==0){
+		//BIOSFont
+		//フォントファイルオープン
+		fd = fioOpen("rom0:KROM", O_RDONLY);
+		if(fd<0) return -1;
+	
+		//メモリを確保 仮想FONTX2 KROM
+		size=18 + 51*4 + 30*3489;	//ヘッダサイズ + テーブルの数*4 + 1文字のサイズ*3489文字
+		font_kanji = (char*)malloc(size);
+		memset(font_kanji,0,size);
+		if(font_kanji==NULL){
+			fioClose(fd);
+			return -1;
+		}
+		
+		//メモリに読み込む
+		fioRead(fd, font_kanji + 18 + 51*4, 30*3489);//ヘッダサイズ + テーブルの数*4 ,1文字のサイズ*3489文字
+
+		//クローズ
+		fioClose(fd);
+
+		//ヘッダのポインタ
+		fontx_header_kanji = (FONTX_HEADER*)font_kanji;
+
+		//ヘッダ作成
+		strncpy(fontx_header_kanji->Identifier,"FONTX2", 6);
+		strncpy(fontx_header_kanji->FontName,"KROM_k", 8);
+		fontx_header_kanji->XSize = 16;
+		fontx_header_kanji->YSize = 15;
+		fontx_header_kanji->CodeType = 1;
+		fontx_header_kanji->Tnum = 51;
+		//テーブル
+		memcpy(font_kanji+18,font_sjis_table,51*4);
+
+/*
+		KROMの漢字フォントをFONTX2でダンプ
+		{
+			fd=fioOpen("host:KROM_k.fnt",O_WRONLY | O_TRUNC | O_CREAT);
+			fioWrite(fd, font_kanji, size);
+			fioClose(fd);
+		}
+*/
+	}
+	else{
+		//FONTX2
+		if(!strncmp(path, "mc:", 3)){
+			strcpy(fullpath, "mc0:");
+			strcat(fullpath, path+3);
+			if(checkFONTX2header(fullpath)<0){
+				fullpath[2]='1';
+				if(checkFONTX2header(fullpath)<0)
+					fullpath[0]=0;
+			}
+		}
+		else
+			strcpy(fullpath, path);
+
+		//mass
+		if(!strncmp(fullpath, "mass:", 5)) loadUsbModules();
+
+		//フォントファイルオープン
+		fd = fioOpen(fullpath, O_RDONLY);
+		if(fd<0) return -1;
+
+		//サイズを調べる
+		size = fioLseek(fd,0,SEEK_END);
+		fioLseek(fd,0,SEEK_SET);	//シークを0に戻す
+
+		//メモリを確保
+		font_kanji = (char*)malloc(size);
+		if(font_kanji==NULL){
+			fioClose(fd);
+			return -1;
+		}
+
+		//メモリに読み込む
+		fioRead(fd, font_kanji, (size_t)size);
+
+		//クローズ
+		fioClose(fd);
+	}
+	
+	//ヘッダのポインタ
+	fontx_header_kanji = (FONTX_HEADER*)font_kanji;
+
+	//ヘッダチェック
+	if(strncmp(fontx_header_kanji->Identifier, "FONTX2", 6)!=0)
+		return -1;
+	if(fontx_header_kanji->CodeType!=1)
+		return -1;
+
+	//フォントの情報
+	strncpy(kanji_data.font_name, fontx_header_kanji->FontName, 8);
+	kanji_data.font_name[8] = '\0';
+	//1文字のサイズ
+	kanji_data.width = fontx_header_kanji->XSize;
+	kanji_data.height = fontx_header_kanji->YSize;
+	//1文字のサイズ算出
+	kanji_data.size = ((kanji_data.width-1)/8+1) * kanji_data.height;
+	//
+	kanji_data.Tnum = fontx_header_kanji->Tnum;
+	//
+	kanji_data.offset = 18 + kanji_data.Tnum*4;
+
+	SetHeight();
+
+	//フォントロード成功
+	init_kanji=1;
+	return 0;
+}
+//------------------------------------------------------------
+void FreeFontAscii(void)
+{
+	free(font_ascii);
+	memset(&ascii_data, 0, sizeof(FONTX_DATA));
+	init_ascii=0;
+	return;
+}
+//------------------------------------------------------------
+void FreeFontKnaji(void)
+{
+	free(font_kanji);
+	memset(&kanji_data, 0, sizeof(FONTX_DATA));
+	init_kanji=0;
+	return;
+}
+
+//------------------------------------------------------------
+int SetFontMargin(int type, int Margin)
+{
+	if(type<CHAR_MARGIN || type>KANJI_FONT_MARGIN_LEFT) return -1;
+
+	if(type==CHAR_MARGIN){
+		char_Margin=Margin;
+		SetHeight();
+	}
+	if(type==LINE_MARGIN){
+		line_Margin=Margin;
+		SetHeight();
+	}
+	if(type==ASCII_FONT_MARGIN_TOP) 
+		ascii_MarginTop=Margin;
+	if(type==ASCII_FONT_MARGIN_LEFT) 
+		ascii_MarginLeft=Margin;
+	if(type==KANJI_FONT_MARGIN_TOP) 
+		kanji_MarginTop=Margin;
+	if(type==KANJI_FONT_MARGIN_LEFT) 
+		kanji_MarginLeft=Margin;
+
+	return 0;
+}
+//------------------------------------------------------------
+int GetFontMargin(int type)
+{
+	if(type<CHAR_MARGIN || type>KANJI_FONT_MARGIN_LEFT) return -1;
+
+	if(type==CHAR_MARGIN) 
+		return char_Margin;
+	if(type==LINE_MARGIN)
+		return line_Margin;
+	if(type==ASCII_FONT_MARGIN_TOP) 
+		return ascii_MarginTop;
+	if(type==ASCII_FONT_MARGIN_LEFT) 
+		return ascii_MarginLeft;
+	if(type==KANJI_FONT_MARGIN_TOP) 
+		return kanji_MarginTop;
+	if(type==KANJI_FONT_MARGIN_LEFT) 
+		return kanji_MarginLeft;
+
+	return 0;
+}
+
+//------------------------------------------------------------
+int SetCurrentPos(int x, int y)
+{
+	CurrentPos_x = x;
+	CurrentPos_y = y;
+	return 0;
+}
+
+//------------------------------------------------------------
+int GetCurrentPos(int type)
+{
+	if(type==CURRENTPOS_X)
+		return CurrentPos_x;
+	if(type==CURRENTPOS_Y)
+		return CurrentPos_y;
+	return 0;
+}
+
+//------------------------------------------------------------
+int GetFontSize(int type)
+{
+	if(type==ASCII_FONT_WIDTH)
+		return ascii_data.width;
+	if(type==ASCII_FONT_HEIGHT)
+		return ascii_data.height;
+	if(type==KANJI_FONT_WIDTH)
+		return kanji_data.width;
+	if(type==KANJI_FONT_HEIGHT)
+		return kanji_data.height;
+	return 0;
+}
+
+//------------------------------------------------------------
+void SetFontBold(int flag)
+{
+	font_bold = flag;
+	return;
+}
+
+//------------------------------------------------------------
+int GetFontBold(void)
+{
+	return font_bold;
+}
+
+//------------------------------------------------------------
+int checkFONTX2header(const char *path)
+{
+	char *buf=NULL;
+	int fd, size=0;
+	char fullpath[MAX_PATH], tmp[MAX_PATH], *p;
+	FONTX_HEADER *fontx_header;
+
+	strcpy(fullpath,path);
+
+	if(!strncmp(fullpath, "hdd0", 4)) {
+		sprintf(tmp, "hdd0:%s", &path[6]);
+		p = strchr(tmp, '/');
+		sprintf(fullpath, "pfs0:%s", p);
+		*p = 0;
+		fileXioMount("pfs0:", tmp, FIO_MT_RDONLY);
+		if ((fd = fileXioOpen(fullpath, O_RDONLY, FIO_S_IRUSR | FIO_S_IWUSR | FIO_S_IXUSR | FIO_S_IRGRP | FIO_S_IWGRP | FIO_S_IXGRP | FIO_S_IROTH | FIO_S_IWOTH | FIO_S_IXOTH)) < 0){
+			fileXioUmount("pfs0:");
+			goto error;
+		}
+		size = fileXioLseek(fd, 0, SEEK_END);
+		if (!size){
+			fileXioClose(fd);
+			fileXioUmount("pfs0:");
+			goto error;
+		}
+		fileXioLseek(fd, 0, SEEK_SET);
+		buf = (char*)malloc(17);
+		fileXioRead(fd, buf, 17);
+		fileXioClose(fd);
+		fileXioUmount("pfs0:");
+	}
+	else if(!strncmp(fullpath, "mc", 2) || !strncmp(fullpath, "mass", 4) || !strncmp(fullpath, "cdfs", 4)) {
+		if ((fd = fioOpen(fullpath, O_RDONLY)) < 0) 
+			goto error;
+		size = fioLseek(fd, 0, SEEK_END);
+		if (!size){
+			fioClose(fd);
+			goto error;
+		}
+		fioLseek(fd, 0, SEEK_SET);
+		buf = (char*)malloc(17);
+		fioRead(fd, buf, 17);
+		fioClose(fd);
+	}
+	else {
+		return 0;
+	}
+
+	//ヘッダのポインタ
+	fontx_header = (FONTX_HEADER*)buf;
+
+	//ヘッダチェック
+	if(strncmp(fontx_header->Identifier, "FONTX2", 6)!=0){
+		free(buf);
+		goto error;
+	}
+
+	free(buf);
+	return 1;
+error:
+	return -1;
+}
+
+//-------------------------------------------------
 //半角文字の表示
 void drawChar(unsigned char c, int x, int y, uint64 color)
 {
 	unsigned int i, j;
 	unsigned char cc;
-	unsigned char *pc;
-	uint64 color2;
+	unsigned char *pc=0;
 
 	//初期化していないか、初期化失敗している
-	if(!initbiosfont) return;
+	if(!init_ascii) return;
 
 	//半角スペースのときは、何もしない
 	if(c==' ') return;
 
-	color = color&0x00FFFFFF;	//透明度を除外
-	color = color|0x80000000;	//不透明
-	color2 = color|0x10000000;	//半透明
-
-	pc = &biosfont[104670+(c-33)*15];
+	pc = &font_ascii[ascii_data.offset + c * ascii_data.size];
 	cc = *pc;
-	//
-	for(i=0; i<16; i++){
-		for(j=0; j<8; j++){
+
+	//for(i=0; i<ascii_data.height; i++){
+	for(i=0; i<=ascii_data.height; i++){
+		for(j=0; j<ascii_data.width; j++){
 			if(cc & 0x80){
-				if(setting->flickerControl){
-					//itoPoint(color2, x+j, y+i+1, 0);
-					//itoPoint(color2, x+j+1, y+i+1, 0);	//太字にする
-					itoLine(color2, x+j, y+i+1, 0, color2, x+j+2, y+i+1, 0);
-				}
-				//itoPoint(color, x+j, y+i, 0);
-				//itoPoint(color, x+j+1, y+i, 0);	//太字にする
-				itoLine(color, x+j, y+i, 0, color, x+j+2, y+i, 0);
+				if(setting->FontBold)
+					itoLine(color, x+j, y+i, 0, color, x+j+2, y+i, 0);
+				else
+					itoPoint(color, x+j, y+i, 0);
 			}
 			cc = cc << 1;
 		}
 		cc = *pc++;
 	}
+	return;
 }
 
-////////////////////////////////////////////////////////////////////////
+//-------------------------------------------------
 //全角文字の表示
 void drawChar_SJIS(unsigned int c, int x, int y, uint64 color)
 {
+	FONTX_HEADER *fontx_header_kanji;
 	int i, j, a;
 	int ret, sum;
 	unsigned char cc;
 	unsigned char *pc;
-	uint64 color2;
 
 	//初期化していないか、初期化失敗している
-	if(!initbiosfont) return;
+	if(!init_kanji) return;
+
+	//ヘッダのポインタ
+	fontx_header_kanji = (FONTX_HEADER*)font_kanji;
 
 	//何番目のブロックにあるか調べる
 	ret=-1;
-	for(i=0;i<51;i++){
-		if((font_sjis_table[i*2] <= c) && (font_sjis_table[i*2+1] >= c)){
+	for(i=0;i<kanji_data.Tnum;i++){
+		if(((fontx_header_kanji->Block[i]).Start <= c) && ((fontx_header_kanji->Block[i]).End >= c)){
 			ret=i;
 			break;
 		}
@@ -352,87 +772,142 @@ void drawChar_SJIS(unsigned int c, int x, int y, uint64 color)
 	//見つからないときは、なにもしない
 	if (ret==-1) return;
 
-	color = color&0x00FFFFFF;	//透明度を除外
-	color = color|0x80000000;	//不透明
-	color2 = color|0x10000000;	//半透明
-
 	//アドレス算出
 	sum = 0;
 	for(i=0;i<ret;i++){
-		sum += font_sjis_table[i*2+1] - font_sjis_table[i*2];
+		sum += (fontx_header_kanji->Block[i]).End - (fontx_header_kanji->Block[i]).Start;
 	}
 
 	//
-	a = (sum + ret + ( c - font_sjis_table[ret*2] ) ) * 30;
-	pc = &biosfont[a];                                
+	a = sum + ret + ( c - (fontx_header_kanji->Block[ret]).Start );
+	pc = &font_kanji[kanji_data.offset + a * kanji_data.size];
 
-	//
-	for(i=0; i<15; i++) {
+	for(i=0; i<kanji_data.height; i++) {
+	//for(i=0; i<=kanji_data.height; i++) {
 		//左半分
 		cc = *pc++;
-		for(j=0; j<8; j++) {
+		for(j=0; j<kanji_data.width; j++) {
 			if(cc & 0x80){
-				if(setting->flickerControl){
-					//itoPoint(color2, x+j, y+i+1, 0);
-					//itoPoint(color2, x+j+1, y+i+1, 0);	//太字にする
-					itoLine(color2, x+j, y+i+1, 0, color2, x+j+2, y+i+1, 0);
-				}
-				//itoPoint(color, x+j, y+i, 0);
-				//itoPoint(color, x+j+1, y+i, 0);	//太字にする
-				itoLine(color, x+j, y+i, 0, color, x+j+2, y+i, 0);
+				if(setting->FontBold)
+					itoLine(color, x+j, y+i, 0, color, x+j+2, y+i, 0);
+				else
+					itoPoint(color, x+j, y+i, 0);
 			}
 			cc = cc << 1;
 		}
-		//右半分
-		cc = *pc++;
-		for(j=0; j<8; j++) {
-			if(cc & 0x80){
-				if(setting->flickerControl){
-					//itoPoint(color2, x+8+j, y+i+1, 0);
-					//itoPoint(color2, x+8+j+1, y+i+1, 0);	//太字にする
-					itoLine(color2, x+8+j, y+i+1, 0, color2, x+8+j+2, y+i+1, 0);
+		if(kanji_data.width>8){
+			//右半分
+			cc = *pc++;
+			for(j=0; j<kanji_data.width-8; j++) {
+				if(cc & 0x80){
+				if(setting->FontBold)
+					itoLine(color, x+8+j, y+i, 0, color, x+8+j+2, y+i, 0);
+				else
+					itoPoint(color, x+8+j, y+i, 0);
 				}
-				//itoPoint(color, x+8+j, y+i, 0);
-				//itoPoint(color, x+8+j+1, y+i, 0);	//太字にする
-				itoLine(color, x+8+j, y+i, 0, color, x+8+j+2, y+i, 0);
+				cc = cc << 1;
 			}
-			cc = cc << 1;
 		}
 	}
 }
 
-////////////////////////////////////////////////////////////////////////
+//-------------------------------------------------
 // draw a string of characters
 int printXY(const unsigned char *s, int x, int y, uint64 color, int draw)
 {
+	uint64 color2;	//アルファ付き
 	uint16 code;
 	int i;
 
-	//FLICKER CONTROL: ON
-	if(setting->flickerControl)
-		itoPrimAlphaBlending( TRUE );	//アルファブレンド有効
+	color = color&0x00FFFFFF;	//透明度を除外
+	color = color|0x80000000;	//不透明
+	color2 = color|0x10000000;	//半透明
 
 	i=0;
 	while(s[i]){
-		if (( s[i]>=0x81 && s[i]<=0x9f ) || ( s[i]>=0xe0 && s[i]<=0xff )){
+		if (( s[i]>=0x81 && s[i]<=0x9f ) || ( s[i]>=0xe0 && s[i]<=0xff )){	//SJIS
 			code = s[i++];
 			code = (code<<8) + s[i++];
-			if(draw) drawChar_SJIS(code, x, y, color);
-			x += FONT_WIDTH*2;
-		}           
-		else{
-			if(draw) drawChar(s[i], x, y, color);
-			i++;
-			x += FONT_WIDTH;
+			if(draw){
+				if(setting->flickerControl){
+					//アルファブレンド有効
+					itoPrimAlphaBlending( TRUE );
+					drawChar_SJIS(code, x+kanji_MarginLeft, y+kanji_MarginTop+1, color2);
+					//アルファブレンド無効
+					itoPrimAlphaBlending( FALSE );
+				}
+				drawChar_SJIS(code, x+kanji_MarginLeft, y+kanji_MarginTop, color);
+			}
+			x += kanji_data.width + char_Margin * 2;
 		}
-		//if(x > SCREEN_WIDTH-SCREEN_MARGIN-FONT_WIDTH){
-		if(x > SCREEN_WIDTH-FONT_WIDTH*2){
-			//x=16; y=y+8;
-			return x;
+		else{
+			if(draw){
+				if(setting->flickerControl){
+					//アルファブレンド有効
+					itoPrimAlphaBlending( TRUE );
+					drawChar(s[i], x+ascii_MarginLeft, y+ascii_MarginTop+1, color2);
+					//アルファブレンド無効
+					itoPrimAlphaBlending( FALSE );
+				}
+				drawChar(s[i], x+ascii_MarginLeft, y+ascii_MarginTop, color);
+			}
+			i++;
+			x += ascii_data.width + char_Margin;
 		}
 	}
 
-	itoPrimAlphaBlending(FALSE);	//アルファブレンド無効
+	return x;
+}
+//------------------------------------------------------------
+// draw a string of characters
+int printXY2(const unsigned char *s, uint64 color, int draw)
+{
+	uint64 color2;	//アルファ付き
+	uint16 code;
+	int i;
+	int x,y;
+
+	x=CurrentPos_x;
+	y=CurrentPos_y;
+
+	color = color&0x00FFFFFF;	//透明度を除外
+	color = color|0x80000000;	//不透明
+	color2 = color|0x10000000;	//半透明
+
+	i=0;
+	while(s[i]){
+		if (( s[i]>=0x81 && s[i]<=0x9f ) || ( s[i]>=0xe0 && s[i]<=0xff )){	//SJIS
+			code = s[i++];
+			code = (code<<8) + s[i++];
+			if(draw){
+				if(setting->flickerControl){
+					//アルファブレンド有効
+					itoPrimAlphaBlending( TRUE );
+					drawChar_SJIS(code, x+kanji_MarginLeft, y+kanji_MarginTop+1, color2);
+					//アルファブレンド無効
+					itoPrimAlphaBlending( FALSE );
+				}
+				drawChar_SJIS(code, x+kanji_MarginLeft, y+kanji_MarginTop, color);
+			}
+			x += kanji_data.width + char_Margin * 2;
+		}
+		else{
+			if(draw){
+				if(setting->flickerControl){
+					//アルファブレンド有効
+					itoPrimAlphaBlending( TRUE );
+					drawChar(s[i], x+ascii_MarginLeft, y+ascii_MarginTop+1, color2);
+					//アルファブレンド無効
+					itoPrimAlphaBlending( FALSE );
+				}
+				drawChar(s[i], x+ascii_MarginLeft, y+ascii_MarginTop, color);
+			}
+			i++;
+			x += ascii_data.width + char_Margin;
+		}
+	}
+
+	CurrentPos_y += FONT_HEIGHT;
 
 	return x;
 }

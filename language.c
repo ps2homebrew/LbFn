@@ -2,22 +2,26 @@
 
 LANGUAGE *lang;
 
+//-------------------------------------------------
 void InitLanguage(void)
 {
 	lang = (LANGUAGE*)malloc(sizeof(LANGUAGE));
 	SetLanguage(LANG_ENGLISH);
 }
 
+//-------------------------------------------------
 void FreeLanguage(void)
 {
 	free(lang);
 }
 
+//-------------------------------------------------
 void SetLanguage(const int langID)
 {
 	int l;
+
 	l=langID;
-	if(l<0) l=LANG_ENGLISH;
+	if(l<LANG_ENGLISH) l=LANG_ENGLISH;
 	if(l>=NUM_LANG) l=LANG_ENGLISH;
 	memset(lang, 0, sizeof(LANGUAGE));
 
@@ -50,6 +54,7 @@ void SetLanguage(const int langID)
 		strcpy(lang->filer_menu_importpsu, "Import psu");
 		strcpy(lang->filer_overwrite, "Overwrite?");
 		strcpy(lang->filer_not_elf, "This file isn't ELF.");
+		strcpy(lang->filer_not_fnt, "This file isn't FNT.");
 		strcpy(lang->filer_copy_to_clip, "Copied to the Clipboard");
 		strcpy(lang->filer_delete, "Delete?");
 		strcpy(lang->filer_deletemarkfiles, "Mark Files Delete?");
@@ -67,11 +72,13 @@ void SetLanguage(const int langID)
 		strcpy(lang->filer_importfailed, "Import psu Failed");
 		strcpy(lang->filer_importto, "Import to");
 		strcpy(lang->filer_keyboard_hint, "○:OK ×:Back L1:Left R1:Right START:Enter");
-		strcpy(lang->filer_hint1, "○:OK △:Up ×:Mark □:RevMark L1:TitleOFF R1:Menu R2:Config");
-		strcpy(lang->filer_hint2, "○:OK △:Up ×:Mark □:RevMark L1:TitleON  R1:Menu R2:Config");
-		strcpy(lang->filer_hint3, "○:OK ×:Cancel △:Up □:*->ELF");
-		strcpy(lang->filer_hint4, "○:OK ×:Cancel △:Up □:ELF->*");
-		strcpy(lang->filer_hint5, "○:OK ×:Cancel △:Up Start:Choose");
+		strcpy(lang->filer_anyfile_hint1, "○:OK △:Up ×:Mark □:RevMark L1:TitleOFF R1:Menu R2:Config");
+		strcpy(lang->filer_anyfile_hint2, "○:OK △:Up ×:Mark □:RevMark L1:TitleON  R1:Menu R2:Config");
+		strcpy(lang->filer_elffile_hint1, "○:OK ×:Cancel △:Up □:*->ELF");
+		strcpy(lang->filer_elffile_hint2, "○:OK ×:Cancel △:Up □:ELF->*");
+		strcpy(lang->filer_fntfile_hint1, "○:OK ×:Cancel △:Up □:*->FNT");
+		strcpy(lang->filer_fntfile_hint2, "○:OK ×:Cancel △:Up □:FNT->*");
+		strcpy(lang->filer_dir_hint, "○:OK ×:Cancel △:Up Start:Choose");
 		strcpy(lang->filer_export_files, "files");
 		strcpy(lang->filer_export_header, " num: attr:     size: filename");
 		strcpy(lang->filer_import_files, "files");
@@ -84,7 +91,11 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_loadconfig, "Load Config");
 		strcpy(lang->conf_initializeconfig, "Initialize Config");
 
-		strcpy(lang->conf_menu, "<L1    BUTTON      SCREEN     NETWORK       MISC     R1>");
+		strcpy(lang->conf_setting_button,  "BUTTON");
+		strcpy(lang->conf_setting_screen,  "SCREEN");
+		strcpy(lang->conf_setting_network, "NETWORK");
+		strcpy(lang->conf_setting_font,    "FONT");
+		strcpy(lang->conf_setting_misc,    "MISC");
 		//button
 		strcpy(lang->conf_buttonsettinginit, "BUTTON SETTING INIT");
 		//screen
@@ -96,6 +107,8 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_file, "FILE          ");
 		strcpy(lang->conf_ps2save, "PS2 SAVE      ");
 		strcpy(lang->conf_elffile, "ELF FILE      ");
+		strcpy(lang->conf_interlace, "INTERLACE");
+		strcpy(lang->conf_ffmode, "FFMODE");
 		strcpy(lang->conf_screen_x, "SCREEN X");
 		strcpy(lang->conf_screen_y, "SCREEN Y");
 		strcpy(lang->conf_flickercontrol, "FLICKER CONTROL");
@@ -108,6 +121,17 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_ipsettinginit, "NETWORK SETTING INIT");
 		strcpy(lang->conf_ipsaved, "Saved");
 		strcpy(lang->conf_ipsavefailed, "Save Failed ");
+		//font
+		strcpy(lang->conf_AsciiFont, "ASCII FONT");
+		strcpy(lang->conf_KanjiFont, "KANJI FONT");
+		strcpy(lang->conf_CharMargin, "CHAR MARGIN");
+		strcpy(lang->conf_LineMargin, "LINE MARGIN");
+		strcpy(lang->conf_FontBold, "FONT BOLD");
+		strcpy(lang->conf_AsciiMarginTop, "ASCII MARGIN TOP");
+		strcpy(lang->conf_AsciiMarginLeft, "ASCII MARGIN LEFT");
+		strcpy(lang->conf_KanjiMarginTop, "KANJI MARGIN TOP");
+		strcpy(lang->conf_KanjiMarginLeft, "KANJI MARGIN LEFT");
+		strcpy(lang->conf_fontsettinginit, "FONT SETTING INIT");
 		//misc
 		strcpy(lang->conf_language, "LANGUAGE");
 		strcpy(lang->conf_language_us, "ENGLISH");
@@ -161,6 +185,7 @@ void SetLanguage(const int langID)
 		strcpy(lang->filer_menu_importpsu, "インポート");
 		strcpy(lang->filer_overwrite, "上書きしますか?");
 		strcpy(lang->filer_not_elf, "ELFファイルではありません");
+		strcpy(lang->filer_not_fnt, "FNTファイルではありません");
 		strcpy(lang->filer_copy_to_clip, "クリップボードへコピーしました");
 		strcpy(lang->filer_delete, "削除しますか?");
 		strcpy(lang->filer_deletemarkfiles, "マークしたファイルを削除しますか?");
@@ -178,11 +203,13 @@ void SetLanguage(const int langID)
 		strcpy(lang->filer_importfailed, "インポート失敗しました");
 		strcpy(lang->filer_importto, "インポートした場所");
 		strcpy(lang->filer_keyboard_hint, "○:決定 ×:削除 L1:左へ R1:右へ");
-		strcpy(lang->filer_hint1, "○:決定 △:上へ ×:マーク □:マーク反転 R1:メニュー");
-		strcpy(lang->filer_hint2, "○:決定 △:上へ ×:マーク □:マーク反転 R1:メニュー");
-		strcpy(lang->filer_hint3, "○:決定 ×:キャンセル △:上へ □:*->ELF");
-		strcpy(lang->filer_hint4, "○:決定 ×:キャンセル △:上へ □:ELF->*");
-		strcpy(lang->filer_hint5, "○:決定 ×:キャンセル △:上へ Start:フォルダ選択");
+		strcpy(lang->filer_anyfile_hint1, "○:決定 △:上へ ×:マーク □:マーク反転 R1:メニュー");
+		strcpy(lang->filer_anyfile_hint2, "○:決定 △:上へ ×:マーク □:マーク反転 R1:メニュー");
+		strcpy(lang->filer_elffile_hint1, "○:決定 ×:キャンセル △:上へ □:*->ELF");
+		strcpy(lang->filer_elffile_hint2, "○:決定 ×:キャンセル △:上へ □:ELF->*");
+		strcpy(lang->filer_fntfile_hint1, "○:決定 ×:キャンセル △:上へ □:*->FNT");
+		strcpy(lang->filer_fntfile_hint2, "○:決定 ×:キャンセル △:上へ □:FNT->*");
+		strcpy(lang->filer_dir_hint, "○:決定 ×:キャンセル △:上へ Start:フォルダ選択");
 		strcpy(lang->filer_export_files, "個のファイル");
 		strcpy(lang->filer_export_header, "番号: 属性:   サイズ: ファイルの名前");
 		strcpy(lang->filer_import_files, "個のファイル");
@@ -195,7 +222,11 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_loadconfig, "設定読み込み");
 		strcpy(lang->conf_initializeconfig, "設定初期化");
 
-		strcpy(lang->conf_menu, "<L1  ランチャー   画面設定     IP設定      その他    R1>");
+		strcpy(lang->conf_setting_button,  "ランチャー");
+		strcpy(lang->conf_setting_screen,  "画面設定");
+		strcpy(lang->conf_setting_network, "IP設定");
+		strcpy(lang->conf_setting_font,    "フォント設定");
+		strcpy(lang->conf_setting_misc,    "その他");
 		//button
 		strcpy(lang->conf_buttonsettinginit, "「ランチャー設定」を初期化する");
 		//screen
@@ -209,6 +240,8 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_elffile, "ELF ファイル  ");
 		strcpy(lang->conf_screen_x, "画面位置 X");
 		strcpy(lang->conf_screen_y, "画面位置 Y");
+		strcpy(lang->conf_interlace, "インターレース");
+		strcpy(lang->conf_ffmode, "FFMODE");
 		strcpy(lang->conf_flickercontrol, "フリッカー調整");
 		strcpy(lang->conf_screensettinginit, "「画面設定」を初期化する");
 		//network
@@ -219,6 +252,17 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_ipsettinginit, "「IP設定」を初期化する");
 		strcpy(lang->conf_ipsaved, "保存しました");
 		strcpy(lang->conf_ipsavefailed, "保存失敗しました ");
+		//font
+		strcpy(lang->conf_AsciiFont, "アスキーフォント");
+		strcpy(lang->conf_KanjiFont, "漢字フォント    ");
+		strcpy(lang->conf_CharMargin, "文字の間隔");
+		strcpy(lang->conf_LineMargin, "行の間隔  ");
+		strcpy(lang->conf_FontBold, "太字にする");
+		strcpy(lang->conf_AsciiMarginTop, "アスキーフォントの上の間隔");
+		strcpy(lang->conf_AsciiMarginLeft, "アスキーフォントの左の間隔");
+		strcpy(lang->conf_KanjiMarginTop, "漢字フォントの上の間隔");
+		strcpy(lang->conf_KanjiMarginLeft, "漢字フォントの左の間隔");
+		strcpy(lang->conf_fontsettinginit, "「フォント設定」を初期化する");
 		//misc
 		strcpy(lang->conf_language, "LANGUAGE");
 		strcpy(lang->conf_language_us, "ENGLISH");
