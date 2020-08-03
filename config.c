@@ -475,6 +475,8 @@ void saveConfig(char *mainMsg)
 	if(cnf_setstr("kanji_margin_left", tmp)<0) goto error;
 	//
 	sprintf(tmp, "%d", setting->screen_x_480i);
+	if(cnf_setstr("screen_pos_x_480i", tmp)<0) goto error;
+	sprintf(tmp, "%d", (setting->screen_x_480i+2)>>2);
 	if(cnf_setstr("screen_pos_x", tmp)<0) goto error;
 	sprintf(tmp, "%d", setting->screen_y_480i);
 	if(cnf_setstr("screen_pos_y", tmp)<0) goto error;
@@ -599,6 +601,7 @@ void loadConfig(char *mainMsg)
 	char tmp[MAX_PATH];
 	int cnf_version=0;
 	int ret=0;
+	int nchk=-1;
 //	int i;
 
 	setting = (SETTING*)malloc(sizeof(SETTING));
@@ -729,7 +732,9 @@ void loadConfig(char *mainMsg)
 				setting->KanjiMarginLeft = atoi(tmp);
 			//
 			if(cnf_getstr("screen_pos_x", tmp, "")>=0)
-				setting->screen_x_480i = atoi(tmp);
+				setting->screen_x_480i = atoi(tmp)<<2;
+			if(cnf_getstr("screen_pos_x_480i", tmp, "")>=0)
+				nchk = atoi(tmp);
 			if(cnf_getstr("screen_pos_y", tmp, "")>=0)
 				setting->screen_y_480i = atoi(tmp);
 			if(cnf_getstr("screen_pos_x_480p", tmp, "")>=0)
@@ -839,6 +844,11 @@ void loadConfig(char *mainMsg)
 
 	SetLanguage(setting->language);
 
+	if (nchk>=0) {
+		setting->screen_x_480i = nchk;
+	} else if (setting->screen_x_480i >= 1600) {
+		setting->screen_x_480i = setting->screen_x_480i >> 2;
+	}
 	if(ret==0){
 		//設定ファイル開けなかった
 		mainMsg[0] = 0;
