@@ -1,9 +1,23 @@
 #include "launchelf.h"
 
+//PS2TIME LaunchELF 3.80
+typedef struct
+{
+	unsigned char unknown;
+	unsigned char sec;      // date/time (second)
+	unsigned char min;      // date/time (minute)
+	unsigned char hour;     // date/time (hour)
+	unsigned char day;      // date/time (day)
+	unsigned char month;    // date/time (month)
+	unsigned short year;    // date/time (year)
+} PS2TIME __attribute__((aligned (2)));
+
 typedef struct{
-	char name[256];
-	char title[16*4+1];
+	PS2TIME modifyTime;
+    unsigned fileSizeByte;
 	unsigned short attr;
+	char title[16*4+1];
+	char name[256];
 	int type;
 } FILEINFO;
 
@@ -21,6 +35,17 @@ typedef struct { // 512 bytes
 	unsigned char unknown5[416];
 } PSU_HEADER;
 
+//FILEINFO type
+enum
+{
+	TYPE_OTHER,
+	TYPE_DIR,
+	TYPE_FILE,
+	TYPE_PS2SAVE,
+	TYPE_ELF
+};
+
+//menu
 enum
 {
 	COPY,
@@ -33,15 +58,6 @@ enum
 	EXPORT,
 	IMPORT,
 	NUM_MENU
-};
-
-enum
-{
-	TYPE_OTHER,
-	TYPE_DIR,
-	TYPE_FILE,
-	TYPE_PS2SAVE,
-	TYPE_ELF
 };
 
 // ASCIIとSJISの変換用配列
@@ -374,6 +390,14 @@ int readMC(const char *path, FILEINFO *info, int max)
 			info[j].attr = FIO_S_IFDIR;
 		else
 			info[j].attr = FIO_S_IFREG;
+		info[j].fileSizeByte = mcDir[i].fileSizeByte;
+		info[j].modifyTime.unknown = mcDir[i]._modify.unknown2;
+		info[j].modifyTime.sec = mcDir[i]._modify.sec;
+		info[j].modifyTime.min = mcDir[i]._modify.min;
+		info[j].modifyTime.hour = mcDir[i]._modify.hour;
+		info[j].modifyTime.day = mcDir[i]._modify.day;
+		info[j].modifyTime.month = mcDir[i]._modify.month;
+		info[j].modifyTime.year = mcDir[i]._modify.year;
 		j++;
 	}
 	
@@ -405,6 +429,8 @@ int readCD(const char *path, FILEINFO *info, int max)
 			info[j].attr = FIO_S_IFDIR;
 		else
 			info[j].attr = FIO_S_IFREG;
+		info[j].fileSizeByte = TocEntryList[i].fileSize;
+		memset(&info[j].modifyTime,0,sizeof(PS2TIME)); //取得できない
 		j++;
 	}
 	
@@ -456,6 +482,8 @@ int readHDD(const char *path, FILEINFO *info, int max)
 		for(i=0; i<nparties; i++){
 			strcpy(info[i].name, parties[i]);
 			info[i].attr = FIO_S_IFDIR;
+			info[i].fileSizeByte = 0;
+			memset(&info[i].modifyTime,0,sizeof(PS2TIME));
 		}
 		return nparties;
 	}
@@ -474,6 +502,14 @@ int readHDD(const char *path, FILEINFO *info, int max)
 		
 		info[i].attr = dirbuf.stat.mode;
 		strcpy(info[i].name, dirbuf.name);
+		info[i].fileSizeByte = dirbuf.stat.size;
+		info[i].modifyTime.unknown = dirbuf.stat.mtime[0];
+		info[i].modifyTime.sec = dirbuf.stat.mtime[1];
+		info[i].modifyTime.min = dirbuf.stat.mtime[2];
+		info[i].modifyTime.hour = dirbuf.stat.mtime[3];
+		info[i].modifyTime.day = dirbuf.stat.mtime[4];
+		info[i].modifyTime.month = dirbuf.stat.mtime[5];
+		info[i].modifyTime.year = dirbuf.stat.mtime[6]+dirbuf.stat.mtime[7]*256;
 		i++;
 		if(i==max) break;
 	}
@@ -505,6 +541,15 @@ int readMASS(const char *path, FILEINFO *info, int max)
 			info[n].attr = FIO_S_IFDIR;
 		else
 			info[n].attr = FIO_S_IFREG;
+		//info[n].fileSizeByte = record.size; //取得できない
+		info[n].fileSizeByte = 0;
+		info[n].modifyTime.unknown = 0;
+		info[n].modifyTime.sec = 0;//record.time[2]; //取得できない
+		info[n].modifyTime.min = record.time[1];
+		info[n].modifyTime.hour = record.time[0];
+		info[n].modifyTime.day = record.date[0];
+		info[n].modifyTime.month = record.date[1];
+		info[n].modifyTime.year = record.date[2] + record.date[3]*256;
 		n++;
 		ret = usb_mass_getNextDirentry(&record);
 	}
@@ -2122,18 +2167,27 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 		strcpy(files[0].name, "mc0:");
 		files[0].attr = FIO_S_IFDIR;
 		files[0].type=TYPE_OTHER;
+		memset(&files[0].modifyTime,0,sizeof(PS2TIME));
+
 		strcpy(files[1].name, "mc1:");
 		files[1].attr = FIO_S_IFDIR;
 		files[1].type=TYPE_OTHER;
+		memset(&files[1].modifyTime,0,sizeof(PS2TIME));
+
 		strcpy(files[2].name, "hdd0:");
 		files[2].attr = FIO_S_IFDIR;
 		files[2].type=TYPE_OTHER;
+		memset(&files[2].modifyTime,0,sizeof(PS2TIME));
+
 		strcpy(files[3].name, "cdfs:");
 		files[3].attr = FIO_S_IFDIR;
 		files[3].type=TYPE_OTHER;
+		memset(&files[3].modifyTime,0,sizeof(PS2TIME));
+
 		strcpy(files[4].name, "mass:");
 		files[4].attr = FIO_S_IFDIR;
 		files[4].type=TYPE_OTHER;
+		memset(&files[4].modifyTime,0,sizeof(PS2TIME));
 		nfiles = 5;
 		for(i=0; i<nfiles; i++)
 			files[i].title[0]=0;
@@ -2141,6 +2195,7 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 			strcpy(files[nfiles].name, "MISC");
 			files[nfiles].attr = FIO_S_IFDIR;
 			files[nfiles].type=TYPE_OTHER;
+			memset(&files[nfiles].modifyTime,0,sizeof(PS2TIME));
 			nfiles++;
 		}
 		vfreeSpace=FALSE;
@@ -2149,24 +2204,38 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 		strcpy(files[0].name, "..");
 		files[0].attr = FIO_S_IFDIR;
 		files[0].type=TYPE_OTHER;
+		memset(&files[0].modifyTime,0,sizeof(PS2TIME));
+
 		strcpy(files[1].name, "FileBrowser");
 		files[1].attr = FIO_S_IFREG;
 		files[1].type=TYPE_OTHER;
+		memset(&files[1].modifyTime,0,sizeof(PS2TIME));
+
 		strcpy(files[2].name, "PS2Browser");
 		files[2].attr = FIO_S_IFREG;
 		files[2].type=TYPE_OTHER;
+		memset(&files[2].modifyTime,0,sizeof(PS2TIME));
+
 		strcpy(files[3].name, "PS2Disc");
 		files[3].attr = FIO_S_IFREG;
 		files[3].type=TYPE_OTHER;
+		memset(&files[3].modifyTime,0,sizeof(PS2TIME));
+
 		strcpy(files[4].name, "PS2Net");	//PS2Net uLaunchELF3.60
 		files[4].attr = FIO_S_IFREG;
 		files[4].type=TYPE_OTHER;
+		memset(&files[4].modifyTime,0,sizeof(PS2TIME));
+
 		strcpy(files[5].name, "INFO");
 		files[5].attr = FIO_S_IFREG;
 		files[5].type=TYPE_OTHER;
+		memset(&files[5].modifyTime,0,sizeof(PS2TIME));
+
 		strcpy(files[6].name, "CONFIG");
 		files[6].attr = FIO_S_IFREG;
 		files[6].type=TYPE_OTHER;
+		memset(&files[6].modifyTime,0,sizeof(PS2TIME));
+
 		nfiles = 7;
 		for(i=0; i<nfiles; i++)
 			files[i].title[0]=0;
@@ -2175,6 +2244,7 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 		strcpy(files[0].name, "..");
 		files[0].attr = FIO_S_IFDIR;
 		files[0].type=TYPE_OTHER;
+		memset(&files[0].modifyTime,0,sizeof(PS2TIME));
 		nfiles = getDir(path, &files[1]) + 1;
 		if(strcmp(ext,"*")){	//ファイルマスク
 			for(i=j=1; i<nfiles; i++){
@@ -2279,11 +2349,11 @@ void getFilePath(char *out, int cnfmode)
 	FILEINFO files[MAX_ENTRY];
 	int nfiles=0, sel=0, top=0;
 	int cd=TRUE, up=FALSE, pushed=TRUE;
-	int nofnt=FALSE;
 	int x, y, y0, y1;
 	int i, ret;//, fd;
 	size_t size;
 	int code;
+	int detail=0;	//詳細表示 0:なし 1:サイズ 2:更新日時
 
 	if(cnfmode==ANY_FILE)
 		strcpy(ext, "*");
@@ -2315,7 +2385,7 @@ void getFilePath(char *out, int cnfmode)
 				sel+=MAX_ROWS/2;
 			else if(new_pad & PAD_TRIANGLE)
 				up=TRUE;
-			else if(new_pad & PAD_CIRCLE){
+			else if(new_pad & PAD_CIRCLE){	//change dir
 				if(files[sel].attr & FIO_S_IFDIR){
 					if(!strcmp(files[sel].name,".."))
 						up=TRUE;
@@ -2325,9 +2395,19 @@ void getFilePath(char *out, int cnfmode)
 						cd=TRUE;
 					}
 				}
-				else{
-					sprintf(out, "%s%s", path, files[sel].name);
-					if(cnfmode==ANY_FILE || cnfmode==ELF_FILE){
+			}
+			else if(new_pad & PAD_SELECT){	//戻る
+				break;
+			}
+			else if(new_pad & PAD_L1) {	// タイトル表示切り替え
+				title = !title;
+				cd=TRUE;
+			}
+			//ELF_FILE ELF選択時
+			if(cnfmode==ELF_FILE){
+				if(new_pad & PAD_CIRCLE) {	//FNTファイルを決定
+					if(files[sel].attr & FIO_S_IFREG){
+						sprintf(out, "%s%s", path, files[sel].name);
 						//ヘッダチェック
 						if(checkELFheader(out)<0){
 							mountedParty[0][0]=0;
@@ -2340,7 +2420,21 @@ void getFilePath(char *out, int cnfmode)
 							break;
 						}
 					}
-					if(cnfmode==FNT_FILE){
+				}
+				else if(new_pad & PAD_SQUARE) {	// ファイルマスク切り替え
+					if(!strcmp(ext,"*")) strcpy(ext, "elf");
+					else				 strcpy(ext, "*");
+					cd=TRUE;
+				}
+				else if(new_pad & PAD_CROSS){	//戻る
+					break;
+				}
+			}
+			//FNT_FILE ELF選択時
+			else if(cnfmode==FNT_FILE){
+				if(new_pad & PAD_CIRCLE) {//ELFファイルを決定
+					if(files[sel].attr & FIO_S_IFREG){
+						sprintf(out, "%s%s", path, files[sel].name);
 						//ヘッダチェック
 						if(checkFONTX2header(out)<0){
 							mountedParty[0][0]=0;
@@ -2354,40 +2448,12 @@ void getFilePath(char *out, int cnfmode)
 						}
 					}
 				}
-			}
-			//ELF_FILE ELF選択時
-			if(cnfmode==ELF_FILE){
-				if(new_pad & PAD_SQUARE) {	// ファイルマスク切り替え
-					if(!strcmp(ext,"*")) strcpy(ext, "elf");
-					else				 strcpy(ext, "*");
-					cd=TRUE;
-				}
-				else if(new_pad & PAD_L1) {	// タイトル表示切り替え
-					title = !title;
-					cd=TRUE;
-				}
-				else if(new_pad & PAD_CROSS){	//戻る
-					break;
-				}
-				else if(new_pad & PAD_SELECT){	//戻る
-					break;
-				}
-			}
-			//FNT_FILE ELF選択時
-			if(cnfmode==FNT_FILE){
-				if(new_pad & PAD_SQUARE) {	// ファイルマスク切り替え
+				else if(new_pad & PAD_SQUARE) {	// ファイルマスク切り替え
 					if(!strcmp(ext,"*")) strcpy(ext, "fnt");
 					else				 strcpy(ext, "*");
 					cd=TRUE;
 				}
-				else if(new_pad & PAD_L1) {	// タイトル表示切り替え
-					title = !title;
-					cd=TRUE;
-				}
 				else if(new_pad & PAD_CROSS){	//戻る
-					break;
-				}
-				else if(new_pad & PAD_SELECT){	//戻る
 					break;
 				}
 			}
@@ -2399,20 +2465,29 @@ void getFilePath(char *out, int cnfmode)
 						break;
 					}
 				}
-				else if(new_pad & PAD_L1) {	// タイトル表示切り替え
-					title = !title;
-					cd=TRUE;
-				}
 				else if(new_pad & PAD_CROSS){	//戻る
-					break;
-				}
-				else if(new_pad & PAD_SELECT){	//戻る
 					break;
 				}
 			}
 			//ANY_FILE	ファイラーモード	すべてのファイルが対象
 			else if(cnfmode==ANY_FILE){
-				if(new_pad & PAD_R1){	// メニュー
+				if(new_pad & PAD_CIRCLE) {	//ELFファイルを実行
+					if(files[sel].attr & FIO_S_IFREG){
+						sprintf(out, "%s%s", path, files[sel].name);
+						//ヘッダチェック
+						if(checkELFheader(out)<0){
+							mountedParty[0][0]=0;
+							pushed=FALSE;
+							sprintf(msg0, lang->filer_not_elf);
+							out[0] = 0;
+						}
+						else{
+							strcpy(LastDir, path);
+							break;
+						}
+					}
+				}
+				else if(new_pad & PAD_R1){	// メニュー
 					drawDark();
 					itoSwitchFrameBuffers();
 					drawDark();
@@ -2630,21 +2705,44 @@ void getFilePath(char *out, int cnfmode)
 						}
 					}
 				}
-				else if(new_pad & PAD_L1) {	// タイトル表示切り替え
-					title = !title;
-					nofnt = TRUE;
-					cd=TRUE;
-				}
-				else if(new_pad & PAD_SELECT){	// メインメニューに戻る
-					break;
-				}
-				else if(new_pad & PAD_R2){	//コンフィグ
+				else if(new_pad & PAD_R2){	//GETSIZE
+/*
+					//コンフィグ
 					config(msg0);
 					pushed = FALSE;
-					if(setting->discControl)
-						loadCdModules();
-					if(setting->fileicon)
-						cd=TRUE;
+					if(setting->discControl) loadCdModules();
+					if(setting->fileicon) cd=TRUE;
+*/
+					if(!strcmp(path,"hdd0:/") || path[0]==0){
+					}
+					else if(nmarks==0 && !strcmp(files[sel].name, "..")){
+					}
+					else{
+						drawMsg(lang->filer_checkingsize);
+						if(nmarks==0){
+							size=getFileSize(path, &files[sel]);
+						}
+						else{
+							for(i=size=0; i<nfiles; i++){
+								if(marks[i])
+									size+=getFileSize(path, &files[i]);
+								if(size<0) size=-1;
+							}
+						}
+						//
+						if(size<0){
+							strcpy(msg0, lang->filer_getsizefailed);
+						}
+						else{
+							if(size >= 1024*1024)
+								sprintf(msg0, "SIZE = %.1f MByte", (double)size/1024/1024);
+							else if(size >= 1024)
+								sprintf(msg0, "SIZE = %.1f KByte", (double)size/1024);
+							else
+								sprintf(msg0, "SIZE = %d Byte", size);
+						}
+						pushed = FALSE;
+					}
 				}
 				else if(new_pad & PAD_R3){
 					//FILEICON
@@ -2656,10 +2754,10 @@ void getFilePath(char *out, int cnfmode)
 					//FILEICON
 					setting->flickerControl = !setting->flickerControl;
 				}
-/*
-				else if(new_pad & PAD_L2){	//デバッグ
+				else if(new_pad & PAD_L2) {	//デバッグ
+					detail++;
+					if(detail==3) detail=0;
 				}
-*/
 			}
 		}
 		// 上位フォルダ移動
@@ -2777,6 +2875,71 @@ void getFilePath(char *out, int cnfmode)
 				}
 				//ファイル名表示
 				printXY(tmp, x+FONT_WIDTH*4, y, color, TRUE);
+			}
+			//詳細表示
+			if(path[0] && strcmp(path,"hdd0:/")){
+				if(detail==1){
+					int len;
+					if(files[top+i].attr & FIO_S_IFDIR)
+						sprintf(tmp,"<DIR>");
+					else{
+						//massは、ファイルサイズを取得できない
+						if(!strncmp(path,"mass",4)){
+							strcpy(tmp,"- B ");
+						}
+						else{
+							if(files[top+i].fileSizeByte >= 1024*1024)
+								sprintf(tmp, "%.1f MB", (double)files[top+i].fileSizeByte/1024/1024);
+							else if(files[top+i].fileSizeByte >= 1024)
+								sprintf(tmp, "%.1f KB", (double)files[top+i].fileSizeByte/1024);
+							else
+								sprintf(tmp,"%d B ",files[top+i].fileSizeByte);
+						}
+					}
+					len=strlen(tmp);
+					if(strcmp(files[top+i].name,"..")){
+						itoSprite(setting->color[0],
+							SCREEN_WIDTH-FONT_WIDTH*14, y,
+							SCREEN_WIDTH-FONT_WIDTH*4, y+FONT_HEIGHT, 0);
+						itoLine(setting->color[1], SCREEN_WIDTH-FONT_WIDTH*13.5, y, 0,
+							setting->color[1], SCREEN_WIDTH-FONT_WIDTH*13.5, y+FONT_HEIGHT, 0);	
+						printXY(tmp, SCREEN_WIDTH-FONT_WIDTH*(4+len), y, color, TRUE);
+					}
+				}
+				else if(detail==2){
+					int len;
+					//massは、更新日時の秒を取得できない
+					if(!strncmp(path,"mass",4)){
+						sprintf(tmp,"%04d/%02d/%02d %02d:%02d:--",
+							files[top+i].modifyTime.year,
+							files[top+i].modifyTime.month,
+							files[top+i].modifyTime.day,
+							files[top+i].modifyTime.hour,
+							files[top+i].modifyTime.min);
+					}
+					//cdfsは、更新日時を取得できない
+					else if(!strncmp(path,"cdfs",4)){
+						strcpy(tmp,"----/--/-- --:--:--");
+					}
+					else{
+						sprintf(tmp,"%04d/%02d/%02d %02d:%02d:%02d",
+							files[top+i].modifyTime.year,
+							files[top+i].modifyTime.month,
+							files[top+i].modifyTime.day,
+							files[top+i].modifyTime.hour,
+							files[top+i].modifyTime.min,
+							files[top+i].modifyTime.sec);
+					}
+					len=strlen(tmp);
+					if(strcmp(files[top+i].name,"..")){
+						itoSprite(setting->color[0],
+							SCREEN_WIDTH-FONT_WIDTH*24, y,
+							SCREEN_WIDTH-FONT_WIDTH*4, y+FONT_HEIGHT, 0);
+						itoLine(setting->color[1], SCREEN_WIDTH-FONT_WIDTH*23.5, y, 0,
+							setting->color[1], SCREEN_WIDTH-FONT_WIDTH*23.5, y+FONT_HEIGHT, 0);	
+						printXY(tmp, SCREEN_WIDTH-FONT_WIDTH*(4+len), y, color, TRUE);
+					}
+				}
 			}
 			y += FONT_HEIGHT;
 		}

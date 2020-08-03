@@ -1356,7 +1356,9 @@ void config_font(SETTING *setting)
 		// ƒƒbƒZ[ƒW
 		if(pushed) sprintf(msg0, "CONFIG/%s", lang->conf_setting_font);
 		// ‘€ìà–¾
-		if(sel==ASCIIFONT)
+		if(sel==0)
+			sprintf(msg1, "›:%s ¢:%s", lang->gen_ok, lang->conf_up);
+		else if(sel==ASCIIFONT)
 			sprintf(msg1, "›:%s ~:%s ¢:%s", lang->conf_edit, lang->conf_clear, lang->conf_up);
 		else if(sel==KANJIFONT)
 			sprintf(msg1, "›:%s ~:%s ¢:%s", lang->conf_edit, lang->conf_clear, lang->conf_up);
