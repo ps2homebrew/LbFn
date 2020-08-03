@@ -479,6 +479,18 @@ void	load_poweroff(void)
 }
 
 //--------------------------------------------------------------
+void PowerOff(void)
+{
+	char filepath[MAX_PATH] = "xyz:/imaginary/hypothetical/doesn't.exist";
+	FILE *File;
+
+	hddPowerOff();
+	delay(1);
+	File = fopen( filepath, "r" );
+	if( File != NULL ) fclose( File );
+}
+
+//--------------------------------------------------------------
 void setupPowerOff(void)
 {
 	static int loaded=FALSE;
@@ -873,7 +885,7 @@ void RunElf(const char *path)
 		}
 		else if(!stricmp(path, "MISC/PowerOff")){
 			setupPowerOff();
-			hddPowerOff();
+			PowerOff();
 			return;
 		}
 		else if(!stricmp(path, "MISC/INFO")){
@@ -900,7 +912,7 @@ void RunElf(const char *path)
 	clrScr(ITO_RGBA(0x00, 0x00, 0x00, 0));
 	drawScr();
 	FreeFontAscii();	//フォントを終了
-	FreeFontKnaji();
+	FreeFontKanji();
 	FreeLanguage();
 	free(setting);
 	padPortClose(0,0);

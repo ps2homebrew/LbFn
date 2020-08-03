@@ -425,7 +425,7 @@ int InitFontKnaji(const char *path)
 	FONTX_HEADER *fontx_header_kanji;
 	char fullpath[MAX_PATH];
 
-	if(init_kanji==1) FreeFontKnaji();
+	if(init_kanji==1) FreeFontKanji();
 
 	if(strcmp(path,"rom0:KROM")==0 || strcmp(path,"systemfont")==0){
 		//BIOSFont
@@ -545,7 +545,7 @@ void FreeFontAscii(void)
 }
 //------------------------------------------------------------
 //漢字フォントを開放
-void FreeFontKnaji(void)
+void FreeFontKanji(void)
 {
 	free(font_kanji);
 	memset(&kanji_data, 0, sizeof(FONTX_DATA));

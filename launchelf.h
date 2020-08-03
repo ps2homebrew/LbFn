@@ -33,7 +33,7 @@
 #include "cnf.h"
 
 // バージョン
-#define LBF_VER "LbF v0.58"
+#define LBF_VER "LbF v0.59"
 
 // 垂直スキャンレート
 #define SCANRATE (ITO_VMODE_AUTO==ITO_VMODE_NTSC ? 60:50)
@@ -146,7 +146,7 @@ void drawFrame(int x1, int y1, int x2, int y2, uint64 color);
 int InitFontAscii(const char *path);
 int InitFontKnaji(const char *path);
 void FreeFontAscii(void);
-void FreeFontKnaji(void);
+void FreeFontKanji(void);
 int SetFontMargin(int type, int Margin);
 int GetFontMargin(int type);
 int GetFontSize(int type);
