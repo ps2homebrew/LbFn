@@ -88,10 +88,13 @@ typedef struct
 	
 	//editor
 	char editor_viewer_help[MAX_LANGUAGE_STR];
+	char editor_viewer_error1[MAX_LANGUAGE_STR];
+	char editor_viewer_error2[MAX_LANGUAGE_STR];
 	char editor_l2popup_tabmode[MAX_LANGUAGE_STR];
 	char editor_l2popup_charset[MAX_LANGUAGE_STR];
 	char editor_l2popup_linenum[MAX_LANGUAGE_STR];
 	char editor_l2popup_flicker[MAX_LANGUAGE_STR];
+	char editor_image_help[MAX_LANGUAGE_STR];
 
 	//config
 	char conf_savefailed[MAX_LANGUAGE_STR];

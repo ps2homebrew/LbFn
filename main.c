@@ -771,7 +771,7 @@ void showinfo(void)
 {
 	char msg0[MAX_PATH], msg1[MAX_PATH];
 	uint64 color;
-	int nList=0, sel=0, top=0;
+	int nList=0, sel=0, top=0, redraw=1;
 	int pushed=TRUE;
 	int x, y, y0, y1;
 	int i;
@@ -870,7 +870,7 @@ void showinfo(void)
 	while(1){
 		waitPadReady(0, 0);
 		if(readpad()){
-			if(new_pad) pushed=TRUE;
+			if(new_pad) {pushed=TRUE; redraw = 1;}
 			if(new_pad & PAD_UP)
 				sel--;
 			else if(new_pad & PAD_DOWN)
@@ -889,53 +889,58 @@ void showinfo(void)
 				break;
 		}
 
-		//リスト表示用変数の正規化
-		if(top > nList-MAX_ROWS)	top=nList-MAX_ROWS;
-		if(top < 0)			top=0;
-		if(sel >= nList)		sel=nList-1;
-		if(sel < 0)			sel=0;
-		if(sel >= top+MAX_ROWS)	top=sel-MAX_ROWS+1;
-		if(sel < top)			top=sel;
+		if (redraw) {
+			//リスト表示用変数の正規化
+			if(top > nList-MAX_ROWS)	top=nList-MAX_ROWS;
+			if(top < 0)			top=0;
+			if(sel >= nList)		sel=nList-1;
+			if(sel < 0)			sel=0;
+			if(sel >= top+MAX_ROWS)	top=sel-MAX_ROWS+1;
+			if(sel < top)			top=sel;
 
-		// 画面描画開始
-		clrScr(setting->color[COLOR_BACKGROUND]);
-		// リスト
-		x = FONT_WIDTH*3;
-		y = SCREEN_MARGIN+FONT_HEIGHT*3;
-		for(i=0; i<MAX_ROWS; i++){
-			if(top+i >= nList) break;
-			//色
-			if(top+i == sel)
-				color = setting->color[COLOR_HIGHLIGHTTEXT];
-			else
-				color = setting->color[COLOR_TEXT];
-			//カーソル表示
-			if(top+i == sel)
-				printXY(">", x, y, color, TRUE);
-			//リスト表示
-			printXY(info[top+i], x+FONT_WIDTH*2, y, color, TRUE);
-			y += FONT_HEIGHT;
-		}
+			// 画面描画開始
+			clrScr(setting->color[COLOR_BACKGROUND]);
+			// リスト
+			x = FONT_WIDTH*3;
+			y = SCREEN_MARGIN+FONT_HEIGHT*3;
+			for(i=0; i<MAX_ROWS; i++){
+				if(top+i >= nList) break;
+				//色
+				if(top+i == sel)
+					color = setting->color[COLOR_HIGHLIGHTTEXT];
+				else
+					color = setting->color[COLOR_TEXT];
+				//カーソル表示
+				if(top+i == sel)
+					printXY(">", x, y, color, TRUE);
+				//リスト表示
+				printXY(info[top+i], x+FONT_WIDTH*2, y, color, TRUE);
+				y += FONT_HEIGHT;
+			}
 
-		// スクロールバー
-		if(nList > MAX_ROWS){
-			drawFrame((MAX_ROWS_X+8)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3,
-				(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[COLOR_FRAME]);
-			y0=FONT_HEIGHT*MAX_ROWS*((double)top/nList);
-			y1=FONT_HEIGHT*MAX_ROWS*((double)(top+MAX_ROWS)/nList);
-			itoSprite(setting->color[COLOR_FRAME],
-				(MAX_ROWS_X+8)*FONT_WIDTH,
-				SCREEN_MARGIN+FONT_HEIGHT*3+y0,
-				(MAX_ROWS_X+9)*FONT_WIDTH,
-				SCREEN_MARGIN+FONT_HEIGHT*3+y1,
-				0);
+			// スクロールバー
+			if(nList > MAX_ROWS){
+				drawFrame((MAX_ROWS_X+8)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3,
+					(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[COLOR_FRAME]);
+				y0=FONT_HEIGHT*MAX_ROWS*((double)top/nList);
+				y1=FONT_HEIGHT*MAX_ROWS*((double)(top+MAX_ROWS)/nList);
+				itoSprite(setting->color[COLOR_FRAME],
+					(MAX_ROWS_X+8)*FONT_WIDTH,
+					SCREEN_MARGIN+FONT_HEIGHT*3+y0,
+					(MAX_ROWS_X+9)*FONT_WIDTH,
+					SCREEN_MARGIN+FONT_HEIGHT*3+y1,
+					0);
+			}
+			// メッセージ
+			if(pushed) sprintf(msg0, "INFO");
+			// 操作説明
+			sprintf(msg1, "○:%s ×:%s", lang->gen_cancel, lang->gen_cancel);
+			setScrTmp(msg0, msg1);
+			drawScr();
+			redraw--;
+		} else {
+			itoVSync();
 		}
-		// メッセージ
-		if(pushed) sprintf(msg0, "INFO");
-		// 操作説明
-		sprintf(msg1, "○:%s ×:%s", lang->gen_cancel, lang->gen_cancel);
-		setScrTmp(msg0, msg1);
-		drawScr();
 	}
 }
 
@@ -1190,13 +1195,14 @@ void Reset()
 //--------------------------------------------------------------
 void LaunchMain(void)
 {
-	int timeout=0;
+	int timeout=0,oldtimeout=-1;
 	int cancel=FALSE;
 	int mode=BUTTON;
-	CdvdDiscType_t cdmode;
+	CdvdDiscType_t cdmode,oldcdmode=NULL;
+	int oldcdmodef=-129;
 	int use_default;
 	int i;
-	int mode_changed;
+	int mode_changed, redraw=1;
 
 	uint64 color;
 	char tmp[MAX_PATH+8], name[MAX_PATH];
@@ -1239,6 +1245,11 @@ void LaunchMain(void)
 					strcpy(mainMsg, Message);
 				}
 			}
+			if ((oldcdmodef == -129) || (cdmode != oldcdmode)) {
+				oldcdmode = cdmode;
+				oldcdmodef = 0;
+				redraw = 1;
+			}
 		}
 
 		//表示するリストとELFのパスのリスト作成
@@ -1260,6 +1271,10 @@ void LaunchMain(void)
 					sprintf(tmp, "TIMEOUT: -");
 				strcpy(list[nList], tmp);
 				nList++;
+			}
+			if ((timeout/SCANRATE) != (oldtimeout/SCANRATE)) {
+				oldtimeout = timeout;
+				redraw = 1;
 			}
 			//BUTTON
 			for(i=0; i<13; i++){
@@ -1330,7 +1345,7 @@ void LaunchMain(void)
 		//キー入力
 		waitPadReady(0,0);
 		if(readpad()){
-			if(new_pad) cancel=TRUE;
+			if(new_pad) {cancel=TRUE; timeout = 0; redraw = 1;}
 			if(mode==BUTTON){
 				if(new_pad & PAD_UP){
 					sel=nList-1;
@@ -1425,7 +1440,7 @@ void LaunchMain(void)
 		}
 
 		//画面描画開始
-		if(!mode_changed){
+		if(!mode_changed && redraw){
 			clrScr(setting->color[COLOR_BACKGROUND]);
 
 /*
@@ -1486,11 +1501,15 @@ void LaunchMain(void)
 	
 			setScrTmp(mainMsg, tmp);
 			drawScr();
+			redraw--;
+		} else {
+			itoVSync();
 		}
 		//AutoRun
 		if(timeout/SCANRATE==0 && use_default && cancel==FALSE){
 			RunElf(setting->dirElf[0]);
 			cancel=TRUE;
+			redraw = 1;
 		}
 		//timeout
 		if(cancel==FALSE) timeout--;
@@ -1537,6 +1556,10 @@ int main(int argc, char *argv[])
 	if(!strcmp(LaunchElfDir, "mass0:\\SWAPMAGIC\\"))
 		strcpy(LaunchElfDir, "mass:SWAPMAGIC/");
 
+	printf("LaunchElfDir: %s\n", LaunchElfDir);
+	printf("argc: %d\n", argc);
+	for(ret=0;ret<argc;ret++)
+		printf("argv[%d]: %s\n",ret,argv[ret]);
 	//ブートしたデバイス	original source altimit
 	boot = UNK_BOOT;
 	if(!strncmp(LaunchElfDir, "cd", 2))

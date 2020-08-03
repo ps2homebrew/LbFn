@@ -93,7 +93,7 @@ void SetLanguage(const int langID)
 		strcpy(lang->filer_fntfile_hint2, "○:OK ×:Cancel △:Up □:FNT->*");
 		strcpy(lang->filer_irxfile_hint1, "○:OK ×:Cancel △:Up □:*->IRX");
 		strcpy(lang->filer_irxfile_hint2, "○:OK ×:Cancel △:Up □:IRX->*");
-		strcpy(lang->filer_dir_hint, "○:OK ×:Cancel △:Up Start:Choose");
+		strcpy(lang->filer_dir_hint, "○:OK ×:Cancel △:Up START:Choose");
 		strcpy(lang->filer_l2popup_detail, "Detail Mode");
 		strcpy(lang->filer_l2popup_dirsize, "Get DirSize");
 		strcpy(lang->filer_l2popup_icon, "Icon");
@@ -101,11 +101,14 @@ void SetLanguage(const int langID)
 		}
 		//editor
 		{
-		strcpy(lang->editor_viewer_help, "○:LineNumber □:TAB(%d) △/×:Exit Start:Disp.TAB/CR/LF Mode");
-		strcpy(lang->editor_l2popup_tabmode, "TABモード変更");
-		strcpy(lang->editor_l2popup_charset, "文字コード変更");
-		strcpy(lang->editor_l2popup_linenum, "行番号表\示");
-		strcpy(lang->editor_l2popup_flicker, "フリッカーコントロール");
+		strcpy(lang->editor_viewer_help, "○:Count □:TAB(%d) △/×:Exit L1:Left R1:Right START:TAB/CR/LF");
+		strcpy(lang->editor_viewer_error1, "Can not open the file.");
+		strcpy(lang->editor_viewer_error2, "Out of memory.");
+		strcpy(lang->editor_l2popup_tabmode, "TAB Space Mode");
+		strcpy(lang->editor_l2popup_charset, "Charactor Set");
+		strcpy(lang->editor_l2popup_linenum, "Line Number Count");
+		strcpy(lang->editor_l2popup_flicker, "Flicker Control");
+		strcpy(lang->editor_image_help, "○:FullScreen △/×:Exit  SIZE:%d×%d");
 		}
 		//config
 		{
@@ -168,6 +171,10 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_FontBold, "FONT BOLD");
 		strcpy(lang->conf_FontHalf, "FIX FONT WIDTH ");
 		strcpy(lang->conf_FontVHalf, "FIX FONT HEIGHT");
+		strcpy(lang->conf_FontScaler, "FIX FONT MODE");
+		strcpy(lang->conf_FontScaler_A, "Faster (nearest/composite)");
+		strcpy(lang->conf_FontScaler_B, "Normal (bilinear)");
+		strcpy(lang->conf_FontScaler_C, "4x AA (and bilinear)");
 		strcpy(lang->conf_AsciiMarginTop,  "ASCII MARGIN TOP ");
 		strcpy(lang->conf_AsciiMarginLeft, "ASCII MARGIN LEFT");
 		strcpy(lang->conf_KanjiMarginTop,  "KANJI MARGIN TOP ");
@@ -285,11 +292,14 @@ void SetLanguage(const int langID)
 		}
 		//editor
 		{
-		strcpy(lang->editor_viewer_help, "○:行番号表\示変更 □:TAB(%d) △/×:戻る Start:TAB/改行表\示");
+		strcpy(lang->editor_viewer_help, "○:行番号 □:TAB(%d) △/×:戻る L1:左へ R1:右へ Start:TAB/改行");
+		strcpy(lang->editor_viewer_error1, "ファイルのオープンに失敗しました");
+		strcpy(lang->editor_viewer_error2, "メモリが足りません");
 		strcpy(lang->editor_l2popup_tabmode, "TABモード変更");
 		strcpy(lang->editor_l2popup_charset, "文字コード変更");
 		strcpy(lang->editor_l2popup_linenum, "行番号表\示");
 		strcpy(lang->editor_l2popup_flicker, "フリッカーコントロール");
+		strcpy(lang->editor_image_help, "○:フルスクリーン △/×:戻る サイズ:%d×%d");
 		}
 		//config
 		{
@@ -352,6 +362,10 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_FontBold, "太字にする");
 		strcpy(lang->conf_FontHalf, "フォントの幅を補正する　");
 		strcpy(lang->conf_FontVHalf, "フォントの高さを補正する");
+		strcpy(lang->conf_FontScaler, "フォント補正モード");
+		strcpy(lang->conf_FontScaler_A, "高速");
+		strcpy(lang->conf_FontScaler_B, "標準");
+		strcpy(lang->conf_FontScaler_C, "高画質");
 		strcpy(lang->conf_AsciiMarginTop, "アスキーフォントの上の間隔");
 		strcpy(lang->conf_AsciiMarginLeft, "アスキーフォントの左の間隔");
 		strcpy(lang->conf_KanjiMarginTop, "漢字フォントの上の間隔");

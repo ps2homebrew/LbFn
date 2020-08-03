@@ -149,7 +149,7 @@ void itoGsEnvSubmit(itoGsEnv* env)
 				ito.screen.mag_x = 5;
 			} else if (width <= 384) {
 				ito.screen.mag_x = 4;
-			} else if (width <= 480) {
+			} else if (width <= 512) {
 				ito.screen.mag_x = 3;
 			} else if (width <= 640) {
 				ito.screen.mag_x = 2;
@@ -168,7 +168,7 @@ void itoGsEnvSubmit(itoGsEnv* env)
 				ito.screen.mag_x = 4;
 			} else if (width <= 320) {
 				ito.screen.mag_x = 3;
-			} else if (width <= 480) {
+			} else if (width <= 512) {
 				ito.screen.mag_x = 2;
 			} else if (width <= 640) {
 				ito.screen.mag_x = 1;
@@ -189,7 +189,7 @@ void itoGsEnvSubmit(itoGsEnv* env)
 				ito.screen.mag_x = 5;
 			} else if (width <= 384) {
 				ito.screen.mag_x = 4;
-			} else if (width <= 480) {
+			} else if (width <= 512) {
 				ito.screen.mag_x = 3;
 			} else if (width <= 640) {
 				ito.screen.mag_x = 2;

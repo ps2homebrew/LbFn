@@ -26,7 +26,7 @@ enum
 	DEF_SCREEN_X_D4 = 331,
 	DEF_SCREEN_Y_D4 = 42,
 	DEF_SCREEN_SCAN = FALSE,	//FALSE=NORMAL TRUE=FULL
-	DEF_FULLHD_WIDTH = 960,
+	DEF_FULLHD_WIDTH = 1920,
 	DEF_FLICKERCONTROL = TRUE,
 	DEF_TVMODE = 0,	//0=auto 1=ntsc 2=pal 3=480p 4=720p 5=1080i
 	DEF_INTERLACE = TRUE,	//FALSE=ITO_NON_INTERLACE TRUE=ITO_INTERLACE
@@ -40,11 +40,15 @@ enum
 	DEF_FONTHALF_480i = 0,	// 0: 標準, -1: 2倍拡大, +1: 1/2縮小
 	DEF_FONTHALF_480p = 0,
 	DEF_FONTHALF_720p = 0,
-	DEF_FONTHALF_1080i = 1,
+	DEF_FONTHALF_1080i = 0,
 	DEF_FONTVHALF_480i = 0,
 	DEF_FONTVHALF_480p = 0,
 	DEF_FONTVHALF_720p = 0,
 	DEF_FONTVHALF_1080i = 0,
+	DEF_FONTSCALER_480i = 0,	// 0: 高速, 1: 標準, 2: 高画質
+	DEF_FONTSCALER_480p = 0,
+	DEF_FONTSCALER_720p = 0,
+	DEF_FONTSCALER_1080i = 0,
 	DEF_ASCII_MARGINTOP = 0,
 	DEF_ASCII_MARGINLEFT = 0,
 	DEF_KANJI_MARGINTOP = 0,
@@ -54,9 +58,9 @@ enum
 	DEF_FILEICON = TRUE,
 	DEF_DISCPS2SAVECHECK = FALSE,
 	DEF_DISCELFCHECK = FALSE,
-	DEF_FILEPS2SAVECHECK = TRUE,
-	DEF_FILEELFCHECK = TRUE,
-	DEF_LANGUAGE = LANG_ENGLISH,
+	DEF_FILEPS2SAVECHECK = FALSE,
+	DEF_FILEELFCHECK = FALSE,
+	DEF_LANGUAGE = LANG_JAPANESE,
 	DEF_USBMASS_FLAG = FALSE,	// 0:Inside Only
 	DEF_USBD_FLAG = FALSE,
 };
@@ -120,6 +124,7 @@ enum
 	FFMODE,
 	FONTHALF,
 	FONTVHALF,
+	FONTSCALEMODE,
 	SCREEN_X,
 	SCREEN_Y,
 	FLICKERCONTROL,
@@ -175,7 +180,7 @@ enum
 };
 
 SETTING *setting, *tmpsetting;
-
+extern int fonthalfmode;
 //-------------------------------------------------
 //スクリーンXY反映用
 void SetScreenPosVM()
@@ -193,6 +198,7 @@ void SetScreenPosVM()
 			screenscan = setting->screen_scan_480i;
 			font_half = setting->FontHalf_480i;
 			font_vhalf = setting->FontVHalf_480i;
+			fonthalfmode = setting->FontScaler_480i;
 			break;
 		}
 		case 3:	//480p
@@ -204,6 +210,7 @@ void SetScreenPosVM()
 			screenscan = setting->screen_scan_480p;
 			font_half = setting->FontHalf_480p;
 			font_vhalf = setting->FontVHalf_480p;
+			fonthalfmode = setting->FontScaler_480p;
 			break;
 		}
 		case 4:	//720p
@@ -215,6 +222,7 @@ void SetScreenPosVM()
 			screenscan = setting->screen_scan_720p;
 			font_half = setting->FontHalf_720p;
 			font_vhalf = setting->FontVHalf_720p;
+			fonthalfmode = setting->FontScaler_720p;
 			break;
 		}
 		case 5:	//1080i
@@ -226,6 +234,7 @@ void SetScreenPosVM()
 			screenscan = setting->screen_scan_1080i;
 			font_half = setting->FontHalf_1080i;
 			font_vhalf = setting->FontVHalf_1080i;
+			fonthalfmode = setting->FontScaler_1080i;
 			break;
 		}
 		case 6:	//1080p(1080/30p)
@@ -237,6 +246,7 @@ void SetScreenPosVM()
 			screenscan = setting->screen_scan_1080i;
 			font_half = setting->FontHalf_1080i;
 			font_vhalf = setting->FontVHalf_1080i;
+			fonthalfmode = setting->FontScaler_1080i;
 			break;
 		}
 	}
@@ -256,6 +266,7 @@ void SetScreenPosXY()
 			setting->screen_scan_480i = screenscan;
 			setting->FontHalf_480i = font_half;
 			setting->FontVHalf_480i = font_vhalf;
+			setting->FontScaler_480i = fonthalfmode;
 			break;
 		}
 		case 3:	//480p
@@ -265,6 +276,7 @@ void SetScreenPosXY()
 			setting->screen_scan_480p = screenscan;
 			setting->FontHalf_480p = font_half;
 			setting->FontVHalf_480p = font_vhalf;
+			setting->FontScaler_480p = fonthalfmode;
 			break;
 		}
 		case 4:	//720p
@@ -274,6 +286,7 @@ void SetScreenPosXY()
 			setting->screen_scan_720p = screenscan;
 			setting->FontHalf_720p = font_half;
 			setting->FontVHalf_720p = font_vhalf;
+			setting->FontScaler_720p = fonthalfmode;
 			break;
 		}
 		case 5:	//1080i
@@ -284,6 +297,7 @@ void SetScreenPosXY()
 			setting->screen_scan_1080i = screenscan;
 			setting->FontHalf_1080i = font_half;
 			setting->FontVHalf_1080i = font_vhalf;
+			setting->FontScaler_1080i = fonthalfmode;
 			break;
 		}
 	}
@@ -371,6 +385,14 @@ void InitScreenSetting(void)
 	setting->FontHalf_480p = DEF_FONTHALF_480p;
 	setting->FontHalf_720p = DEF_FONTHALF_720p;
 	setting->FontHalf_1080i = DEF_FONTHALF_1080i;
+	setting->FontVHalf_480i = DEF_FONTVHALF_480i;
+	setting->FontVHalf_480p = DEF_FONTVHALF_480p;
+	setting->FontVHalf_720p = DEF_FONTVHALF_720p;
+	setting->FontVHalf_1080i = DEF_FONTVHALF_1080i;
+	setting->FontScaler_480i = DEF_FONTSCALER_480i;
+	setting->FontScaler_480p = DEF_FONTSCALER_480p;
+	setting->FontScaler_720p = DEF_FONTSCALER_720p;
+	setting->FontScaler_1080i = DEF_FONTSCALER_1080i;
 	setting->flickerControl = DEF_FLICKERCONTROL;
 	setting->tvmode = DEF_TVMODE;
 	setting->interlace = DEF_INTERLACE;
@@ -441,7 +463,7 @@ void saveConfig(char *mainMsg)
 		mainMsg[0] = 0;
 		return;
 	}
-
+	path[0]=0;
 	//cnfファイルのパス
 	//LaunchELFが実行されたパスから設定ファイルを開く
 	if(boot!=HOST_BOOT){
@@ -556,6 +578,14 @@ void saveConfig(char *mainMsg)
 	if(cnf_setstr("font_vhalf_720p", tmp)<0) goto error;
 	sprintf(tmp, "%d", setting->FontVHalf_1080i);
 	if(cnf_setstr("font_vhalf_1080i", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->FontScaler_480i);
+	if(cnf_setstr("fontscaler_480i", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->FontScaler_480p);
+	if(cnf_setstr("fontscaler_480p", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->FontScaler_720p);
+	if(cnf_setstr("fontscaler_720p", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->FontScaler_1080i);
+	if(cnf_setstr("fontscaler_1080i", tmp)<0) goto error;
 	sprintf(tmp, "%d", setting->AsciiMarginTop);
 	if(cnf_setstr("ascii_margin_top", tmp)<0) goto error;
 	sprintf(tmp, "%d", setting->AsciiMarginLeft);
@@ -706,12 +736,14 @@ void loadConfig(char *mainMsg)
 //	int i;
 
 	setting = (SETTING*)malloc(sizeof(SETTING));
+	path[0]=0;
 
 	//cnfファイルのパス
 	//LaunchELFが実行されたパスから設定ファイルを開く
 	if(boot!=HOST_BOOT){
 		sprintf(path, "%sLBF.CNF", LaunchElfDir);
 		if(!strncmp(path, "cdrom", 5)) strcat(path, ";1");
+		printf("LoadConfig: path: %s\n", path);
 		fd = fioOpen(path, O_RDONLY);
 		if(fd >= 0)
 			fioClose(fd);
@@ -726,6 +758,7 @@ void loadConfig(char *mainMsg)
 			mcport = CheckMC();
 		if(mcport==0||mcport==1){
 			sprintf(path, "mc%d:/SYS-CONF/LBF.CNF", mcport);
+			printf("LoadConfig: path: %s\n", path);
 			fd = fioOpen(path, O_RDONLY);
 			if(fd >= 0)
 				fioClose(fd);
@@ -867,6 +900,26 @@ void loadConfig(char *mainMsg)
 				setting->FontVHalf_1080i = atoi(tmp);
 				if(setting->FontVHalf_1080i<-7 || setting->FontVHalf_1080i>7)
 					setting->FontVHalf_1080i = DEF_FONTVHALF_1080i;
+			}
+			if(cnf_getstr("fontscaler_480i", tmp, "")>=0){
+				setting->FontScaler_480i = atoi(tmp);
+				if(setting->FontScaler_480i<0 || setting->FontScaler_480i>2)
+					setting->FontScaler_480i = DEF_FONTSCALER_480i;
+			}
+			if(cnf_getstr("fontscaler_480p", tmp, "")>=0){
+				setting->FontScaler_480p = atoi(tmp);
+				if(setting->FontScaler_480p<0 || setting->FontScaler_480p>2)
+					setting->FontScaler_480p = DEF_FONTSCALER_480p;
+			}
+			if(cnf_getstr("fontscaler_720p", tmp, "")>=0){
+				setting->FontScaler_720p = atoi(tmp);
+				if(setting->FontScaler_720p<0 || setting->FontScaler_720p>2)
+					setting->FontScaler_720p = DEF_FONTSCALER_720p;
+			}
+			if(cnf_getstr("fontscaler_1080i", tmp, "")>=0){
+				setting->FontScaler_1080i = atoi(tmp);
+				if(setting->FontScaler_1080i<0 || setting->FontScaler_1080i>2)
+					setting->FontScaler_1080i = DEF_FONTSCALER_1080i;
 			}
 			if(cnf_getstr("ascii_margin_top", tmp, "")>=0)
 				setting->AsciiMarginTop = atoi(tmp);
@@ -1038,7 +1091,7 @@ void config_button(SETTING *setting)
 	char c[MAX_PATH];
 	char msg0[MAX_PATH], msg1[MAX_PATH];
 	uint64 color;
-	int nList=0, sel=0, top=0;
+	int nList=0, sel=0, top=0, redraw=1;
 	int pushed=TRUE;
 	int x, y, y0, y1;
 	int i;
@@ -1047,7 +1100,7 @@ void config_button(SETTING *setting)
 	while(1){
 		waitPadReady(0, 0);
 		if(readpad()){
-			if(new_pad) pushed=TRUE;
+			if(new_pad) {pushed=TRUE; redraw = 1;}
 			if(new_pad & PAD_UP)
 				sel--;
 			else if(new_pad & PAD_DOWN)
@@ -1079,108 +1132,113 @@ void config_button(SETTING *setting)
 					setting->dirElf[sel-1][0]=0;
 			}
 		}
-		for(i=0;i<=BUTTONINIT;i++){
-			if(i==0){
-				strcpy(config[i], "..");
+		if (redraw) {
+			for(i=0;i<=BUTTONINIT;i++){
+				if(i==0){
+					strcpy(config[i], "..");
+				}
+				else if(i==DEFAULT){
+					sprintf(config[i], "DEFAULT: %s", setting->dirElf[0]);
+				}
+				else if(i==LAUNCHER1){
+					sprintf(config[i], "○     : %s", setting->dirElf[1]);
+				}
+				else if(i==LAUNCHER2){
+					sprintf(config[i], "×     : %s", setting->dirElf[2]);
+				}
+				else if(i==LAUNCHER3){
+					sprintf(config[i], "□     : %s", setting->dirElf[3]);
+				}
+				else if(i==LAUNCHER4){
+					sprintf(config[i], "△     : %s", setting->dirElf[4]);
+				}
+				else if(i==LAUNCHER5){
+					sprintf(config[i], "L1     : %s", setting->dirElf[5]);
+				}
+				else if(i==LAUNCHER6){
+					sprintf(config[i], "R1     : %s", setting->dirElf[6]);
+				}
+				else if(i==LAUNCHER7){
+					sprintf(config[i], "L2     : %s", setting->dirElf[7]);
+				}
+				else if(i==LAUNCHER8){
+					sprintf(config[i], "R2     : %s", setting->dirElf[8]);
+				}
+				else if(i==LAUNCHER9){
+					sprintf(config[i], "L3     : %s", setting->dirElf[9]);
+				}
+				else if(i==LAUNCHER10){
+					sprintf(config[i], "R3     : %s", setting->dirElf[10]);
+				}
+				else if(i==LAUNCHER11){
+					sprintf(config[i], "START  : %s", setting->dirElf[11]);
+				}
+				else if(i==LAUNCHER12){
+					sprintf(config[i], "SELECT : %s", setting->dirElf[12]);
+				}
+				else if(i==BUTTONINIT){
+					strcpy(config[i], lang->conf_buttonsettinginit);
+				}
 			}
-			else if(i==DEFAULT){
-				sprintf(config[i], "DEFAULT: %s", setting->dirElf[0]);
+			nList=15;
+
+			// リスト表示用変数の正規化
+			if(top > nList-MAX_ROWS)	top=nList-MAX_ROWS;
+			if(top < 0)			top=0;
+			if(sel >= nList)		sel=nList-1;
+			if(sel < 0)			sel=0;
+			if(sel >= top+MAX_ROWS)	top=sel-MAX_ROWS+1;
+			if(sel < top)			top=sel;
+
+			// 画面描画開始
+			clrScr(setting->color[COLOR_BACKGROUND]);
+
+			// リスト
+			x = FONT_WIDTH*3;
+			y = SCREEN_MARGIN+FONT_HEIGHT*3;
+			for(i=0; i<MAX_ROWS; i++){
+				if(top+i >= nList) break;
+				//色
+				if(top+i == sel)
+					color = setting->color[COLOR_HIGHLIGHTTEXT];
+				else
+					color = setting->color[COLOR_TEXT];
+				//カーソル表示
+				if(top+i == sel)
+					printXY(">", x, y, color, TRUE);
+				//リスト表示
+				printXY(config[top+i], x+FONT_WIDTH*2, y, color, TRUE);
+				y += FONT_HEIGHT;
 			}
-			else if(i==LAUNCHER1){
-				sprintf(config[i], "○     : %s", setting->dirElf[1]);
+
+			// スクロールバー
+			if(nList > MAX_ROWS){
+				drawFrame((MAX_ROWS_X+8)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3,
+					(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[COLOR_FRAME]);
+				y0=FONT_HEIGHT*MAX_ROWS*((double)top/nList);
+				y1=FONT_HEIGHT*MAX_ROWS*((double)(top+MAX_ROWS)/nList);
+				itoSprite(setting->color[COLOR_FRAME],
+					(MAX_ROWS_X+8)*FONT_WIDTH,
+					SCREEN_MARGIN+FONT_HEIGHT*3+y0,
+					(MAX_ROWS_X+9)*FONT_WIDTH,
+					SCREEN_MARGIN+FONT_HEIGHT*3+y1,
+					0);
 			}
-			else if(i==LAUNCHER2){
-				sprintf(config[i], "×     : %s", setting->dirElf[2]);
-			}
-			else if(i==LAUNCHER3){
-				sprintf(config[i], "□     : %s", setting->dirElf[3]);
-			}
-			else if(i==LAUNCHER4){
-				sprintf(config[i], "△     : %s", setting->dirElf[4]);
-			}
-			else if(i==LAUNCHER5){
-				sprintf(config[i], "L1     : %s", setting->dirElf[5]);
-			}
-			else if(i==LAUNCHER6){
-				sprintf(config[i], "R1     : %s", setting->dirElf[6]);
-			}
-			else if(i==LAUNCHER7){
-				sprintf(config[i], "L2     : %s", setting->dirElf[7]);
-			}
-			else if(i==LAUNCHER8){
-				sprintf(config[i], "R2     : %s", setting->dirElf[8]);
-			}
-			else if(i==LAUNCHER9){
-				sprintf(config[i], "L3     : %s", setting->dirElf[9]);
-			}
-			else if(i==LAUNCHER10){
-				sprintf(config[i], "R3     : %s", setting->dirElf[10]);
-			}
-			else if(i==LAUNCHER11){
-				sprintf(config[i], "START  : %s", setting->dirElf[11]);
-			}
-			else if(i==LAUNCHER12){
-				sprintf(config[i], "SELECT : %s", setting->dirElf[12]);
-			}
-			else if(i==BUTTONINIT){
-				strcpy(config[i], lang->conf_buttonsettinginit);
-			}
+			// メッセージ
+			if(pushed) sprintf(msg0, "CONFIG/%s", lang->conf_setting_button);
+			// 操作説明
+			if(sel==0)
+				sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
+			else if (sel>=DEFAULT && sel<=LAUNCHER12)
+				sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_edit, lang->conf_clear, lang->conf_up);
+			else if(sel==BUTTONINIT)
+				sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
+			setScrTmp(msg0, msg1);
+			drawScr();
+			redraw--;
+		} else {
+			itoVSync();
 		}
-		nList=15;
-
-		// リスト表示用変数の正規化
-		if(top > nList-MAX_ROWS)	top=nList-MAX_ROWS;
-		if(top < 0)			top=0;
-		if(sel >= nList)		sel=nList-1;
-		if(sel < 0)			sel=0;
-		if(sel >= top+MAX_ROWS)	top=sel-MAX_ROWS+1;
-		if(sel < top)			top=sel;
-
-		// 画面描画開始
-		clrScr(setting->color[COLOR_BACKGROUND]);
-
-		// リスト
-		x = FONT_WIDTH*3;
-		y = SCREEN_MARGIN+FONT_HEIGHT*3;
-		for(i=0; i<MAX_ROWS; i++){
-			if(top+i >= nList) break;
-			//色
-			if(top+i == sel)
-				color = setting->color[COLOR_HIGHLIGHTTEXT];
-			else
-				color = setting->color[COLOR_TEXT];
-			//カーソル表示
-			if(top+i == sel)
-				printXY(">", x, y, color, TRUE);
-			//リスト表示
-			printXY(config[top+i], x+FONT_WIDTH*2, y, color, TRUE);
-			y += FONT_HEIGHT;
-		}
-
-		// スクロールバー
-		if(nList > MAX_ROWS){
-			drawFrame((MAX_ROWS_X+8)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3,
-				(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[COLOR_FRAME]);
-			y0=FONT_HEIGHT*MAX_ROWS*((double)top/nList);
-			y1=FONT_HEIGHT*MAX_ROWS*((double)(top+MAX_ROWS)/nList);
-			itoSprite(setting->color[COLOR_FRAME],
-				(MAX_ROWS_X+8)*FONT_WIDTH,
-				SCREEN_MARGIN+FONT_HEIGHT*3+y0,
-				(MAX_ROWS_X+9)*FONT_WIDTH,
-				SCREEN_MARGIN+FONT_HEIGHT*3+y1,
-				0);
-		}
-		// メッセージ
-		if(pushed) sprintf(msg0, "CONFIG/%s", lang->conf_setting_button);
-		// 操作説明
-		if(sel==0)
-			sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
-		else if (sel>=DEFAULT && sel<=LAUNCHER12)
-			sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_edit, lang->conf_clear, lang->conf_up);
-		else if(sel==BUTTONINIT)
-			sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
-		setScrTmp(msg0, msg1);
-		drawScr();
 	}
 
 	for(i=0;i<=12;i++){
@@ -1197,7 +1255,7 @@ void config_color(SETTING *setting)
 {
 	char msg0[MAX_PATH], msg1[MAX_PATH];
 	uint64 color;
-	int nList=0, sel=0, top=0 ,sel_x=0;
+	int nList=0, sel=0, top=0 ,sel_x=0, redraw=1;
 	int pushed=TRUE;
 	int x, y, y0, y1;
 	int i;
@@ -1212,7 +1270,7 @@ void config_color(SETTING *setting)
 	while(1){
 		waitPadReady(0, 0);
 		if(readpad()){
-			if(new_pad) pushed=TRUE;
+			if(new_pad) {pushed=TRUE; redraw = 1;}
 			if(new_pad & PAD_UP)
 				sel--;
 			else if(new_pad & PAD_DOWN)
@@ -1358,125 +1416,130 @@ void config_color(SETTING *setting)
 		}
 
 		//
-		for(i=0;i<=PRESETCOLOR;i++){
-			if(i==0){
-				sprintf(config[i], "..");
-			}
-			else if(i>=COLOR1 && i<=COLOR11){	//COLOR
-				switch(i){
-					case COLOR1: colorid=COLOR_BACKGROUND; break;
-					case COLOR2: colorid=COLOR_FRAME; break;
-					case COLOR3: colorid=COLOR_TEXT; break;
-					case COLOR4: colorid=COLOR_HIGHLIGHTTEXT; break;
-					case COLOR5: colorid=COLOR_GRAYTEXT; break;
-					case COLOR6: colorid=COLOR_DIR; break;
-					case COLOR7: colorid=COLOR_FILE; break;
-					case COLOR8: colorid=COLOR_PS2SAVE; break;
-					case COLOR9: colorid=COLOR_PS1SAVE; break;
-					case COLOR10: colorid=COLOR_ELF; break;
-					case COLOR11: colorid=COLOR_PSU; break;
+		if (redraw) {
+			for(i=0;i<=PRESETCOLOR;i++){
+				if(i==0){
+					sprintf(config[i], "..");
 				}
-				r = setting->color[colorid] & 0xFF;
-				g = setting->color[colorid] >> 8 & 0xFF;
-				b = setting->color[colorid] >> 16 & 0xFF;
+				else if(i>=COLOR1 && i<=COLOR11){	//COLOR
+					switch(i){
+						case COLOR1: colorid=COLOR_BACKGROUND; break;
+						case COLOR2: colorid=COLOR_FRAME; break;
+						case COLOR3: colorid=COLOR_TEXT; break;
+						case COLOR4: colorid=COLOR_HIGHLIGHTTEXT; break;
+						case COLOR5: colorid=COLOR_GRAYTEXT; break;
+						case COLOR6: colorid=COLOR_DIR; break;
+						case COLOR7: colorid=COLOR_FILE; break;
+						case COLOR8: colorid=COLOR_PS2SAVE; break;
+						case COLOR9: colorid=COLOR_PS1SAVE; break;
+						case COLOR10: colorid=COLOR_ELF; break;
+						case COLOR11: colorid=COLOR_PSU; break;
+					}
+					r = setting->color[colorid] & 0xFF;
+					g = setting->color[colorid] >> 8 & 0xFF;
+					b = setting->color[colorid] >> 16 & 0xFF;
 
-				if(i==COLOR1) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_background, r, g, b);
-				if(i==COLOR2) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_frame, r, g, b);
-				if(i==COLOR3) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_normaltext, r, g, b);
-				if(i==COLOR4) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_highlighttext, r, g, b);
-				if(i==COLOR5) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_disabletext, r, g, b);
-				if(i==COLOR6) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_folder, r, g, b);
-				if(i==COLOR7) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_file, r, g, b);
-				if(i==COLOR8) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_ps2save, r, g, b);
-				if(i==COLOR9) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_ps1save, r, g, b);
-				if(i==COLOR10) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_elffile, r, g, b);
-				if(i==COLOR11) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_psufile, r, g, b);
+					if(i==COLOR1) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_background, r, g, b);
+					if(i==COLOR2) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_frame, r, g, b);
+					if(i==COLOR3) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_normaltext, r, g, b);
+					if(i==COLOR4) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_highlighttext, r, g, b);
+					if(i==COLOR5) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_disabletext, r, g, b);
+					if(i==COLOR6) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_folder, r, g, b);
+					if(i==COLOR7) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_file, r, g, b);
+					if(i==COLOR8) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_ps2save, r, g, b);
+					if(i==COLOR9) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_ps1save, r, g, b);
+					if(i==COLOR10) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_elffile, r, g, b);
+					if(i==COLOR11) sprintf(config[i], "%s:   R:%02X   G:%02X   B:%02X", lang->conf_psufile, r, g, b);
+				}
+				else if(i==FLICKER_ALPHA)
+					sprintf(config[i], "%s: %02X", lang->conf_flicker_alpha, setting->flicker_alpha);
+				else if(i==PRESETCOLOR)	//INIT
+					strcpy(config[i], lang->conf_presetcolor);
 			}
-			else if(i==FLICKER_ALPHA)
-				sprintf(config[i], "%s: %02X", lang->conf_flicker_alpha, setting->flicker_alpha);
-			else if(i==PRESETCOLOR)	//INIT
-				strcpy(config[i], lang->conf_presetcolor);
-		}
-		nList=14;
+			nList=14;
 
-		// リスト表示用変数の正規化
-		if(top > nList-MAX_ROWS)	top=nList-MAX_ROWS;
-		if(top < 0)			top=0;
-		if(sel >= nList)		sel=nList-1;
-		if(sel < 0)			sel=0;
-		if(sel >= top+MAX_ROWS)	top=sel-MAX_ROWS+1;
-		if(sel < top)			top=sel;
+			// リスト表示用変数の正規化
+			if(top > nList-MAX_ROWS)	top=nList-MAX_ROWS;
+			if(top < 0)			top=0;
+			if(sel >= nList)		sel=nList-1;
+			if(sel < 0)			sel=0;
+			if(sel >= top+MAX_ROWS)	top=sel-MAX_ROWS+1;
+			if(sel < top)			top=sel;
 
-		// 画面描画開始
-		clrScr(setting->color[COLOR_BACKGROUND]);
+			// 画面描画開始
+			clrScr(setting->color[COLOR_BACKGROUND]);
 
-		// リスト
-		x = FONT_WIDTH*3;
-		y = SCREEN_MARGIN+FONT_HEIGHT*3;
-		for(i=0; i<MAX_ROWS; i++){
-			if(top+i >= nList) break;
-			//色
-			if(top+i == sel)
-				color = setting->color[COLOR_HIGHLIGHTTEXT];
-			else
-				color = setting->color[COLOR_TEXT];
-			//カーソル表示
-			if(top+i == sel){
-				if(sel>=COLOR1 && sel<=COLOR11)
-					printXY(">", FONT_WIDTH*21 + FONT_WIDTH*sel_x*7, y, color, TRUE);
+			// リスト
+			x = FONT_WIDTH*3;
+			y = SCREEN_MARGIN+FONT_HEIGHT*3;
+			for(i=0; i<MAX_ROWS; i++){
+				if(top+i >= nList) break;
+				//色
+				if(top+i == sel)
+					color = setting->color[COLOR_HIGHLIGHTTEXT];
 				else
-					printXY(">", x, y, color, TRUE);
-			}
-			//リスト表示
-			printXY(config[top+i], x+FONT_WIDTH*2, y, color, TRUE);
-			//色のプレビュー
-			if(top+i>=COLOR1 && top+i<=COLOR11){
-				switch(top+i){
-					case COLOR1: colorid=COLOR_BACKGROUND; break;
-					case COLOR2: colorid=COLOR_FRAME; break;
-					case COLOR3: colorid=COLOR_TEXT; break;
-					case COLOR4: colorid=COLOR_HIGHLIGHTTEXT; break;
-					case COLOR5: colorid=COLOR_GRAYTEXT; break;
-					case COLOR6: colorid=COLOR_DIR; break;
-					case COLOR7: colorid=COLOR_FILE; break;
-					case COLOR8: colorid=COLOR_PS2SAVE; break;
-					case COLOR9: colorid=COLOR_PS1SAVE; break;
-					case COLOR10: colorid=COLOR_ELF; break;
-					case COLOR11: colorid=COLOR_PSU; break;
+					color = setting->color[COLOR_TEXT];
+				//カーソル表示
+				if(top+i == sel){
+					if(sel>=COLOR1 && sel<=COLOR11)
+						printXY(">", FONT_WIDTH*21 + FONT_WIDTH*sel_x*7, y, color, TRUE);
+					else
+						printXY(">", x, y, color, TRUE);
 				}
-				itoSprite(setting->color[colorid],
-					x+FONT_WIDTH*42, y,
-					x+FONT_WIDTH*42+font_h, y+font_h, 0);
+				//リスト表示
+				printXY(config[top+i], x+FONT_WIDTH*2, y, color, TRUE);
+				//色のプレビュー
+				if(top+i>=COLOR1 && top+i<=COLOR11){
+					switch(top+i){
+						case COLOR1: colorid=COLOR_BACKGROUND; break;
+						case COLOR2: colorid=COLOR_FRAME; break;
+						case COLOR3: colorid=COLOR_TEXT; break;
+						case COLOR4: colorid=COLOR_HIGHLIGHTTEXT; break;
+						case COLOR5: colorid=COLOR_GRAYTEXT; break;
+						case COLOR6: colorid=COLOR_DIR; break;
+						case COLOR7: colorid=COLOR_FILE; break;
+						case COLOR8: colorid=COLOR_PS2SAVE; break;
+						case COLOR9: colorid=COLOR_PS1SAVE; break;
+						case COLOR10: colorid=COLOR_ELF; break;
+						case COLOR11: colorid=COLOR_PSU; break;
+					}
+					itoSprite(setting->color[colorid],
+						x+FONT_WIDTH*42, y,
+						x+FONT_WIDTH*42+font_h, y+font_h, 0);
+				}
+				y += FONT_HEIGHT;
 			}
-			y += FONT_HEIGHT;
-		}
 
-		// スクロールバー
-		if(nList > MAX_ROWS){
-			drawFrame((MAX_ROWS_X+8)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3,
-				(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[COLOR_FRAME]);
-			y0=FONT_HEIGHT*MAX_ROWS*((double)top/nList);
-			y1=FONT_HEIGHT*MAX_ROWS*((double)(top+MAX_ROWS)/nList);
-			itoSprite(setting->color[COLOR_FRAME],
-				(MAX_ROWS_X+8)*FONT_WIDTH,
-				SCREEN_MARGIN+FONT_HEIGHT*3+y0,
-				(MAX_ROWS_X+9)*FONT_WIDTH,
-				SCREEN_MARGIN+FONT_HEIGHT*3+y1,
-				0);
+			// スクロールバー
+			if(nList > MAX_ROWS){
+				drawFrame((MAX_ROWS_X+8)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3,
+					(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[COLOR_FRAME]);
+				y0=FONT_HEIGHT*MAX_ROWS*((double)top/nList);
+				y1=FONT_HEIGHT*MAX_ROWS*((double)(top+MAX_ROWS)/nList);
+				itoSprite(setting->color[COLOR_FRAME],
+					(MAX_ROWS_X+8)*FONT_WIDTH,
+					SCREEN_MARGIN+FONT_HEIGHT*3+y0,
+					(MAX_ROWS_X+9)*FONT_WIDTH,
+					SCREEN_MARGIN+FONT_HEIGHT*3+y1,
+					0);
+			}
+			// メッセージ
+			if(pushed) sprintf(msg0, "CONFIG/%s", lang->conf_setting_screen);
+			// 操作説明
+			if(sel==0)
+				sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
+			else if(sel>=COLOR1 && sel<=COLOR11)
+				sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_add, lang->conf_away, lang->conf_up);
+			else if(sel==FLICKER_ALPHA)
+				sprintf(msg1, "○:%s ×:%s +□:%s △:%s", lang->conf_add, lang->conf_away, lang->conf_fast, lang->conf_up);
+			else if(sel==PRESETCOLOR)
+				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
+			setScrTmp(msg0, msg1);
+			drawScr();
+			redraw--;
+		} else {
+			itoVSync();
 		}
-		// メッセージ
-		if(pushed) sprintf(msg0, "CONFIG/%s", lang->conf_setting_screen);
-		// 操作説明
-		if(sel==0)
-			sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
-		else if(sel>=COLOR1 && sel<=COLOR11)
-			sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_add, lang->conf_away, lang->conf_up);
-		else if(sel==FLICKER_ALPHA)
-			sprintf(msg1, "○:%s ×:%s +□:%s △:%s", lang->conf_add, lang->conf_away, lang->conf_fast, lang->conf_up);
-		else if(sel==PRESETCOLOR)
-			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
-		setScrTmp(msg0, msg1);
-		drawScr();
 	}
 	return;
 }
@@ -1487,7 +1550,7 @@ void config_screen(SETTING *setting)
 {
 	char msg0[MAX_PATH], msg1[MAX_PATH];
 	uint64 color;
-	int nList=0, sel=0, top=0;// ,sel_x=0;
+	int nList=0, sel=0, top=0, redraw=1;// ,sel_x=0;
 	int pushed=TRUE;
 	int x, y, y0, y1;
 	int i;
@@ -1500,7 +1563,7 @@ void config_screen(SETTING *setting)
 	while(1){
 		waitPadReady(0, 0);
 		if(readpad()){
-			if(new_pad) pushed=TRUE;
+			if(new_pad) {pushed=TRUE; redraw = 1;}
 			if(new_pad & PAD_UP)
 				sel--;
 			else if(new_pad & PAD_DOWN)
@@ -1553,6 +1616,10 @@ void config_screen(SETTING *setting)
 						SetHeight();
 					}
 				}
+				else if(sel==FONTSCALEMODE){	// fonthalfmode
+					fonthalfmode = (fonthalfmode +1) % 2;
+					SetScreenPosXY();
+				}
 				else if(sel==FFMODE){	//ffmode
 					if((setting->tvmode<3)||(setting->tvmode==5)){
 						if(setting->tvmode<3)
@@ -1604,14 +1671,14 @@ void config_screen(SETTING *setting)
 						case 1920: {setting->fullhd_width = 960; break;}
 						case  960: {setting->fullhd_width = 640; break;}
 						case  640: {setting->fullhd_width = 480; break;}
-						case  480: {setting->fullhd_width = 384; break;}
-						case  384: {setting->fullhd_width = 320; break;}
+						//case  480: {setting->fullhd_width = 384; break;}
+						//case  384: {setting->fullhd_width = 320; break;}
 						default: {setting->fullhd_width = 1920; break;}
 					}
-					if ((setting->fullhd_width == 1920) && ((setting->tvmode == 5) || (setting->tvmode == 6) || (setting->tvmode == 9) || (setting->tvmode == 10))) {
-						setting->ffmode_1080i = ITO_FRAME;
-						ffmode = ITO_FRAME;
-					}
+					//if ((setting->fullhd_width == 1920) && ((setting->tvmode == 5) || (setting->tvmode == 6) || (setting->tvmode == 9) || (setting->tvmode == 10))) {
+					//	setting->ffmode_1080i = ITO_FRAME;
+					//	ffmode = ITO_FRAME;
+					//}
 					SetScreenPosVM();
 					itoGsReset();
 					setupito(setting->tvmode);
@@ -1674,157 +1741,173 @@ void config_screen(SETTING *setting)
 		}
 
 		//
-		for(i=0;i<=SCREENINIT;i++){
-			if(i==0){
-				sprintf(config[i], "..");
-			}
-			else if(i==TVMODE){	//TVMODE
-				if(setting->tvmode==0)
-					sprintf(config[i],"%s: %s", lang->conf_tvmode, "AUTO");
-				else if(setting->tvmode==1)
-					sprintf(config[i],"%s: %s", lang->conf_tvmode, "NTSC");
-				else if(setting->tvmode==2)
-					sprintf(config[i],"%s: %s", lang->conf_tvmode, "PAL");
-				else if(setting->tvmode==3)
-					sprintf(config[i],"%s: %s", lang->conf_tvmode, "480p");
-				else if(setting->tvmode==4)
-					sprintf(config[i],"%s: %s", lang->conf_tvmode, "720p");
-				else if(setting->tvmode==5)
-					sprintf(config[i],"%s: %dx%s", lang->conf_tvmode, setting->fullhd_width, "1080i");
-				else if(setting->tvmode==6)
-					sprintf(config[i],"%s: %dx%s", lang->conf_tvmode, setting->fullhd_width, "1080p 29.97Hz");
-				else if(setting->tvmode==11)
-					sprintf(config[i],"%s: %s", lang->conf_tvmode, "CFG1");
-				else if(setting->tvmode==12)
-					sprintf(config[i],"%s: %s", lang->conf_tvmode, "CFG2");
-				
-			}
-			else if(i==FONTHALF){	// FONTHALF
-				if (font_half < 0) {
-					sprintf(config[i], "%s: x%d", lang->conf_FontHalf, -font_half+1);
-				} else if (font_half > 0) {
-					sprintf(config[i], "%s: 1/%d", lang->conf_FontHalf, font_half+1);
-				} else {
-					sprintf(config[i], "%s: %s", lang->conf_FontHalf, lang->conf_off);
+		if (redraw) {
+			for(i=0;i<=SCREENINIT;i++){
+				if(i==0){
+					sprintf(config[i], "..");
+				}
+				else if(i==TVMODE){	//TVMODE
+					if(setting->tvmode==0)
+						sprintf(config[i],"%s: %s", lang->conf_tvmode, "AUTO");
+					else if(setting->tvmode==1)
+						sprintf(config[i],"%s: %s", lang->conf_tvmode, "NTSC");
+					else if(setting->tvmode==2)
+						sprintf(config[i],"%s: %s", lang->conf_tvmode, "PAL");
+					else if(setting->tvmode==3)
+						sprintf(config[i],"%s: %s", lang->conf_tvmode, "480p");
+					else if(setting->tvmode==4)
+						sprintf(config[i],"%s: %s", lang->conf_tvmode, "720p");
+					else if(setting->tvmode==5)
+						sprintf(config[i],"%s: %dx%s", lang->conf_tvmode, setting->fullhd_width, "1080i");
+					else if(setting->tvmode==6)
+						sprintf(config[i],"%s: %dx%s", lang->conf_tvmode, setting->fullhd_width, "540p");
+					else if(setting->tvmode==11)
+						sprintf(config[i],"%s: %s", lang->conf_tvmode, "CFG1");
+					else if(setting->tvmode==12)
+						sprintf(config[i],"%s: %s", lang->conf_tvmode, "CFG2");
+					
+				}
+				else if(i==FONTHALF){	// FONTHALF
+					if (font_half < 0) {
+						sprintf(config[i], "%s: x%d", lang->conf_FontHalf, -font_half+1);
+					} else if (font_half > 0) {
+						sprintf(config[i], "%s: 1/%d", lang->conf_FontHalf, font_half+1);
+					} else {
+						sprintf(config[i], "%s: %s", lang->conf_FontHalf, lang->conf_off);
+					}
+				}
+				else if(i==FONTVHALF){	// FONTVHALF
+					if (font_vhalf < 0) {
+						sprintf(config[i], "%s: x%d", lang->conf_FontVHalf, -font_vhalf+1);
+					} else if (font_vhalf > 0) {
+						sprintf(config[i], "%s: 1/%d", lang->conf_FontVHalf, font_vhalf+1);
+					} else {
+						sprintf(config[i], "%s: %s", lang->conf_FontVHalf, lang->conf_off);
+					}
+				}
+				else if(i==FONTSCALEMODE){	//FONTSCALEMODE
+					sprintf(config[i], "%s: ", lang->conf_FontScaler);
+					if (fonthalfmode == 0)
+						strcat(config[i], lang->conf_FontScaler_A);
+					else if (fonthalfmode == 1)
+						strcat(config[i], lang->conf_FontScaler_B);
+					else if (fonthalfmode == 2)
+						strcat(config[i], lang->conf_FontScaler_C);
+				}
+				else if(i==INTERLACE){	//INTERLACE
+					sprintf(config[i], "%s: ", lang->conf_interlace);
+					if(interlace)
+						strcat(config[i], lang->conf_on);
+					else
+						strcat(config[i], lang->conf_off);
+				}
+				else if(i==FFMODE){	//FFMODE
+					sprintf(config[i],"%s: ", lang->conf_ffmode);
+					if(ffmode)
+						strcat(config[i], lang->conf_ffmode_frame);
+					else
+						strcat(config[i], lang->conf_ffmode_field);
+				}
+				else if(i==SCREEN_X){	//SCREEN X
+					sprintf(config[i],"%s: %3d", lang->conf_screen_x, SCREEN_LEFT);
+				}
+				else if(i==SCREEN_Y){	//SCREEN Y
+					sprintf(config[i],"%s: %3d", lang->conf_screen_y, SCREEN_TOP);
+				}
+				else if(i==SCREENSIZE){	//SCREEN SIZE
+					sprintf(config[i],"%s: ", lang->conf_screen_scan);
+					if(screenscan)
+						strcat(config[i], lang->conf_screen_scan_full);
+					else
+						strcat(config[i], lang->conf_screen_scan_crop);
+				}
+				else if(i==FLICKERCONTROL){	//FLICKER CONTROL
+					sprintf(config[i],"%s: ", lang->conf_flickercontrol);
+					if(setting->flickerControl)
+						strcat(config[i], lang->conf_on);
+					else
+						strcat(config[i], lang->conf_off);
+				}
+				else if(i==SCREENINIT){	//INIT
+					strcpy(config[i], lang->conf_screensettinginit);
 				}
 			}
-			else if(i==FONTVHALF){	// FONTVHALF
-				if (font_vhalf < 0) {
-					sprintf(config[i], "%s: x%d", lang->conf_FontVHalf, -font_vhalf+1);
-				} else if (font_vhalf > 0) {
-					sprintf(config[i], "%s: 1/%d", lang->conf_FontVHalf, font_vhalf+1);
-				} else {
-					sprintf(config[i], "%s: %s", lang->conf_FontVHalf, lang->conf_off);
-				}
-			}
-			else if(i==INTERLACE){	//INTERLACE
-				sprintf(config[i], "%s: ", lang->conf_interlace);
-				if(interlace)
-					strcat(config[i], lang->conf_on);
-				else
-					strcat(config[i], lang->conf_off);
-			}
-			else if(i==FFMODE){	//FFMODE
-				sprintf(config[i],"%s: ", lang->conf_ffmode);
-				if(ffmode)
-					strcat(config[i], lang->conf_ffmode_frame);
-				else
-					strcat(config[i], lang->conf_ffmode_field);
-			}
-			else if(i==SCREEN_X){	//SCREEN X
-				sprintf(config[i],"%s: %3d", lang->conf_screen_x, SCREEN_LEFT);
-			}
-			else if(i==SCREEN_Y){	//SCREEN Y
-				sprintf(config[i],"%s: %3d", lang->conf_screen_y, SCREEN_TOP);
-			}
-			else if(i==SCREENSIZE){	//SCREEN SIZE
-				sprintf(config[i],"%s: ", lang->conf_screen_scan);
-				if(screenscan)
-					strcat(config[i], lang->conf_screen_scan_full);
-				else
-					strcat(config[i], lang->conf_screen_scan_crop);
-			}
-			else if(i==FLICKERCONTROL){	//FLICKER CONTROL
-				sprintf(config[i],"%s: ", lang->conf_flickercontrol);
-				if(setting->flickerControl)
-					strcat(config[i], lang->conf_on);
-				else
-					strcat(config[i], lang->conf_off);
-			}
-			else if(i==SCREENINIT){	//INIT
-				strcpy(config[i], lang->conf_screensettinginit);
-			}
-		}
-		nList=11;
+			nList=12;
 
-		// リスト表示用変数の正規化
-		if(top > nList-MAX_ROWS)	top=nList-MAX_ROWS;
-		if(top < 0)			top=0;
-		if(sel >= nList)		sel=nList-1;
-		if(sel < 0)			sel=0;
-		if(sel >= top+MAX_ROWS)	top=sel-MAX_ROWS+1;
-		if(sel < top)			top=sel;
+			// リスト表示用変数の正規化
+			if(top > nList-MAX_ROWS)	top=nList-MAX_ROWS;
+			if(top < 0)			top=0;
+			if(sel >= nList)		sel=nList-1;
+			if(sel < 0)			sel=0;
+			if(sel >= top+MAX_ROWS)	top=sel-MAX_ROWS+1;
+			if(sel < top)			top=sel;
 
-		// 画面描画開始
-		clrScr(setting->color[COLOR_BACKGROUND]);
+			// 画面描画開始
+			clrScr(setting->color[COLOR_BACKGROUND]);
 
-		// リスト
-		x = FONT_WIDTH*3;
-		y = SCREEN_MARGIN+FONT_HEIGHT*3;
-		for(i=0; i<MAX_ROWS; i++){
-			if(top+i >= nList) break;
-			//色
-			if(top+i == sel)
-				color = setting->color[COLOR_HIGHLIGHTTEXT];
-			else
-				color = setting->color[COLOR_TEXT];
-			//カーソル表示
-			if(top+i == sel)
-				printXY(">", x, y, color, TRUE);
-			//リスト表示
-			printXY(config[top+i], x+FONT_WIDTH*2, y, color, TRUE);
-			y += FONT_HEIGHT;
-		}
+			// リスト
+			x = FONT_WIDTH*3;
+			y = SCREEN_MARGIN+FONT_HEIGHT*3;
+			for(i=0; i<MAX_ROWS; i++){
+				if(top+i >= nList) break;
+				//色
+				if(top+i == sel)
+					color = setting->color[COLOR_HIGHLIGHTTEXT];
+				else
+					color = setting->color[COLOR_TEXT];
+				//カーソル表示
+				if(top+i == sel)
+					printXY(">", x, y, color, TRUE);
+				//リスト表示
+				printXY(config[top+i], x+FONT_WIDTH*2, y, color, TRUE);
+				y += FONT_HEIGHT;
+			}
 
-		// スクロールバー
-		if(nList > MAX_ROWS){
-			drawFrame((MAX_ROWS_X+8)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3,
-				(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[COLOR_FRAME]);
-			y0=FONT_HEIGHT*MAX_ROWS*((double)top/nList);
-			y1=FONT_HEIGHT*MAX_ROWS*((double)(top+MAX_ROWS)/nList);
-			itoSprite(setting->color[COLOR_FRAME],
-				(MAX_ROWS_X+8)*FONT_WIDTH,
-				SCREEN_MARGIN+FONT_HEIGHT*3+y0,
-				(MAX_ROWS_X+9)*FONT_WIDTH,
-				SCREEN_MARGIN+FONT_HEIGHT*3+y1,
-				0);
-		}
-		// メッセージ
-		if(pushed) sprintf(msg0, "CONFIG/%s", lang->conf_setting_screen);
-		// 操作説明
-		if(sel==0)
-			sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
-		else if(sel==TVMODE)
-			if ((setting->tvmode == 5) || (setting->tvmode == 6) || (setting->tvmode == 9) || (setting->tvmode == 10))
-				sprintf(msg1, "○:%s ×:%s%s △:%s", lang->conf_change, lang->conf_horizontalresolution, lang->conf_change, lang->conf_up);
-			else
+			// スクロールバー
+			if(nList > MAX_ROWS){
+				drawFrame((MAX_ROWS_X+8)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3,
+					(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[COLOR_FRAME]);
+				y0=FONT_HEIGHT*MAX_ROWS*((double)top/nList);
+				y1=FONT_HEIGHT*MAX_ROWS*((double)(top+MAX_ROWS)/nList);
+				itoSprite(setting->color[COLOR_FRAME],
+					(MAX_ROWS_X+8)*FONT_WIDTH,
+					SCREEN_MARGIN+FONT_HEIGHT*3+y0,
+					(MAX_ROWS_X+9)*FONT_WIDTH,
+					SCREEN_MARGIN+FONT_HEIGHT*3+y1,
+					0);
+			}
+			// メッセージ
+			if(pushed) sprintf(msg0, "CONFIG/%s", lang->conf_setting_screen);
+			// 操作説明
+			if(sel==0)
+				sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
+			else if(sel==TVMODE)
+				if ((setting->tvmode == 5) || (setting->tvmode == 6) || (setting->tvmode == 9) || (setting->tvmode == 10))
+					sprintf(msg1, "○:%s ×:%s%s △:%s", lang->conf_change, lang->conf_horizontalresolution, lang->conf_change, lang->conf_up);
+				else
+					sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
+			else if(sel==INTERLACE)
 				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
-		else if(sel==INTERLACE)
-			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
-		else if(sel==FONTHALF)
-			sprintf(msg1, "○:%s ×:%s □:%s △:%s", lang->conf_add, lang->conf_away, lang->conf_off, lang->conf_up);
-		else if(sel==FONTVHALF)
-			sprintf(msg1, "○:%s ×:%s □:%s △:%s", lang->conf_add, lang->conf_away, lang->conf_off, lang->conf_up);
-		else if(sel==FFMODE)
-			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
-		else if(sel==SCREENSIZE)
-			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
-		else if(sel==FLICKERCONTROL)
-			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
-		else if(sel==SCREENINIT)
-			sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
-		setScrTmp(msg0, msg1);
-		drawScr();
+			else if(sel==FONTHALF)
+				sprintf(msg1, "○:%s ×:%s □:%s △:%s", lang->conf_add, lang->conf_away, lang->conf_off, lang->conf_up);
+			else if(sel==FONTVHALF)
+				sprintf(msg1, "○:%s ×:%s □:%s △:%s", lang->conf_add, lang->conf_away, lang->conf_off, lang->conf_up);
+			else if(sel==FONTSCALEMODE)
+				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
+			else if(sel==FFMODE)
+				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
+			else if(sel==SCREENSIZE)
+				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
+			else if(sel==FLICKERCONTROL)
+				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
+			else if(sel==SCREENINIT)
+				sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
+			setScrTmp(msg0, msg1);
+			drawScr();
+			redraw--;
+		} else {
+			itoVSync();
+		}
 	}
 	return;
 }
@@ -1835,7 +1918,7 @@ void config_network(SETTING *setting)
 {
 	char msg0[MAX_PATH], msg1[MAX_PATH];
 	uint64 color;
-	int nList=0, sel=0, top=0;
+	int nList=0, sel=0, top=0, redraw=1;
 	int pushed=TRUE;
 	int x, y, y0, y1;
 	int i;
@@ -1850,7 +1933,7 @@ void config_network(SETTING *setting)
 	while(1){
 		waitPadReady(0, 0);
 		if(readpad()){
-			if(new_pad) pushed=TRUE;
+			if(new_pad) {pushed=TRUE; redraw = 1;}
 			if(new_pad & PAD_UP)
 				sel--;
 			else if(new_pad & PAD_DOWN)
@@ -1924,81 +2007,86 @@ void config_network(SETTING *setting)
 		}
 
 		//
-		for(i=0;i<=NETWORKINIT;i++){
-			if(i==0){
-				sprintf(config[i], "..");
+		if (redraw) {
+			for(i=0;i<=NETWORKINIT;i++){
+				if(i==0){
+					sprintf(config[i], "..");
+				}
+				else if(i==IPADDRESS){	//IPADDRESS
+					sprintf(config[i], "%s: %s", lang->conf_ipaddress, ip);
+				}
+				else if(i==NETMASK){	//NETMASK
+					sprintf(config[i], "%s: %s", lang->conf_netmask, netmask);
+				}
+				else if(i==GATEWAY){	//GATEWAY
+					sprintf(config[i], "%s: %s", lang->conf_gateway, gw);
+				}
+				else if(i==NETWORKSAVE){	//NETWORKSAVE
+					strcpy(config[i],lang->conf_ipoverwrite);
+				}
+				else if(i==NETWORKINIT){	//NETWORKINIT
+					strcpy(config[i],lang->conf_ipsettinginit);
+				}
 			}
-			else if(i==IPADDRESS){	//IPADDRESS
-				sprintf(config[i], "%s: %s", lang->conf_ipaddress, ip);
+			nList=6;
+
+			// リスト表示用変数の正規化
+			if(top > nList-MAX_ROWS)	top=nList-MAX_ROWS;
+			if(top < 0)			top=0;
+			if(sel >= nList)		sel=nList-1;
+			if(sel < 0)			sel=0;
+			if(sel >= top+MAX_ROWS)	top=sel-MAX_ROWS+1;
+			if(sel < top)			top=sel;
+
+			// 画面描画開始
+			clrScr(setting->color[COLOR_BACKGROUND]);
+
+			// リスト
+			x = FONT_WIDTH*3;
+			y = SCREEN_MARGIN+FONT_HEIGHT*3;
+			for(i=0; i<MAX_ROWS; i++){
+				if(top+i >= nList) break;
+				//色
+				if(top+i == sel)
+					color = setting->color[COLOR_HIGHLIGHTTEXT];
+				else
+					color = setting->color[COLOR_TEXT];
+				//カーソル表示
+				if(top+i == sel)
+					printXY(">", x, y, color, TRUE);
+				//リスト表示
+				printXY(config[top+i], x+FONT_WIDTH*2, y, color, TRUE);
+				y += FONT_HEIGHT;
 			}
-			else if(i==NETMASK){	//NETMASK
-				sprintf(config[i], "%s: %s", lang->conf_netmask, netmask);
+
+			// スクロールバー
+			if(nList > MAX_ROWS){
+				drawFrame((MAX_ROWS_X+8)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3,
+					(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[COLOR_FRAME]);
+				y0=FONT_HEIGHT*MAX_ROWS*((double)top/nList);
+				y1=FONT_HEIGHT*MAX_ROWS*((double)(top+MAX_ROWS)/nList);
+				itoSprite(setting->color[COLOR_FRAME],
+					(MAX_ROWS_X+8)*FONT_WIDTH,
+					SCREEN_MARGIN+FONT_HEIGHT*3+y0,
+					(MAX_ROWS_X+9)*FONT_WIDTH,
+					SCREEN_MARGIN+FONT_HEIGHT*3+y1,
+					0);
 			}
-			else if(i==GATEWAY){	//GATEWAY
-				sprintf(config[i], "%s: %s", lang->conf_gateway, gw);
-			}
-			else if(i==NETWORKSAVE){	//NETWORKSAVE
-				strcpy(config[i],lang->conf_ipoverwrite);
-			}
-			else if(i==NETWORKINIT){	//NETWORKINIT
-				strcpy(config[i],lang->conf_ipsettinginit);
-			}
+			// メッセージ
+			if(pushed) sprintf(msg0, "CONFIG/%s", lang->conf_setting_network);
+			// 操作説明
+			if(sel==0)
+				sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
+			else if(sel>=IPADDRESS && sel<=GATEWAY)
+				sprintf(msg1, "○:%s △:%s", lang->conf_edit, lang->conf_up);
+			else if(sel==NETWORKINIT)
+				sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
+			setScrTmp(msg0, msg1);
+			drawScr();
+			redraw--;
+		} else {
+			itoVSync();
 		}
-		nList=6;
-
-		// リスト表示用変数の正規化
-		if(top > nList-MAX_ROWS)	top=nList-MAX_ROWS;
-		if(top < 0)			top=0;
-		if(sel >= nList)		sel=nList-1;
-		if(sel < 0)			sel=0;
-		if(sel >= top+MAX_ROWS)	top=sel-MAX_ROWS+1;
-		if(sel < top)			top=sel;
-
-		// 画面描画開始
-		clrScr(setting->color[COLOR_BACKGROUND]);
-
-		// リスト
-		x = FONT_WIDTH*3;
-		y = SCREEN_MARGIN+FONT_HEIGHT*3;
-		for(i=0; i<MAX_ROWS; i++){
-			if(top+i >= nList) break;
-			//色
-			if(top+i == sel)
-				color = setting->color[COLOR_HIGHLIGHTTEXT];
-			else
-				color = setting->color[COLOR_TEXT];
-			//カーソル表示
-			if(top+i == sel)
-				printXY(">", x, y, color, TRUE);
-			//リスト表示
-			printXY(config[top+i], x+FONT_WIDTH*2, y, color, TRUE);
-			y += FONT_HEIGHT;
-		}
-
-		// スクロールバー
-		if(nList > MAX_ROWS){
-			drawFrame((MAX_ROWS_X+8)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3,
-				(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[COLOR_FRAME]);
-			y0=FONT_HEIGHT*MAX_ROWS*((double)top/nList);
-			y1=FONT_HEIGHT*MAX_ROWS*((double)(top+MAX_ROWS)/nList);
-			itoSprite(setting->color[COLOR_FRAME],
-				(MAX_ROWS_X+8)*FONT_WIDTH,
-				SCREEN_MARGIN+FONT_HEIGHT*3+y0,
-				(MAX_ROWS_X+9)*FONT_WIDTH,
-				SCREEN_MARGIN+FONT_HEIGHT*3+y1,
-				0);
-		}
-		// メッセージ
-		if(pushed) sprintf(msg0, "CONFIG/%s", lang->conf_setting_network);
-		// 操作説明
-		if(sel==0)
-			sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
-		else if(sel>=IPADDRESS && sel<=GATEWAY)
-			sprintf(msg1, "○:%s △:%s", lang->conf_edit, lang->conf_up);
-		else if(sel==NETWORKINIT)
-			sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
-		setScrTmp(msg0, msg1);
-		drawScr();
 	}
 	return;
 }
@@ -2010,7 +2098,7 @@ void config_font(SETTING *setting)
 	char c[MAX_PATH];
 	char msg0[MAX_PATH], msg1[MAX_PATH];
 	uint64 color;
-	int nList=0, sel=0, top=0;
+	int nList=0, sel=0, top=0, redraw=1;
 	int pushed=TRUE;
 	int x, y, y0, y1;
 	int i;
@@ -2020,7 +2108,7 @@ void config_font(SETTING *setting)
 	while(1){
 		waitPadReady(0, 0);
 		if(readpad()){
-			if(new_pad) pushed=TRUE;
+			if(new_pad) {pushed=TRUE; redraw = 1;}
 			if(new_pad & PAD_UP)
 				sel--;
 			else if(new_pad & PAD_DOWN)
@@ -2155,116 +2243,121 @@ void config_font(SETTING *setting)
 		}
 
 		//
-		for(i=0;i<=FONTINIT;i++){
-			if(i==0){
-				sprintf(config[i], "..");
+		if (redraw) {
+			for(i=0;i<=FONTINIT;i++){
+				if(i==0){
+					sprintf(config[i], "..");
+				}
+				else if(i==ASCIIFONT){	//ASCIIFONT
+					sprintf(config[i], "%s: %s", lang->conf_AsciiFont, setting->AsciiFont);
+				}
+				else if(i==KANJIFONT){	//KANJIFONT
+					sprintf(config[i], "%s: %s", lang->conf_KanjiFont, setting->KanjiFont);
+				}
+				else if(i==CHARMARGIN){	//CHARMARGIN
+					sprintf(config[i], "%s: %d", lang->conf_CharMargin, setting->CharMargin);
+				}
+				else if(i==LINEMARGIN){	//LINEMARGIN
+					sprintf(config[i], "%s: %d", lang->conf_LineMargin, setting->LineMargin);
+				}
+				else if(i==FONTBOLD){	//FONTBOLD
+					sprintf(config[i], "%s: ", lang->conf_FontBold);
+					if(setting->FontBold)
+						strcat(config[i], lang->conf_on);
+					else
+						strcat(config[i], lang->conf_off);
+				}
+				else if(i==ASCIIMARGINTOP){	//ASCIIMARGINTOP
+					sprintf(config[i], "%s: %d", lang->conf_AsciiMarginTop, setting->AsciiMarginTop);
+				}
+				else if(i==ASCIIMARGINLEFT){	//ASCIIMARGINLEFT
+					sprintf(config[i], "%s: %d", lang->conf_AsciiMarginLeft, setting->AsciiMarginLeft);
+				}
+				else if(i==KANJIMARGINTOP){	//KANJIMARGINTOP
+					sprintf(config[i], "%s: %d", lang->conf_KanjiMarginTop, setting->KanjiMarginTop);
+				}
+				else if(i==KANJIMARGINLEFT){	//KANJIMARGINLEFT
+					sprintf(config[i], "%s: %d", lang->conf_KanjiMarginLeft, setting->KanjiMarginLeft);
+				}
+				else if(i==FONTINIT){	//FONT INIT
+					strcpy(config[i], lang->conf_fontsettinginit);
+				}
 			}
-			else if(i==ASCIIFONT){	//ASCIIFONT
-				sprintf(config[i], "%s: %s", lang->conf_AsciiFont, setting->AsciiFont);
-			}
-			else if(i==KANJIFONT){	//KANJIFONT
-				sprintf(config[i], "%s: %s", lang->conf_KanjiFont, setting->KanjiFont);
-			}
-			else if(i==CHARMARGIN){	//CHARMARGIN
-				sprintf(config[i], "%s: %d", lang->conf_CharMargin, setting->CharMargin);
-			}
-			else if(i==LINEMARGIN){	//LINEMARGIN
-				sprintf(config[i], "%s: %d", lang->conf_LineMargin, setting->LineMargin);
-			}
-			else if(i==FONTBOLD){	//FONTBOLD
-				sprintf(config[i], "%s: ", lang->conf_FontBold);
-				if(setting->FontBold)
-					strcat(config[i], lang->conf_on);
+			nList=11;
+
+			// リスト表示用変数の正規化
+			if(top > nList-MAX_ROWS)	top=nList-MAX_ROWS;
+			if(top < 0)			top=0;
+			if(sel >= nList)		sel=nList-1;
+			if(sel < 0)			sel=0;
+			if(sel >= top+MAX_ROWS)	top=sel-MAX_ROWS+1;
+			if(sel < top)			top=sel;
+
+			// 画面描画開始
+			clrScr(setting->color[COLOR_BACKGROUND]);
+
+			// リスト
+			x = FONT_WIDTH*3;
+			y = SCREEN_MARGIN+FONT_HEIGHT*3;
+			for(i=0; i<MAX_ROWS; i++){
+				if(top+i >= nList) break;
+				//色
+				if(top+i == sel)
+					color = setting->color[COLOR_HIGHLIGHTTEXT];
 				else
-					strcat(config[i], lang->conf_off);
+					color = setting->color[COLOR_TEXT];
+				//カーソル表示
+				if(top+i == sel)
+					printXY(">", x, y, color, TRUE);
+				//リスト表示
+				printXY(config[top+i], x+FONT_WIDTH*2, y, color, TRUE);
+				y += FONT_HEIGHT;
 			}
-			else if(i==ASCIIMARGINTOP){	//ASCIIMARGINTOP
-				sprintf(config[i], "%s: %d", lang->conf_AsciiMarginTop, setting->AsciiMarginTop);
+
+			// スクロールバー
+			if(nList > MAX_ROWS){
+				drawFrame((MAX_ROWS_X+8)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3,
+					(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[COLOR_FRAME]);
+				y0=FONT_HEIGHT*MAX_ROWS*((double)top/nList);
+				y1=FONT_HEIGHT*MAX_ROWS*((double)(top+MAX_ROWS)/nList);
+				itoSprite(setting->color[COLOR_FRAME],
+					(MAX_ROWS_X+8)*FONT_WIDTH,
+					SCREEN_MARGIN+FONT_HEIGHT*3+y0,
+					(MAX_ROWS_X+9)*FONT_WIDTH,
+					SCREEN_MARGIN+FONT_HEIGHT*3+y1,
+					0);
 			}
-			else if(i==ASCIIMARGINLEFT){	//ASCIIMARGINLEFT
-				sprintf(config[i], "%s: %d", lang->conf_AsciiMarginLeft, setting->AsciiMarginLeft);
-			}
-			else if(i==KANJIMARGINTOP){	//KANJIMARGINTOP
-				sprintf(config[i], "%s: %d", lang->conf_KanjiMarginTop, setting->KanjiMarginTop);
-			}
-			else if(i==KANJIMARGINLEFT){	//KANJIMARGINLEFT
-				sprintf(config[i], "%s: %d", lang->conf_KanjiMarginLeft, setting->KanjiMarginLeft);
-			}
-			else if(i==FONTINIT){	//FONT INIT
-				strcpy(config[i], lang->conf_fontsettinginit);
-			}
+			// メッセージ
+			if(pushed) sprintf(msg0, "CONFIG/%s", lang->conf_setting_font);
+			// 操作説明
+			if(sel==0)
+				sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
+			else if(sel==ASCIIFONT)
+				sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_edit, lang->conf_clear, lang->conf_up);
+			else if(sel==KANJIFONT)
+				sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_edit, lang->conf_clear, lang->conf_up);
+			else if(sel==CHARMARGIN)
+				sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_add, lang->conf_away, lang->conf_up);
+			else if(sel==LINEMARGIN)
+				sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_add, lang->conf_away, lang->conf_up);
+			else if(sel==FONTBOLD)
+				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
+			else if(sel==ASCIIMARGINTOP)
+				sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_add, lang->conf_away, lang->conf_up);
+			else if(sel==ASCIIMARGINLEFT)
+				sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_add, lang->conf_away, lang->conf_up);
+			else if(sel==KANJIMARGINTOP)
+				sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_add, lang->conf_away, lang->conf_up);
+			else if(sel==KANJIMARGINLEFT)
+				sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_add, lang->conf_away, lang->conf_up);
+			else if(sel==FONTINIT)
+				sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
+			setScrTmp(msg0, msg1);
+			drawScr();
+			redraw--;
+		} else {
+			itoVSync();
 		}
-		nList=11;
-
-		// リスト表示用変数の正規化
-		if(top > nList-MAX_ROWS)	top=nList-MAX_ROWS;
-		if(top < 0)			top=0;
-		if(sel >= nList)		sel=nList-1;
-		if(sel < 0)			sel=0;
-		if(sel >= top+MAX_ROWS)	top=sel-MAX_ROWS+1;
-		if(sel < top)			top=sel;
-
-		// 画面描画開始
-		clrScr(setting->color[COLOR_BACKGROUND]);
-
-		// リスト
-		x = FONT_WIDTH*3;
-		y = SCREEN_MARGIN+FONT_HEIGHT*3;
-		for(i=0; i<MAX_ROWS; i++){
-			if(top+i >= nList) break;
-			//色
-			if(top+i == sel)
-				color = setting->color[COLOR_HIGHLIGHTTEXT];
-			else
-				color = setting->color[COLOR_TEXT];
-			//カーソル表示
-			if(top+i == sel)
-				printXY(">", x, y, color, TRUE);
-			//リスト表示
-			printXY(config[top+i], x+FONT_WIDTH*2, y, color, TRUE);
-			y += FONT_HEIGHT;
-		}
-
-		// スクロールバー
-		if(nList > MAX_ROWS){
-			drawFrame((MAX_ROWS_X+8)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3,
-				(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[COLOR_FRAME]);
-			y0=FONT_HEIGHT*MAX_ROWS*((double)top/nList);
-			y1=FONT_HEIGHT*MAX_ROWS*((double)(top+MAX_ROWS)/nList);
-			itoSprite(setting->color[COLOR_FRAME],
-				(MAX_ROWS_X+8)*FONT_WIDTH,
-				SCREEN_MARGIN+FONT_HEIGHT*3+y0,
-				(MAX_ROWS_X+9)*FONT_WIDTH,
-				SCREEN_MARGIN+FONT_HEIGHT*3+y1,
-				0);
-		}
-		// メッセージ
-		if(pushed) sprintf(msg0, "CONFIG/%s", lang->conf_setting_font);
-		// 操作説明
-		if(sel==0)
-			sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
-		else if(sel==ASCIIFONT)
-			sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_edit, lang->conf_clear, lang->conf_up);
-		else if(sel==KANJIFONT)
-			sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_edit, lang->conf_clear, lang->conf_up);
-		else if(sel==CHARMARGIN)
-			sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_add, lang->conf_away, lang->conf_up);
-		else if(sel==LINEMARGIN)
-			sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_add, lang->conf_away, lang->conf_up);
-		else if(sel==FONTBOLD)
-			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
-		else if(sel==ASCIIMARGINTOP)
-			sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_add, lang->conf_away, lang->conf_up);
-		else if(sel==ASCIIMARGINLEFT)
-			sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_add, lang->conf_away, lang->conf_up);
-		else if(sel==KANJIMARGINTOP)
-			sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_add, lang->conf_away, lang->conf_up);
-		else if(sel==KANJIMARGINLEFT)
-			sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_add, lang->conf_away, lang->conf_up);
-		else if(sel==FONTINIT)
-			sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
-		setScrTmp(msg0, msg1);
-		drawScr();
 	}
 	return;
 }
@@ -2275,7 +2368,7 @@ void config_misc(SETTING *setting)
 {
 	char msg0[MAX_PATH], msg1[MAX_PATH];
 	uint64 color;
-	int nList=0, sel=0, top=0;
+	int nList=0, sel=0, top=0, redraw=1;
 	int pushed=TRUE;
 	int x, y, y0, y1;
 	int i;
@@ -2284,7 +2377,7 @@ void config_misc(SETTING *setting)
 	while(1){
 		waitPadReady(0, 0);
 		if(readpad()){
-			if(new_pad) pushed=TRUE;
+			if(new_pad) {pushed=TRUE; redraw = 1;}
 			if(new_pad & PAD_UP)
 				sel--;
 			else if(new_pad & PAD_DOWN)
@@ -2485,86 +2578,91 @@ void config_misc(SETTING *setting)
 		if(sel < top)			top=sel;
 
 		// 画面描画開始
-		clrScr(setting->color[COLOR_BACKGROUND]);
+		if (redraw) {
+			clrScr(setting->color[COLOR_BACKGROUND]);
 
-		// リスト
-		x = FONT_WIDTH*3;
-		y = SCREEN_MARGIN+FONT_HEIGHT*3;
-		for(i=0; i<MAX_ROWS; i++){
-			if(top+i >= nList) break;
-			//色
-			if(top+i == sel)
-				color = setting->color[COLOR_HIGHLIGHTTEXT];
-			else
-				color = setting->color[COLOR_TEXT];
-			//カーソル表示
-			if(top+i == sel)
-				printXY(">", x, y, color, TRUE);
-			//リスト表示
-			printXY(config[top+i], x+FONT_WIDTH*2, y, color, TRUE);
-			y += FONT_HEIGHT;
-		}
+			// リスト
+			x = FONT_WIDTH*3;
+			y = SCREEN_MARGIN+FONT_HEIGHT*3;
+			for(i=0; i<MAX_ROWS; i++){
+				if(top+i >= nList) break;
+				//色
+				if(top+i == sel)
+					color = setting->color[COLOR_HIGHLIGHTTEXT];
+				else
+					color = setting->color[COLOR_TEXT];
+				//カーソル表示
+				if(top+i == sel)
+					printXY(">", x, y, color, TRUE);
+				//リスト表示
+				printXY(config[top+i], x+FONT_WIDTH*2, y, color, TRUE);
+				y += FONT_HEIGHT;
+			}
 
-		// スクロールバー
-		if(nList > MAX_ROWS){
-			drawFrame((MAX_ROWS_X+8)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3,
-				(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[COLOR_FRAME]);
-			y0=FONT_HEIGHT*MAX_ROWS*((double)top/nList);
-			y1=FONT_HEIGHT*MAX_ROWS*((double)(top+MAX_ROWS)/nList);
-			itoSprite(setting->color[COLOR_FRAME],
-				(MAX_ROWS_X+8)*FONT_WIDTH,
-				SCREEN_MARGIN+FONT_HEIGHT*3+y0,
-				(MAX_ROWS_X+9)*FONT_WIDTH,
-				SCREEN_MARGIN+FONT_HEIGHT*3+y1,
-				0);
+			// スクロールバー
+			if(nList > MAX_ROWS){
+				drawFrame((MAX_ROWS_X+8)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3,
+					(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[COLOR_FRAME]);
+				y0=FONT_HEIGHT*MAX_ROWS*((double)top/nList);
+				y1=FONT_HEIGHT*MAX_ROWS*((double)(top+MAX_ROWS)/nList);
+				itoSprite(setting->color[COLOR_FRAME],
+					(MAX_ROWS_X+8)*FONT_WIDTH,
+					SCREEN_MARGIN+FONT_HEIGHT*3+y0,
+					(MAX_ROWS_X+9)*FONT_WIDTH,
+					SCREEN_MARGIN+FONT_HEIGHT*3+y1,
+					0);
+			}
+			// メッセージ
+			if(pushed) sprintf(msg0, "CONFIG/%s", lang->conf_setting_misc);
+			// 操作説明
+			if(sel==0)
+				sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
+			else if(sel==LANG)
+				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
+			else if(sel==TIMEOUT)
+				sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_add, lang->conf_away, lang->conf_up);
+			else if(sel==DISCCONTROL)
+				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
+			else if(sel==FILENAME)
+				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
+			else if(sel==FILEICON)
+				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
+			else if(sel==PS2SAVECHECK)
+				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
+			else if(sel==ELFCHECK)
+				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
+			else if(sel==FILEPS2SAVECHECK)
+				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
+			else if(sel==FILEELFCHECK)
+				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
+			else if(sel==EXPORTDIR)
+				sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_edit, lang->conf_clear, lang->conf_up);
+			else if(sel==DEFAULTTITLE)
+				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
+			else if(sel==DEFAULTDETAIL)
+				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
+			else if(sel==USBD_FLAG)
+				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
+			else if(sel==USBD_PATH)
+				if ((!strncmp(setting->usbd_path, "mc", 2)) && (setting->usbd_path[3] == ':'))
+					sprintf(msg1, "○:%s ×:%s □:mcx->mc △:%s", lang->conf_edit, lang->conf_clear, lang->conf_up);
+				else
+					sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_edit, lang->conf_clear, lang->conf_up);
+			else if(sel==USBMASS_FLAG)
+				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
+			else if(sel==USBMASS_PATH)
+				if ((!strncmp(setting->usbmass_path, "mc", 2)) && (setting->usbmass_path[3] == ':'))
+					sprintf(msg1, "○:%s ×:%s □:mcx->mc △:%s", lang->conf_edit, lang->conf_clear, lang->conf_up);
+				else
+					sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_edit, lang->conf_clear, lang->conf_up);
+			else if(sel==MISCINIT)
+				sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
+			setScrTmp(msg0, msg1);
+			drawScr();
+			redraw--;
+		} else {
+			itoVSync();
 		}
-		// メッセージ
-		if(pushed) sprintf(msg0, "CONFIG/%s", lang->conf_setting_misc);
-		// 操作説明
-		if(sel==0)
-			sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
-		else if(sel==LANG)
-			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
-		else if(sel==TIMEOUT)
-			sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_add, lang->conf_away, lang->conf_up);
-		else if(sel==DISCCONTROL)
-			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
-		else if(sel==FILENAME)
-			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
-		else if(sel==FILEICON)
-			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
-		else if(sel==PS2SAVECHECK)
-			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
-		else if(sel==ELFCHECK)
-			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
-		else if(sel==FILEPS2SAVECHECK)
-			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
-		else if(sel==FILEELFCHECK)
-			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
-		else if(sel==EXPORTDIR)
-			sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_edit, lang->conf_clear, lang->conf_up);
-		else if(sel==DEFAULTTITLE)
-			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
-		else if(sel==DEFAULTDETAIL)
-			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
-		else if(sel==USBD_FLAG)
-			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
-		else if(sel==USBD_PATH)
-			if ((!strncmp(setting->usbd_path, "mc", 2)) && (setting->usbd_path[3] == ':'))
-				sprintf(msg1, "○:%s ×:%s □:mcx->mc △:%s", lang->conf_edit, lang->conf_clear, lang->conf_up);
-			else
-				sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_edit, lang->conf_clear, lang->conf_up);
-		else if(sel==USBMASS_FLAG)
-			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
-		else if(sel==USBMASS_PATH)
-			if ((!strncmp(setting->usbmass_path, "mc", 2)) && (setting->usbmass_path[3] == ':'))
-				sprintf(msg1, "○:%s ×:%s □:mcx->mc △:%s", lang->conf_edit, lang->conf_clear, lang->conf_up);
-			else
-				sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_edit, lang->conf_clear, lang->conf_up);
-		else if(sel==MISCINIT)
-			sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
-		setScrTmp(msg0, msg1);
-		drawScr();
 	}
 	return;
 }
@@ -2575,7 +2673,7 @@ void config(char *mainMsg)
 {
 	char msg0[MAX_PATH], msg1[MAX_PATH];
 	uint64 color;
-	int nList, sel=0, top=0;
+	int nList, sel=0, top=0, redraw=1;
 	int x, y, y0, y1;
 	int i;
 	char config[32][MAX_PATH];
@@ -2598,6 +2696,7 @@ void config(char *mainMsg)
 	while(1){
 		waitPadReady(0, 0);
 		if(readpad()){
+			if(new_pad) redraw=1;
 			if(new_pad & PAD_UP)
 				sel--;
 			else if(new_pad & PAD_DOWN)
@@ -2678,45 +2777,50 @@ void config(char *mainMsg)
 		if(sel < top)			top=sel;
 
 		// 画面描画開始
-		clrScr(setting->color[COLOR_BACKGROUND]);
+		if (redraw) {
+			clrScr(setting->color[COLOR_BACKGROUND]);
 
-		// リスト
-		x = FONT_WIDTH*3;
-		y = SCREEN_MARGIN+FONT_HEIGHT*3;
-		for(i=0; i<MAX_ROWS; i++){
-			if(top+i >= nList) break;
-			//色
-			if(top+i == sel)
-				color = setting->color[COLOR_HIGHLIGHTTEXT];
-			else
-				color = setting->color[COLOR_TEXT];
-			//カーソル表示
-			if(top+i == sel)
-				printXY(">", x, y, color, TRUE);
-			//リスト表示
-			printXY(config[top+i], x+FONT_WIDTH*2, y, color, TRUE);
-			y += FONT_HEIGHT;
-		}
+			// リスト
+			x = FONT_WIDTH*3;
+			y = SCREEN_MARGIN+FONT_HEIGHT*3;
+			for(i=0; i<MAX_ROWS; i++){
+				if(top+i >= nList) break;
+				//色
+				if(top+i == sel)
+					color = setting->color[COLOR_HIGHLIGHTTEXT];
+				else
+					color = setting->color[COLOR_TEXT];
+				//カーソル表示
+				if(top+i == sel)
+					printXY(">", x, y, color, TRUE);
+				//リスト表示
+				printXY(config[top+i], x+FONT_WIDTH*2, y, color, TRUE);
+				y += FONT_HEIGHT;
+			}
 
-		// スクロールバー
-		if(nList > MAX_ROWS){
-			drawFrame((MAX_ROWS_X+8)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3,
-				(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[COLOR_FRAME]);
-			y0=FONT_HEIGHT*MAX_ROWS*((double)top/nList);
-			y1=FONT_HEIGHT*MAX_ROWS*((double)(top+MAX_ROWS)/nList);
-			itoSprite(setting->color[COLOR_FRAME],
-				(MAX_ROWS_X+8)*FONT_WIDTH,
-				SCREEN_MARGIN+FONT_HEIGHT*3+y0,
-				(MAX_ROWS_X+9)*FONT_WIDTH,
-				SCREEN_MARGIN+FONT_HEIGHT*3+y1,
-				0);
+			// スクロールバー
+			if(nList > MAX_ROWS){
+				drawFrame((MAX_ROWS_X+8)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3,
+					(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[COLOR_FRAME]);
+				y0=FONT_HEIGHT*MAX_ROWS*((double)top/nList);
+				y1=FONT_HEIGHT*MAX_ROWS*((double)(top+MAX_ROWS)/nList);
+				itoSprite(setting->color[COLOR_FRAME],
+					(MAX_ROWS_X+8)*FONT_WIDTH,
+					SCREEN_MARGIN+FONT_HEIGHT*3+y0,
+					(MAX_ROWS_X+9)*FONT_WIDTH,
+					SCREEN_MARGIN+FONT_HEIGHT*3+y1,
+					0);
+			}
+			// メッセージ
+			strcpy(msg0, "CONFIG/");
+			// 操作説明
+			sprintf(msg1, "○:%s", lang->gen_ok);
+			setScrTmp(msg0, msg1);
+			drawScr();
+			redraw--;
+		} else {
+			itoVSync();
 		}
-		// メッセージ
-		strcpy(msg0, "CONFIG/");
-		// 操作説明
-		sprintf(msg1, "○:%s", lang->gen_ok);
-		setScrTmp(msg0, msg1);
-		drawScr();
 	}
 	return;
 }
