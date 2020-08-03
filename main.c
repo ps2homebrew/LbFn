@@ -81,6 +81,7 @@ void PS2Browser(void)
 void FormatMemoryCard(void)
 {
 	char tmp[2048];
+	int type;
 	char dir[MAX_PATH];
 	char path[MAX_PATH];
 	char romver[16];
@@ -110,7 +111,26 @@ void FormatMemoryCard(void)
 		return;
 	}
 
+	//メモリーカードの種類を取得
+	mcGetInfo(0, 0, &type, NULL, NULL);	//mc0
+	mcSync(MC_WAIT, NULL, NULL);
+
+	//メモリーカードの種類
+	if(type==MC_TYPE_NONE){
+		strcpy(log[n], "MC_TYPE_NONE"); n++;
+	}
+	else if(type==MC_TYPE_PSX){
+		strcpy(log[n], "MC_TYPE_PSX"); n++;
+	}
+	else if(type==MC_TYPE_PS2){
+		strcpy(log[n], "MC_TYPE_PS2"); n++;
+	}
+	else if(type==MC_TYPE_POCKET){
+		strcpy(log[n], "MC_TYPE_POCKET"); n++;
+	}
+
 	strcpy(log[n], "format start"); n++;
+
 	//ログ表示
 	clrScr(setting->color[0]);
 	for(i=0;i<n;i++)
@@ -170,9 +190,10 @@ void FormatMemoryCard(void)
 	drawScr();
 
 	//未フォーマットにする
-	mcUnformat(0,0);
-	while(1)
-		if(mcSync(1,NULL,NULL)!=0) break;
+	if(type==MC_TYPE_PS2){
+		mcUnformat(0, 0);
+		mcSync(MC_WAIT, NULL, NULL);
+	}
 
 	//ログ表示
 	strcpy(log[n], "format..."); n++;
@@ -182,9 +203,8 @@ void FormatMemoryCard(void)
 	drawScr();
 
 	//フォーマット開始
-	mcFormat(0,0);
-	while(1)
-		if(mcSync(1,NULL,NULL)!=0) break;
+	mcFormat(0, 0);
+	mcSync(MC_WAIT, NULL, NULL);
 
 	//元に戻す
 	if(dir){
@@ -1335,15 +1355,19 @@ int main(int argc, char *argv[])
 		loadCdModules();
 	if(!strncmp(setting->AsciiFont, "mass", 4))
 		loadUsbModules();
-	if(InitFontAscii(setting->AsciiFont)<0)
-		InitFontAscii("systemfont");
+	if(InitFontAscii(setting->AsciiFont)<0){
+		strcpy(setting->AsciiFont, "systemfont");
+		InitFontAscii(setting->AsciiFont);
+	}
 	//漢字フォント
 	if(!strncmp(setting->KanjiFont, "cdfs", 4))
 		loadCdModules();
 	if(!strncmp(setting->KanjiFont, "mass", 4))
 		loadUsbModules();
-	if(InitFontKnaji(setting->KanjiFont)<0)
-		InitFontKnaji("systemfont");
+	if(InitFontKnaji(setting->KanjiFont)<0){
+		strcpy(setting->KanjiFont, "systemfont");
+		InitFontKnaji(setting->KanjiFont);
+	}
 	//
 	SetFontMargin(CHAR_MARGIN, setting->CharMargin);
 	SetFontMargin(LINE_MARGIN, setting->LineMargin);
@@ -1369,6 +1393,17 @@ int main(int argc, char *argv[])
 	if((paddata&PAD_L2)&&(paddata&PAD_R2)&&(paddata&PAD_L1)&&(paddata&PAD_R1)){
 		//L2 R2 L1 R1 ボタン押しながら起動したとき、メモリーカードをフォーマット
 		FormatMemoryCard();
+	}
+	if(paddata&PAD_SELECT){
+		//SELECTボタン押しながら起動したとき、SCREEN SETTINGを初期化
+		InitScreenSetting();
+		SetHeight();
+		setupito(setting->tvmode);
+		clrScr(setting->color[0]);
+		drawScr();
+		clrScr(setting->color[0]);
+		drawScr();
+		MessageDialog("Screen Setting Initialize");
 	}
 
 	//ランチャーメイン

@@ -1,62 +1,5 @@
 #include "launchelf.h"
 
-#define NUM_CNF_KEY 46
-//設定ファイルのキー
-const char *cnf_keyname[NUM_CNF_KEY] = 
-{
-	//version
-	"cnf_version",
-	//Launcher
-	"DEFAULT",
-	"CIRCLE",
-	"CROSS",
-	"SQUARE",
-	"TRIANGLE",
-	"L1",
-	"R1",
-	"L2",
-	"R2",
-	"L3",
-	"R3",
-	"START",
-	"SELECT",
-	//color
-	"color_background",
-	"color_fream",
-	"color_highlight_text",
-	"color_normal_text",
-	"color_folder",
-	"color_file",
-	"color_ps2_save",
-	"color_elf_file",
-	"color_ps1_save",
-	//font
-	"ascii_font",
-	"kanji_font",
-	"char_margin",
-	"line_margin",
-	"font_bold",
-	"ascii_margin_top",
-	"ascii_margin_left",
-	"kanji_margin_top",
-	"kanji_margin_left",
-	//
-	"screen_pos_x",
-	"screen_pos_y",
-	"flicker_control",
-	"language",
-	"timeout",
-	"disc_control",
-	"only_filename",
-	"file_icon",
-	"ps2save_check",
-	"elf_check",
-	"export_dir",
-	"tvmode",
-	"interlace",
-	"ffmode",
-};
-
 //デフォルトの設定の値
 enum
 {
@@ -187,6 +130,18 @@ enum
 SETTING *setting, *tmpsetting;
 
 //-------------------------------------------------
+//メモリーカードの種類を取得
+int GetMcType(int port, int slot)
+{
+	int type;
+
+	mcGetInfo(port, slot, &type, NULL, NULL);
+	mcSync(MC_WAIT, NULL, NULL);
+
+	return type;
+}
+
+//-------------------------------------------------
 // メモリーカードの状態をチェックする。
 // 戻り値は有効なメモリーカードスロットの番号。
 // メモリーカードが挿さっていない場合は-11を返す。
@@ -195,12 +150,12 @@ int CheckMC(void)
 	int ret;
 	
 	mcGetInfo(0, 0, NULL, NULL, NULL);
-	mcSync(0, NULL, &ret);
+	mcSync(MC_WAIT, NULL, &ret);
 
 	if( -1 == ret || 0 == ret) return 0;
 
 	mcGetInfo(1, 0, NULL, NULL, NULL);
-	mcSync(0, NULL, &ret);
+	mcSync(MC_WAIT, NULL, &ret);
 
 	if( -1 == ret || 0 == ret ) return 1;
 
@@ -285,49 +240,37 @@ void saveConfig(char *mainMsg)
 	int fd, mcport;
 	char path[MAX_PATH];
 	char tmp[MAX_PATH];
-	int i, ret, error;
+	int ret;
 
-	//cnfファイルのパス
+	//cdから起動しているときは、設定ファイルを保存しない
 	if(boot==CD_BOOT){
-		//cdから起動しているときは、設定ファイルを保存しない
 		mainMsg[0] = 0;
 		return;
 	}
 
-	if(boot==HOST_BOOT){
-		mcport = CheckMC();
+	//cnfファイルのパス
+	//LaunchELFが実行されたパスから設定ファイルを開く
+	if(boot!=HOST_BOOT){
+		sprintf(path, "%sLBF.CNF", LaunchElfDir);
+		fd = fioOpen(path, O_RDONLY);
+		if(fd >= 0)
+			fioClose(fd);
+		else
+			path[0]=0;
+	}
+	//開けなかったら、SYS-CONFの設定ファイルを開く
+	if(path[0]==0){
+		if(boot==MC_BOOT)
+			mcport = LaunchElfDir[2]-'0';
+		else
+			mcport = CheckMC();
 		if(mcport==0||mcport==1){
 			sprintf(path, "mc%d:/SYS-CONF/LBF.CNF", mcport);
-			if((fd = fioOpen(path, O_RDONLY)) >= 0)
+			fd = fioOpen(path, O_RDONLY);
+			if(fd >= 0)
 				fioClose(fd);
 			else
 				path[0]=0;
-		}
-		else{
-			path[0]=0;
-		}
-	}
-	else{
-		//LaunchELFが実行されたパスから設定ファイルを開く
-		sprintf(path, "%sLBF.CNF", LaunchElfDir);
-		if((fd = fioOpen(path, O_RDONLY)) >= 0)
-			fioClose(fd);
-		else{
-			//開けなかったら、SYS-CONFの設定ファイルを開く
-			if(boot==MC_BOOT)
-				mcport = LaunchElfDir[2]-'0';
-			else
-				mcport = CheckMC();
-			if(mcport==0||mcport==1){
-				sprintf(path, "mc%d:/SYS-CONF/LBF.CNF", mcport);
-				if((fd = fioOpen(path, O_RDONLY)) >= 0)
-					fioClose(fd);
-				else
-					path[0]=0;
-			}
-			else{
-				path[0]=0;
-			}
 		}
 	}
 
@@ -337,123 +280,154 @@ void saveConfig(char *mainMsg)
 	if(cnf_load(path)==FALSE)
 		path[0]=0;
 
-	error=FALSE;
-	for(i=0;i<NUM_CNF_KEY;i++){
-		//version
-		if(i==0)
-			sprintf(tmp, "%d", 2);
-		//Launcher
-		if(i>=1 && i<=13)
-			strcpy(tmp, setting->dirElf[i-1]);
-		//color
-		if(i>=14 && i<=22)
-			sprintf(tmp, "%08lX", setting->color[i-14]);
-		//font
-		if(i==23)
-			strcpy(tmp, setting->AsciiFont);
-		if(i==24)
-			strcpy(tmp, setting->KanjiFont);
-		if(i==25)
-			sprintf(tmp, "%d", setting->CharMargin);
-		if(i==26)
-			sprintf(tmp, "%d", setting->LineMargin);
-		if(i==27)
-			sprintf(tmp, "%d", setting->FontBold);
-		if(i==28)
-			sprintf(tmp, "%d", setting->AsciiMarginTop);
-		if(i==29)
-			sprintf(tmp, "%d", setting->AsciiMarginLeft);
-		if(i==30)
-			sprintf(tmp, "%d", setting->KanjiMarginTop);
-		if(i==31)
-			sprintf(tmp, "%d", setting->KanjiMarginLeft);
-		//
-		if(i==32)
-			sprintf(tmp, "%d", setting->screen_x);
-		if(i==33)
-			sprintf(tmp, "%d", setting->screen_y);
-		if(i==34)
-			sprintf(tmp, "%d", setting->flickerControl);
-		if(i==35)
-			sprintf(tmp, "%d", setting->language);
-		if(i==36)
-			sprintf(tmp, "%d", setting->timeout);
-		if(i==37)
-			sprintf(tmp, "%d", setting->discControl);
-		if(i==38)
-			sprintf(tmp, "%d", setting->filename);
-		if(i==39)
-			sprintf(tmp, "%d", setting->fileicon);
-		if(i==40)
-			sprintf(tmp, "%d", setting->discPs2saveCheck);
-		if(i==41)
-			sprintf(tmp, "%d", setting->discELFCheck);
-		if(i==42)
-			strcpy(tmp, setting->Exportdir);
-		if(i==43)
-			sprintf(tmp, "%d", setting->tvmode);
-		if(i==44)
-			sprintf(tmp, "%d", setting->interlace);
-		if(i==45)
-			sprintf(tmp, "%d", setting->ffmode);
-		//
-		ret = cnf_setstr(cnf_keyname[i], tmp);
-		if(ret<0){
-			error=TRUE;
-			break;
-		}
-	}
+	//version
+	sprintf(tmp, "%d", 2);
+	if(cnf_setstr("cnf_version", tmp)<0) goto error;
+	//Launcher
+	strcpy(tmp, setting->dirElf[0]);
+	if(cnf_setstr("DEFAULT", tmp)<0) goto error;
+	strcpy(tmp, setting->dirElf[1]);
+	if(cnf_setstr("CIRCLE", tmp)<0) goto error;
+	strcpy(tmp, setting->dirElf[2]);
+	if(cnf_setstr("CROSS", tmp)<0) goto error;
+	strcpy(tmp, setting->dirElf[3]);
+	if(cnf_setstr("SQUARE", tmp)<0) goto error;
+	strcpy(tmp, setting->dirElf[4]);
+	if(cnf_setstr("TRIANGLE", tmp)<0) goto error;
+	strcpy(tmp, setting->dirElf[5]);
+	if(cnf_setstr("L1", tmp)<0) goto error;
+	strcpy(tmp, setting->dirElf[6]);
+	if(cnf_setstr("R1", tmp)<0) goto error;
+	strcpy(tmp, setting->dirElf[7]);
+	if(cnf_setstr("L2", tmp)<0) goto error;
+	strcpy(tmp, setting->dirElf[8]);
+	if(cnf_setstr("R2", tmp)<0) goto error;
+	strcpy(tmp, setting->dirElf[9]);
+	if(cnf_setstr("L3", tmp)<0) goto error;
+	strcpy(tmp, setting->dirElf[10]);
+	if(cnf_setstr("R3", tmp)<0) goto error;
+	strcpy(tmp, setting->dirElf[11]);
+	if(cnf_setstr("START", tmp)<0) goto error;
+	strcpy(tmp, setting->dirElf[12]);
+	if(cnf_setstr("SELECT", tmp)<0) goto error;
+	//color
+	sprintf(tmp, "%08lX", setting->color[0]);
+	if(cnf_setstr("color_background", tmp)<0) goto error;
+	sprintf(tmp, "%08lX", setting->color[1]);
+	if(cnf_setstr("color_fream", tmp)<0) goto error;
+	sprintf(tmp, "%08lX", setting->color[2]);
+	if(cnf_setstr("color_highlight_text", tmp)<0) goto error;
+	sprintf(tmp, "%08lX", setting->color[3]);
+	if(cnf_setstr("color_normal_text", tmp)<0) goto error;
+	sprintf(tmp, "%08lX", setting->color[4]);
+	if(cnf_setstr("color_folder", tmp)<0) goto error;
+	sprintf(tmp, "%08lX", setting->color[5]);
+	if(cnf_setstr("color_file", tmp)<0) goto error;
+	sprintf(tmp, "%08lX", setting->color[6]);
+	if(cnf_setstr("color_ps2_save", tmp)<0) goto error;
+	sprintf(tmp, "%08lX", setting->color[7]);
+	if(cnf_setstr("color_elf_file", tmp)<0) goto error;
+	sprintf(tmp, "%08lX", setting->color[8]);
+	if(cnf_setstr("color_ps1_save", tmp)<0) goto error;
+	//font
+	strcpy(tmp, setting->AsciiFont);
+	if(cnf_setstr("ascii_font", tmp)<0) goto error;
+	strcpy(tmp, setting->KanjiFont);
+	if(cnf_setstr("kanji_font", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->CharMargin);
+	if(cnf_setstr("char_margin", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->LineMargin);
+	if(cnf_setstr("line_margin", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->FontBold);
+	if(cnf_setstr("font_bold", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->AsciiMarginTop);
+	if(cnf_setstr("ascii_margin_top", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->AsciiMarginLeft);
+	if(cnf_setstr("ascii_margin_left", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->KanjiMarginTop);
+	if(cnf_setstr("kanji_margin_top", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->KanjiMarginLeft);
+	if(cnf_setstr("kanji_margin_left", tmp)<0) goto error;
+	//
+	sprintf(tmp, "%d", setting->screen_x);
+	if(cnf_setstr("screen_pos_x", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->screen_y);
+	if(cnf_setstr("screen_pos_y", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->flickerControl);
+	if(cnf_setstr("flicker_control", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->language);
+	if(cnf_setstr("language", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->timeout);
+	if(cnf_setstr("timeout", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->discControl);
+	if(cnf_setstr("disc_control", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->filename);
+	if(cnf_setstr("only_filename", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->fileicon);
+	if(cnf_setstr("file_icon", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->discPs2saveCheck);
+	if(cnf_setstr("ps2save_check", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->discELFCheck);
+	if(cnf_setstr("elf_check", tmp)<0) goto error;
+	strcpy(tmp, setting->Exportdir);
+	if(cnf_setstr("export_dir", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->tvmode);
+	if(cnf_setstr("tvmode", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->interlace);
+	if(cnf_setstr("interlace", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->ffmode);
+	if(cnf_setstr("ffmode", tmp)<0) goto error;
 
+	goto no_error;
+
+error:
 	//エラーがあった
-	if(error==TRUE){
-		sprintf(mainMsg, "%s", lang->conf_savefailed);
-		cnf_free();
-		return;
-	}
+	sprintf(mainMsg, "%s", lang->conf_savefailed);
+	cnf_free();
+	return;
 
+no_error:
 	//cnfファイルのパス
-	if(boot==HOST_BOOT){
-		mcport = CheckMC();
-		if(mcport==0||mcport==1){
-			//SYS-CONFフォルダがあったらSYS-CONFにセーブ
-			sprintf(path, "mc%d:/SYS-CONF", mcport);
-			if((fd=fioDopen(path)) >= 0){
-				fioDclose(fd);
-				strcat(path, "/LBF.CNF");
-			}
-			// SYS-CONFがなかったらLaunchELFのディレクトリにセーブ
-			else{
-				sprintf(path, "%sLBF.CNF", LaunchElfDir);
-			}
-		}
-	}
-	else{
-		//LaunchELFのディレクトリにCNFがあったらLaunchELFのディレクトリにセーブ
+	//LaunchELFのディレクトリにCNFがあったらLaunchELFのディレクトリにセーブ
+	if(boot!=HOST_BOOT){
 		sprintf(path, "%sLBF.CNF", LaunchElfDir);
-		if((fd = fioOpen(path, O_RDONLY)) >= 0)
+		fd = fioOpen(path, O_RDONLY);
+		if(fd >= 0)
 			fioClose(fd);
+		else
+			path[0]=0;
+	}
+	//なかったら、SYS-CONFにセーブ
+	if(path[0]==0){
+		//SYS-CONFフォルダがあったらSYS-CONFにセーブ
+		if(boot==MC_BOOT)
+			mcport = LaunchElfDir[2]-'0';
+		else
+			mcport = CheckMC();
+		sprintf(path, "mc%d:/SYS-CONF", mcport);
+		fd = fioDopen(path);	//フォルダをオープンしてみる
+		if(fd >= 0){
+			//SYS-CONFフォルダがある
+			fioDclose(fd);
+			strcat(path, "/LBF.CNF");
+		}
 		else{
-			if(boot==MC_BOOT)
-				mcport = LaunchElfDir[2]-'0';
-			else
-				mcport = CheckMC();
-			if(mcport==0||mcport==1){
-				//SYS-CONFフォルダがあったらSYS-CONFにセーブ
-				sprintf(path, "mc%d:/SYS-CONF", mcport);
-				if((fd=fioDopen(path)) >= 0){
-					fioDclose(fd);
-					strcat(path, "/LBF.CNF");
-				}
-				// SYS-CONFがなかったらLaunchELFのディレクトリにセーブ
-				else{
-					sprintf(path, "%sLBF.CNF", LaunchElfDir);
-				}
-			}
+			//SYS-CONFがなかったらLaunchELFのディレクトリにセーブ
+			sprintf(path, "%sLBF.CNF", LaunchElfDir);
 		}
 	}
 
 	//cnf保存
-	ret = cnf_save(path);
+	if(!strncmp(path, "mc", 2)){
+		if(GetMcType(path[2]-'0', 0)==MC_TYPE_PS2)
+			ret = cnf_save(path);
+		else
+			ret=-1;
+	}
+	else{
+		ret = cnf_save(path);
+	}
+
 	if(ret<0)
 		sprintf(mainMsg, "%s (%s)", lang->conf_savefailed, path);
 	else
@@ -471,45 +445,33 @@ void loadConfig(char *mainMsg)
 	char tmp[MAX_PATH];
 	int cnf_version=0;
 	int ret=0;
-	int i;
+//	int i;
 
 	setting = (SETTING*)malloc(sizeof(SETTING));
 
 	//cnfファイルのパス
 	//LaunchELFが実行されたパスから設定ファイルを開く
-	if(boot==HOST_BOOT){
-		mcport = CheckMC();
+	if(boot!=HOST_BOOT){
+		sprintf(path, "%sLBF.CNF", LaunchElfDir);
+		fd = fioOpen(path, O_RDONLY);
+		if(fd >= 0)
+			fioClose(fd);
+		else
+			path[0]=0;
+	}
+	//開けなかったら、SYS-CONFの設定ファイルを開く
+	if(path[0]==0){
+		if(boot==MC_BOOT)
+			mcport = LaunchElfDir[2]-'0';
+		else
+			mcport = CheckMC();
 		if(mcport==0||mcport==1){
 			sprintf(path, "mc%d:/SYS-CONF/LBF.CNF", mcport);
-			if((fd = fioOpen(path, O_RDONLY)) >= 0)
+			fd = fioOpen(path, O_RDONLY);
+			if(fd >= 0)
 				fioClose(fd);
 			else
 				path[0]=0;
-		}
-		else{
-			path[0]=0;
-		}
-	}
-	else{
-		sprintf(path, "%sLBF.CNF", LaunchElfDir);
-		if((fd = fioOpen(path, O_RDONLY)) >= 0)
-			fioClose(fd);
-		else{
-			//開けなかったら、SYS-CONFの設定ファイルを開く
-			if(boot==MC_BOOT)
-				mcport = LaunchElfDir[2]-'0';
-			else
-				mcport = CheckMC();
-			if(mcport==0||mcport==1){
-				sprintf(path, "mc%d:/SYS-CONF/LBF.CNF", mcport);
-				if((fd = fioOpen(path, O_RDONLY)) >= 0)
-					fioClose(fd);
-				else
-					path[0]=0;
-			}
-			else{
-				path[0]=0;
-			}
 		}
 	}
 
@@ -525,102 +487,9 @@ void loadConfig(char *mainMsg)
 	else{
 		ret=1;
 		cnf_version = 0;
-		for(i=0;i<NUM_CNF_KEY;i++){
-			if(cnf_getstr(cnf_keyname[i], tmp, "")>=0){
-				//version
-				if(i==0)
-					cnf_version = atoi(tmp);
-				//Launcher
-				if(i>=1 && i<=13)
-					strcpy(setting->dirElf[i-1], tmp);
-				//color
-				if(i>=14 && i<=22)
-					setting->color[i-14] = strtoul(tmp, NULL, 16);
-				//font
-				if(i==23)
-					strcpy(setting->AsciiFont, tmp);
-				if(i==24)
-					strcpy(setting->KanjiFont, tmp);
-				if(i==25)
-					setting->CharMargin = atoi(tmp);
-				if(i==26)
-					setting->LineMargin = atoi(tmp);
-				if(i==27)
-					setting->FontBold = atoi(tmp);
-					if(setting->FontBold<0 || setting->FontBold>1)
-						setting->FontBold = DEF_FONTBOLD;
-				if(i==28)
-					setting->AsciiMarginTop = atoi(tmp);
-				if(i==29)
-					setting->AsciiMarginLeft = atoi(tmp);
-				if(i==30)
-					setting->KanjiMarginTop = atoi(tmp);
-				if(i==31)
-					setting->KanjiMarginLeft = atoi(tmp);
-				//
-				if(i==32)
-					setting->screen_x = atoi(tmp);
-				if(i==33)
-					setting->screen_y = atoi(tmp);
-				if(i==34){
-					setting->flickerControl = atoi(tmp);
-					if(setting->flickerControl<0 || setting->flickerControl>1)
-						setting->flickerControl = DEF_FLICKERCONTROL;
-				}
-				if(i==35){
-					setting->language = atoi(tmp);
-					if(setting->language<0 || setting->flickerControl>=NUM_LANG)
-						setting->language = DEF_LANGUAGE;
-				}
-				if(i==36){
-					setting->timeout = atoi(tmp);
-					if(setting->timeout<0)
-						setting->timeout = DEF_TIMEOUT;
-				}
-				if(i==37){
-					setting->discControl = atoi(tmp);
-					if(setting->discControl<0 || setting->discControl>1)
-						setting->discControl = DEF_DISCCONTROL;
-				}
-				if(i==38){
-					setting->filename = atoi(tmp);
-					if(setting->filename<0 || setting->filename>1)
-						setting->filename = DEF_FILENAME;
-				}
-				if(i==39){
-					setting->fileicon = atoi(tmp);
-					if(setting->fileicon<0 || setting->fileicon>1)
-						setting->fileicon = DEF_FILEICON;
-				}
-				if(i==40){
-					setting->discPs2saveCheck = atoi(tmp);
-					if(setting->discPs2saveCheck<0 || setting->discPs2saveCheck>1)
-						setting->discPs2saveCheck = DEF_DISCPS2SAVECHECK;
-				}
-				if(i==41){
-					setting->discELFCheck = atoi(tmp);
-					if(setting->discELFCheck<0 || setting->discELFCheck>1)
-						setting->discELFCheck = DEF_DISCELFCHECK;
-				}
-				if(i==42)
-					strcpy(setting->Exportdir, tmp);
-				if(i==43){
-					setting->tvmode = atoi(tmp);
-					if(setting->tvmode<0 || setting->tvmode>4)
-						setting->tvmode = DEF_TVMODE;
-				}
-				if(i==44){
-					setting->interlace = atoi(tmp);
-					if(setting->interlace<0 || setting->interlace>1)
-						setting->interlace = DEF_INTERLACE;
-				}
-				if(i==45){
-					setting->ffmode = atoi(tmp);
-					if(setting->ffmode<0 || setting->ffmode>1)
-						setting->ffmode = DEF_FFMODE;
-				}
-			}
-		}
+		//version
+		if(cnf_getstr("cnf_version", tmp, "")>=0)
+			cnf_version = atoi(tmp);
 		//バージョンチェック
 		if(cnf_version!=2){
 			//Setting初期化
@@ -629,6 +498,138 @@ void loadConfig(char *mainMsg)
 			fd = fioOpen(path, O_WRONLY | O_TRUNC | O_CREAT);
 			fioClose(fd);
 			ret=2;
+		}
+		else{
+			//Launcher
+			if(cnf_getstr("DEFAULT", tmp, "")>=0)
+				strcpy(setting->dirElf[0], tmp);
+			if(cnf_getstr("CIRCLE", tmp, "")>=0)
+				strcpy(setting->dirElf[1], tmp);
+			if(cnf_getstr("CROSS", tmp, "")>=0)
+				strcpy(setting->dirElf[2], tmp);
+			if(cnf_getstr("SQUARE", tmp, "")>=0)
+				strcpy(setting->dirElf[3], tmp);
+			if(cnf_getstr("TRIANGLE", tmp, "")>=0)
+				strcpy(setting->dirElf[4], tmp);
+			if(cnf_getstr("L1", tmp, "")>=0)
+				strcpy(setting->dirElf[5], tmp);
+			if(cnf_getstr("R1", tmp, "")>=0)
+				strcpy(setting->dirElf[6], tmp);
+			if(cnf_getstr("L2", tmp, "")>=0)
+				strcpy(setting->dirElf[7], tmp);
+			if(cnf_getstr("R2", tmp, "")>=0)
+				strcpy(setting->dirElf[8], tmp);
+			if(cnf_getstr("L3", tmp, "")>=0)
+				strcpy(setting->dirElf[9], tmp);
+			if(cnf_getstr("R3", tmp, "")>=0)
+				strcpy(setting->dirElf[10], tmp);
+			if(cnf_getstr("START", tmp, "")>=0)
+				strcpy(setting->dirElf[11], tmp);
+			if(cnf_getstr("SELECT", tmp, "")>=0)
+				strcpy(setting->dirElf[12], tmp);
+			//color
+			if(cnf_getstr("color_background", tmp, "")>=0)
+				setting->color[0] = strtoul(tmp, NULL, 16);
+			if(cnf_getstr("color_fream", tmp, "")>=0)
+				setting->color[1] = strtoul(tmp, NULL, 16);
+			if(cnf_getstr("color_highlight_text", tmp, "")>=0)
+				setting->color[2] = strtoul(tmp, NULL, 16);
+			if(cnf_getstr("color_normal_text", tmp, "")>=0)
+				setting->color[3] = strtoul(tmp, NULL, 16);
+			if(cnf_getstr("color_folder", tmp, "")>=0)
+				setting->color[4] = strtoul(tmp, NULL, 16);
+			if(cnf_getstr("color_file", tmp, "")>=0)
+				setting->color[5] = strtoul(tmp, NULL, 16);
+			if(cnf_getstr("color_ps2_save", tmp, "")>=0)
+				setting->color[6] = strtoul(tmp, NULL, 16);
+			if(cnf_getstr("color_elf_file", tmp, "")>=0)
+				setting->color[7] = strtoul(tmp, NULL, 16);
+			if(cnf_getstr("color_ps1_save", tmp, "")>=0)
+				setting->color[8] = strtoul(tmp, NULL, 16);
+			//font
+			if(cnf_getstr("ascii_font", tmp, "")>=0)
+				strcpy(setting->AsciiFont, tmp);
+			if(cnf_getstr("kanji_font", tmp, "")>=0)
+				strcpy(setting->KanjiFont, tmp);
+			if(cnf_getstr("char_margin", tmp, "")>=0)
+				setting->CharMargin = atoi(tmp);
+			if(cnf_getstr("line_margin", tmp, "")>=0)
+				setting->LineMargin = atoi(tmp);
+			if(cnf_getstr("font_bold", tmp, "")>=0){
+				setting->FontBold = atoi(tmp);
+				if(setting->FontBold<0 || setting->FontBold>1)
+					setting->FontBold = DEF_FONTBOLD;
+			}
+			if(cnf_getstr("ascii_margin_top", tmp, "")>=0)
+				setting->AsciiMarginTop = atoi(tmp);
+			if(cnf_getstr("ascii_margin_left", tmp, "")>=0)
+				setting->AsciiMarginLeft = atoi(tmp);
+			if(cnf_getstr("kanji_margin_top", tmp, "")>=0)
+				setting->KanjiMarginTop = atoi(tmp);
+			if(cnf_getstr("kanji_margin_left", tmp, "")>=0)
+				setting->KanjiMarginLeft = atoi(tmp);
+			//
+			if(cnf_getstr("screen_pos_x", tmp, "")>=0)
+				setting->screen_x = atoi(tmp);
+			if(cnf_getstr("screen_pos_y", tmp, "")>=0)
+				setting->screen_y = atoi(tmp);
+			if(cnf_getstr("flicker_control", tmp, "")>=0){
+				setting->flickerControl = atoi(tmp);
+				if(setting->flickerControl<0 || setting->flickerControl>1)
+					setting->flickerControl = DEF_FLICKERCONTROL;
+			}
+			if(cnf_getstr("language", tmp, "")>=0){
+				setting->language = atoi(tmp);
+				if(setting->language<0 || setting->flickerControl>=NUM_LANG)
+					setting->language = DEF_LANGUAGE;
+			}
+			if(cnf_getstr("timeout", tmp, "")>=0){
+				setting->timeout = atoi(tmp);
+				if(setting->timeout<0)
+					setting->timeout = DEF_TIMEOUT;
+			}
+			if(cnf_getstr("disc_control", tmp, "")>=0){
+				setting->discControl = atoi(tmp);
+				if(setting->discControl<0 || setting->discControl>1)
+					setting->discControl = DEF_DISCCONTROL;
+			}
+			if(cnf_getstr("only_filename", tmp, "")>=0){
+				setting->filename = atoi(tmp);
+				if(setting->filename<0 || setting->filename>1)
+					setting->filename = DEF_FILENAME;
+			}
+			if(cnf_getstr("file_icon", tmp, "")>=0){
+				setting->fileicon = atoi(tmp);
+				if(setting->fileicon<0 || setting->fileicon>1)
+					setting->fileicon = DEF_FILEICON;
+			}
+			if(cnf_getstr("ps2save_check", tmp, "")>=0){
+				setting->discPs2saveCheck = atoi(tmp);
+				if(setting->discPs2saveCheck<0 || setting->discPs2saveCheck>1)
+					setting->discPs2saveCheck = DEF_DISCPS2SAVECHECK;
+			}
+			if(cnf_getstr("elf_check", tmp, "")>=0){
+				setting->discELFCheck = atoi(tmp);
+				if(setting->discELFCheck<0 || setting->discELFCheck>1)
+					setting->discELFCheck = DEF_DISCELFCHECK;
+			}
+			if(cnf_getstr("export_dir", tmp, "")>=0)
+				strcpy(setting->Exportdir, tmp);
+			if(cnf_getstr("tvmode", tmp, "")>=0){
+				setting->tvmode = atoi(tmp);
+				if(setting->tvmode<0 || setting->tvmode>4)
+					setting->tvmode = DEF_TVMODE;
+			}
+			if(cnf_getstr("interlace", tmp, "")>=0){
+				setting->interlace = atoi(tmp);
+				if(setting->interlace<0 || setting->interlace>1)
+					setting->interlace = DEF_INTERLACE;
+			}
+			if(cnf_getstr("ffmode", tmp, "")>=0){
+				setting->ffmode = atoi(tmp);
+				if(setting->ffmode<0 || setting->ffmode>1)
+					setting->ffmode = DEF_FFMODE;
+			}
 		}
 	}
 
@@ -952,16 +953,6 @@ void config_screen(SETTING *setting)
 					if(sel_x==2 && b>0) b--;
 					setting->color[sel-1] = ITO_RGBA(r, g, b, 0);
 				}
-/*
-				else if(sel==TVMODE){	//TVMODE
-					setting->tvmode--;
-					if(setting->tvmode<0) setting->tvmode=4;
-					//
-					itoGsReset();
-					setupito(setting->tvmode);
-					SetHeight();
-				}
-*/
 				else if(sel==SCREEN_X){	//SCREEN X
 					if(setting->screen_x > 0){
 						setting->screen_x--;
@@ -1232,18 +1223,21 @@ void config_network(SETTING *setting)
 					if(keyboard(tmp, 15)>=0) strcpy(gw,tmp);
 				}
 				else if(sel==NETWORKSAVE){
-					//save
-					sprintf(tmp, "%s %s %s", ip, netmask, gw);
-					//フォルダ作成
-					newdir("mc0:/","SYS-CONF");
-					// 書き込み
-					if((fd=fioOpen("mc0:/SYS-CONF/IPCONFIG.DAT",O_CREAT|O_WRONLY|O_TRUNC)) >= 0){
-						fioWrite(fd, tmp, strlen(tmp));
-						fioClose(fd);
-						sprintf(tmp, "mc0:/SYS-CONF/IPCONFIG.DAT\n%s",lang->conf_ipsaved);
-					}
-					else{
-						sprintf(tmp, "mc0:/SYS-CONF/IPCONFIG.DAT\n%s",lang->conf_ipsavefailed);
+					//
+					sprintf(tmp, "mc0:/SYS-CONF/IPCONFIG.DAT\n%s", lang->conf_ipsavefailed);
+					//メモリーカードの種類を取得
+					if(GetMcType(0, 0)==MC_TYPE_PS2){
+						//save
+						sprintf(tmp, "%s %s %s", ip, netmask, gw);
+						//フォルダ作成
+						newdir("mc0:/", "SYS-CONF");
+						// 書き込み
+						fd = fioOpen("mc0:/SYS-CONF/IPCONFIG.DAT", O_CREAT|O_WRONLY|O_TRUNC);
+						if(fd >= 0){
+							fioWrite(fd, tmp, strlen(tmp));
+							fioClose(fd);
+							sprintf(tmp, "mc0:/SYS-CONF/IPCONFIG.DAT\n%s", lang->conf_ipsaved);	//成功
+						}
 					}
 					drawDark();
 					itoGsFinish();
@@ -1379,7 +1373,11 @@ void config_font(SETTING *setting)
 					//フォントを適用してみる
 					if(InitFontAscii(newFontName)<0){
 						//失敗したとき元に戻す
-						InitFontAscii(setting->AsciiFont);
+						if(InitFontAscii(setting->AsciiFont)<0){
+							//元に戻すのを失敗したとき
+							strcpy(setting->AsciiFont, "systemfont");
+							InitFontAscii(setting->AsciiFont);
+						}
 					}
 					else{
 						//成功したとき
@@ -1395,7 +1393,11 @@ void config_font(SETTING *setting)
 					//フォントを適用してみる
 					if(InitFontKnaji(newFontName)<0){
 						//失敗したとき元に戻す
-						InitFontKnaji(setting->KanjiFont);
+						if(InitFontKnaji(setting->KanjiFont)<0){
+							//元に戻すのを失敗したとき
+							strcpy(setting->KanjiFont, "systemfont");
+							InitFontKnaji(setting->KanjiFont);
+						}
 					}
 					else{
 						//成功したとき
@@ -1856,8 +1858,14 @@ void config(char *mainMsg)
 					strcpy(netmask,tmpnetmask);
 					strcpy(gw,tmpgw);
 					SetLanguage(setting->language);
-					InitFontAscii(setting->AsciiFont);
-					InitFontKnaji(setting->KanjiFont);
+					if(InitFontAscii(setting->AsciiFont)<0){
+						strcpy(setting->AsciiFont, "systemfont");
+						InitFontAscii(setting->AsciiFont);
+					}
+					if(InitFontKnaji(setting->KanjiFont)<0){
+						strcpy(setting->KanjiFont, "systemfont");
+						InitFontKnaji(setting->KanjiFont);
+					}
 					SetFontMargin(CHAR_MARGIN, setting->CharMargin);
 					SetFontMargin(LINE_MARGIN, setting->LineMargin);
 					SetFontBold(setting->FontBold);

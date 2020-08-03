@@ -50,9 +50,11 @@ void itoGsEnvSubmit(itoGsEnv* env)
 		// tutorials.
 		//------------------------------------------------------------
 
+		width = env->screen.width;
+
 		if(env->vmode==ITO_VMODE_NTSC || env->vmode==ITO_VMODE_PAL)
 		{
-			switch(env->screen.width)
+			switch(width)
 			{
 				case 192:
 				{
@@ -94,7 +96,7 @@ void itoGsEnvSubmit(itoGsEnv* env)
 				//-----------------------------------------------------------------
 				default:
 				{
-					env->screen.width = 640;
+					width = 640;
 					ito.screen.mag_x = 3;
 					break;
 				}
@@ -102,20 +104,27 @@ void itoGsEnvSubmit(itoGsEnv* env)
 		}
 		else if(env->vmode==0x50)	//480p
 		{
-			//env->interlace=ITO_NON_INTERLACE;
-			//env->ffmode=ITO_FIELD;
+			//env->interlace = ITO_NON_INTERLACE;
+			//env->ffmode = ITO_FIELD;
 			ito.screen.mag_x = 1; 
+		}
+		else if(env->vmode==0x51)	//1080i
+		{
+			//env->screen.psm = ITO_RGBA16;
+			//env->interlace = ITO_INTERLACE;
+			//env->ffmode = ITO_FIELD;
+			ito.screen.mag_x = 0; 
 		}
 		else if(env->vmode==0x52)	//720p
 		{
-			//env->interlace=ITO_NON_INTERLACE;
-			//env->ffmode=ITO_FIELD;
+			//env->screen.psm = ITO_RGBA16;
+			//env->interlace = ITO_NON_INTERLACE;
+			//env->ffmode = ITO_FIELD;
 			ito.screen.mag_x = 0; 
 		}
 
-		width = (env->screen.width - 1) * (ito.screen.mag_x + 1);
-		
-			
+		width = (width - 1) * (ito.screen.mag_x + 1);
+
 		//------------------------------------------------------------
 		// GLOBAL VARS
 		//------------------------------------------------------------

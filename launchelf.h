@@ -33,7 +33,7 @@
 #include "cnf.h"
 
 // バージョン
-#define LBF_VER "LbF v0.62"
+#define LBF_VER "LbF v0.63"
 
 // 垂直スキャンレート
 #define SCANRATE (ITO_VMODE_AUTO==ITO_VMODE_NTSC ? 60:50)
@@ -160,6 +160,7 @@ void waitPadReady(int port, int slot);
 
 /* config.c */
 extern SETTING *setting;
+void InitScreenSetting(void);
 void loadConfig(char *);
 void config(char *);
 

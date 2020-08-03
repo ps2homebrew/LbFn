@@ -207,7 +207,7 @@ void setupito(int tvmode)
 	
 	itoGsEnvSubmit(&screen_env);
 
-	itoSetBgColor(setting->color[0]);
+//	itoSetBgColor(setting->color[0]);
 
 	//アルファブレンド
 	itoSetAlphaBlending(

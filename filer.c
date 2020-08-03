@@ -68,7 +68,7 @@ const unsigned char sjis_lookup_81[256] = {
   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,  // 0x20
   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,  // 0x30
    ' ', ',', '.', ',', '.',0xFF, ':', ';', '?', '!',0xFF,0xFF,'\'', '`',0xFF, '^',  // 0x40
-  0xFF, '_',0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF, '-', '-', '-', '/',0xFF,  // 0x50
+  0xFF, '_',0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF, '-', '-', '/',0xFF,  // 0x50
   0xFF,0xFF,0xFF,0xFF,0xFF,'\'','\'', '"', '"', '(', ')', '[', ']', '[', ']', '{',  // 0x60
    '}',0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF, '+', '-',0xFF,'*', 0xFF,  // 0x70
    '/', '=',0xFF, '<', '>',0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,'\\',  // 0x80
@@ -399,11 +399,11 @@ int readMC(const char *path, FILEINFO *info, int max)
 	char dir[MAX_PATH];
 	int i, j, ret;
 
-	mcSync(0,NULL,NULL);
+	mcSync(MC_WAIT, NULL, NULL);
 
 	strcpy(dir, &path[4]); strcat(dir, "*");
 	mcGetDir(path[2]-'0', 0, dir, 0, MAX_ENTRY-2, mcDir);
-	mcSync(0, NULL, &ret);
+	mcSync(MC_WAIT, NULL, &ret);
 
 	for(i=j=0; i<ret; i++)
 	{
@@ -931,9 +931,9 @@ int delete(const char *path, const FILEINFO *file)
 		}
 		// 対象フォルダを削除
 		if(!strncmp(dir, "mc", 2)){
-			mcSync(0,NULL,NULL);
+			mcSync(MC_WAIT, NULL, NULL);
 			mcDelete(dir[2]-'0', 0, &dir[4]);
-			mcSync(0, NULL, &ret);
+			mcSync(MC_WAIT, NULL, &ret);
 		}else if(!strncmp(path, "hdd", 3)){
 			ret = fileXioRmdir(hdddir);
 		}else if(!strncmp(path, "mass", 4)){
@@ -947,9 +947,9 @@ int delete(const char *path, const FILEINFO *file)
 	} else {
 		// 対象ファイルを削除
 		if(!strncmp(path, "mc", 2)){
-			mcSync(0,NULL,NULL);
+			mcSync(MC_WAIT, NULL, NULL);
 			mcDelete(dir[2]-'0', 0, &dir[4]);
-			mcSync(0, NULL, &ret);
+			mcSync(MC_WAIT, NULL, &ret);
 		}else if(!strncmp(path, "hdd", 3)){
 			ret = fileXioRemove(hdddir);
 		}else if(!strncmp(path, "mass", 4)){
@@ -1001,9 +1001,9 @@ int newdir(const char *path, const char *name)
 		ret = fileXioMkdir(dir, fileMode);
 	}else if(!strncmp(path, "mc", 2)){
 		sprintf(dir, "%s%s", path+4, name);
-		mcSync(0,NULL,NULL);
+		mcSync(MC_WAIT, NULL, NULL);
 		mcMkDir(path[2]-'0', 0, dir);
-		mcSync(0, NULL, &ret);
+		mcSync(MC_WAIT, NULL, &ret);
 		if(ret == -4)
 			ret = -17;
 	}else if(!strncmp(path, "mass", 4)){
@@ -1194,9 +1194,9 @@ int copy(const char *outPath, const char *inPath, FILEINFO file, int n)
 			outsize = fioWrite(out_fd,buff,buffSize);
 			if(buffSize!=outsize){
 				fioClose(out_fd); out_fd=-1;
-				mcSync(0,NULL,NULL);
+				mcSync(MC_WAIT, NULL, NULL);
 				mcDelete(out[2]-'0', 0, &out[4]);
-				mcSync(0, NULL, NULL);
+				mcSync(MC_WAIT, NULL, NULL);
 				goto error;
 			}
 		}
@@ -1328,7 +1328,7 @@ int psbCommand(void)
 		//フォルダとしてオープンしてみる
 		strcpy(pathtmp, path[0]+4); strcat(pathtmp,"/*");
 		mcGetDir(path[0][2]-'0', 0, pathtmp, 0, 1, &mcDir);
-		mcSync(0, NULL, &mcret);
+		mcSync(MC_WAIT, NULL, &mcret);
 		if(mcret<0){
 			//失敗したらファイルとしてオープンしてみる
 			fd = fioOpen(path[0], O_RDONLY);
@@ -2146,9 +2146,9 @@ int psuExport(const char *path, const FILEINFO *file)
 
 		//リスト読み込み
 		sprintf(Pattern, "%s/*", &inpath[4]);
-		mcSync(0, NULL, &mcret);
+		mcSync(MC_WAIT, NULL, &mcret);
 		mcGetDir(inpath[2]-'0', 0, Pattern, 0, MAX_ENTRY-2, mcDir);
-		mcSync(0, NULL, &n);	//ファイル数
+		mcSync(MC_WAIT, NULL, &n);	//ファイル数
 		//mcDir[0]の情報
 		mcDir[0].fileSizeByte=0;
 		mcDir[0].attrFile=0x8427;
@@ -2297,8 +2297,18 @@ int psuExport(const char *path, const FILEINFO *file)
 		strcat(outpath, tmp);
 		strcat(outpath, ".psu");
 
+		if(!strncmp(outpath, "mc", 2)){
+			int type;
+			//
+			mcGetInfo(outpath[2]-'0', 0, &type, NULL, NULL);
+			mcSync(MC_WAIT, NULL, NULL);
+			if(type!=MC_TYPE_PS2){
+				ret=-300;
+				goto error;
+			}
+		}
 		//出力するpsuファイルがhddのときパスを変更
-		if(!strncmp(outpath, "hdd", 3)){
+		else if(!strncmp(outpath, "hdd", 3)){
 			if(nparties==0){
 				loadHddModules();
 				setPartyList();
@@ -2307,7 +2317,10 @@ int psuExport(const char *path, const FILEINFO *file)
 			getHddParty(outpath, NULL, party, tmp);
 			//pfs0にマウント
 			r = mountParty(party);
-			if(r<0) return -301;
+			if(r<0){
+				ret=-301;
+				goto error;
+			}
 			strcpy(outpath, tmp);
 			outpath[3] = r+'0';
 		}
@@ -2454,9 +2467,8 @@ error:
 	if(ret<0){
 		// エクスポート失敗したときpsuファイルを削除
 		if(!strncmp(outpath, "mc", 2)){
-			mcSync(0,NULL,NULL);
 			mcDelete(outpath[2]-'0', 0, &outpath[4]);
-			mcSync(0, NULL, &r);
+			mcSync(MC_WAIT, NULL, &r);
 		}
 		else if(!strncmp(outpath, "pfs", 3)){
 			r = fileXioRemove(outpath);
@@ -3312,9 +3324,13 @@ void getFilePath(char *out, int cnfmode)
 			vfreeSpace=FALSE;	//空き容量表示フラグ
 			if(cnfmode==ANY_FILE){
 				if(!strncmp(path, "mc", 2)){
-					mcGetInfo(path[2]-'0', 0, NULL, &mcfreeSpace, NULL);
-					mcSync(0,NULL,NULL);
-					freeSpace = mcfreeSpace*1024;
+					int type;
+					mcGetInfo(path[2]-'0', 0, &type, &mcfreeSpace, NULL);
+					mcSync(MC_WAIT, NULL, NULL);
+					if(type==MC_TYPE_PS2)	//ps2 mc
+						freeSpace = mcfreeSpace*1024;
+					else if(type!=MC_TYPE_NONE)	//ps1 mc
+						freeSpace = mcfreeSpace*8192;
 					vfreeSpace=TRUE;
 				}
 				else if(!strncmp(path,"hdd",3)&&strcmp(path,"hdd0:/")){
