@@ -1152,16 +1152,11 @@ int menu(const char *path, const char *file)
 			//enable[COMPRESS] = FALSE;
 			enable[VIEWER] = FALSE;
 		}
-		else if(strchr(file,'/'))
-			enable[VIEWER] = FALSE;
 	}
 	else{
 		//マークしたファイルがある
 		enable[RENAME] = FALSE;
 	}
-	if(nmarks>1)
-		enable[VIEWER] = FALSE;
-	
 
 	//クリップボードに記憶したファイルがない
 	if(nclipFiles==0)
@@ -3920,7 +3915,7 @@ void getFilePath(char *out, int cnfmode)
 									ret = viewer_file(0, fullpath);
 								}
 							}
-							else{
+							else if (nmarks == 1) {
 								// 最初のファイル
 								for(i=0; i<nfiles; i++){
 									if(marks[i]){
@@ -3931,6 +3926,62 @@ void getFilePath(char *out, int cnfmode)
 										}
 									}
 								}
+							} else {
+								// 複数のファイル
+								int k,m,o,r,l;
+								for (i=0; i<nfiles; i++) {
+									if (marks[i]) {
+										strcpy(fullpath, path);
+										strcat(fullpath, files[i].name);
+										if (((m=formatcheckfile(fullpath)) == FT_BMP) || (m == FT_JPG) || (m == FT_GIF)) {
+											k = i;
+											break;
+										}
+									}
+								}
+								i = k; o = k^1; r = 2;
+								while(i >= 0) {
+									if (i != o) {
+										strcpy(fullpath, path);
+										strcat(fullpath, files[i].name);
+										l = ret = viewer_file(2, fullpath);
+										printf("filer: viewer_return: %d\n", ret);
+										o = i;
+									}
+									if (ret == 0) {
+										break;
+									} else if (ret < 0) {
+										ret = r;
+									} else {
+										r = ret;
+									}
+									if (ret == 1) {
+										for (k=i-1; k>=0; k--) {
+											if (marks[k]) {
+												strcpy(fullpath, path);
+												strcat(fullpath, files[k].name);
+												if (((m=formatcheckfile(fullpath)) == FT_BMP) || (m == FT_JPG) || (m == FT_GIF)) {
+													i = k;
+													break;
+												}
+											}
+										}
+										if (o == i) break;
+									} else if (ret == 2) {
+										for (k=i+1; k<nfiles; k++) {
+											if (marks[k]) {
+												strcpy(fullpath, path);
+												strcat(fullpath, files[k].name);
+												if (((m=formatcheckfile(fullpath)) == FT_BMP) || (m == FT_JPG) || (m == FT_GIF)) {
+													i = k;
+													break;
+												}
+											}
+										}
+										if (o == i) break;
+									}
+								}
+								ret = l;
 							}
 							switch(ret) {
 								case -1: {strcpy(msg0, lang->editor_viewer_error1); break;}

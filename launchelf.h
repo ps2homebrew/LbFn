@@ -27,11 +27,11 @@
 
 #include "cd.h"
 #include "language.h"
-#include "libkbd.h"
-#include "libmouse.h"
+#include <libkbd.h>
+#include <libmouse.h>
 
 // バージョン
-#define LBF_VER "LbFn v0.70.11"
+#define LBF_VER "LbFn v0.70.12"
 
 // 垂直スキャンレート
 //#define SCANRATE (ITO_VMODE_AUTO==ITO_VMODE_PAL ? 50:60)
@@ -76,9 +76,39 @@ enum
 	NUM_COLOR
 };
 
+enum
+{
+	FT_BINARY,
+	FT_ELF,
+	FT_JPG,
+	FT_PNG,
+	FT_GIF,
+	FT_BMP,
+	FT_MP3,
+	FT_AAC,
+	FT_AC3,
+	FT_PCM,
+	FT_TXT,
+	FT_ZIP,
+	FT_RAR,
+	FT_LZH,
+	FT_TEK,
+	FT_GZ,
+	FT_7Z,
+	FT_AVI,
+	FT_MPG,
+	FT_MP4,
+	FT_FNT,
+	FT_XML,
+	FT_HTM,
+	FT_MID,
+	FT_EXE,
+	FT_TYPES,
+};
+
 typedef struct
 {
-    char name[MAX_TITLE];
+	char name[MAX_TITLE];
 	char path[MAX_ELF][MAX_PATH];
 	int padmsk;
 } DIRELF;
@@ -130,7 +160,10 @@ typedef struct
 	int txt_linenumber;
 	int txt_tabmode;
 	int txt_chardisp;
+	int txt_wordwrap;
 	int img_fullscreen;
+	int img_resize;
+	int txt_autodecode;
 	short screen_left[MAX_GSREG];
 	short screen_top[MAX_GSREG];
 	short screen_width[MAX_GSREG];
@@ -385,5 +418,8 @@ int tek_decomp(unsigned char *p, char *q, int size);
 /* viewer.c */
 int txteditfile(int mode, char *file);
 int txtedit(int mode, char *file, unsigned char *buffer, unsigned int size);
-int set_viewerconfig(int linedisp, int tabspaces, int chardisp, int screenmode);
+int formatcheck(unsigned char *buff, unsigned int size);
+int formatcheckfile(char *file);
+int set_viewerconfig(int linedisp, int tabspaces, int chardisp, int screenmode, int textwrap, int drawtype);
+//int set_viewerconfig(int *conf);
 #endif

@@ -111,7 +111,9 @@ void SetLanguage(const int langID)
 		strcpy(lang->editor_l2popup_charset, "Charactor Set");
 		strcpy(lang->editor_l2popup_linenum, "Line Number Count");
 		strcpy(lang->editor_l2popup_flicker, "Flicker Control");
+		strcpy(lang->editor_l2popup_wordwrap, "Auto New Line Mode");
 		strcpy(lang->editor_image_help, "○:FullScreen △/×:Exit  SIZE:%d×%d");
+		strcpy(lang->editor_image_help2, "○:FullScreen L1:Prev R1:Next △/×:Exit SIZE:%d×%d");
 		}
 		//config
 		{
@@ -132,15 +134,19 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_cancel, "CANCEL");
 
 		//button
-		strcpy(lang->conf_launch_btnnum, "NUMBER OF SETTING");
+		strcpy(lang->conf_button_copied, "copied");
+		strcpy(lang->conf_button_deleted, "deleted");
+		strcpy(lang->conf_button_pasted, "pasted");
+		strcpy(lang->conf_launch_btnnum, "BUTTON SETTING OF #%s");
 		strcpy(lang->conf_launch_name, "DISPLAY NAME");
 		strcpy(lang->conf_launch_padmsk, "PAD");
-		strcpy(lang->conf_launch_elfnum, "NUMBER OF PATH");
-		strcpy(lang->conf_launch_path, "PATH");
+		strcpy(lang->conf_launch_path, "PATH%d");
 		strcpy(lang->conf_launch_list, "CHECK ALL PAD SETTING");
 		strcpy(lang->conf_buttonsettinginit, "LAUNCHER SETTING INIT");
-		strcpy(lang->conf_launch_pad0, "Push the button please(Arrow key is cancel).");
+		strcpy(lang->conf_launch_pad0, "Push the button(s) please(Arrow key is cancel).");
 		strcpy(lang->conf_launch_pad2, "DEFAULT is can't change the pad.");
+		strcpy(lang->conf_insert, "Insert");
+		strcpy(lang->conf_delete, "Delete");
 		//color
 		strcpy(lang->conf_background, "BACK GROUND   ");
 		strcpy(lang->conf_frame, "FRAME         ");
@@ -202,8 +208,19 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_linenumber, "DISPLAY LINE NUMBER IN TEXT");
 		strcpy(lang->conf_tabspaces,  "WIDTH OF TAB IN TEXT");
 		strcpy(lang->conf_chardisp,   "DISPLAY RETURN AND TAB CODE IN TEXT");
+		strcpy(lang->conf_wordwrap,   "AUTO NEW LINE IN TEXT");
 		strcpy(lang->conf_fullscreen, "FULLSCREEN MODE IN IMAGE");
+		strcpy(lang->conf_imageresize,"RESIZE IN IMAGE");
+		strcpy(lang->conf_autodecode, "AUTO DECODE OF TEK COMPRESSION");
 		strcpy(lang->conf_viewerinit, "VIEWER SETTING INIT");
+		strcpy(lang->conf_imageresizes[0], "OFF");
+		strcpy(lang->conf_imageresizes[1], "ONNNNNN");
+		strcpy(lang->conf_imageresizes[2], "OFF");
+		strcpy(lang->conf_imageresizes[3], "OFF");
+		strcpy(lang->conf_imageresizes[4], "OFF");
+		strcpy(lang->conf_imageresizes[5], "OFF");
+		strcpy(lang->conf_imageresizes[6], "OFF");
+		strcpy(lang->conf_imageresizes[7], "OFF");
 		//misc
 		strcpy(lang->conf_language, "LANGUAGE");
 		strcpy(lang->conf_language_us, "ENGLISH");
@@ -394,7 +411,9 @@ void SetLanguage(const int langID)
 		strcpy(lang->editor_l2popup_charset, "文字コード変更");
 		strcpy(lang->editor_l2popup_linenum, "行番号表\示");
 		strcpy(lang->editor_l2popup_flicker, "フリッカーコントロール");
+		strcpy(lang->editor_l2popup_wordwrap, "右端で折り返し変更");
 		strcpy(lang->editor_image_help, "○:フルスクリーン △/×:戻る サイズ:%d×%d");
+		strcpy(lang->editor_image_help2, "○:フルスクリーン L1:前へ R1:次へ △/×:戻る サイズ:%d×%d");
 		}
 		//config
 		{
@@ -415,15 +434,19 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_cancel, "キャンセル");
 
 		//button
-		strcpy(lang->conf_launch_btnnum, "登録番号");
+		strcpy(lang->conf_button_copied, "コピーしました");
+		strcpy(lang->conf_button_deleted, "クリアしました");
+		strcpy(lang->conf_button_pasted, "ペーストしました");
+		strcpy(lang->conf_launch_btnnum, "[登録番号:%s] のボタン設定");
 		strcpy(lang->conf_launch_name, "設定名");
 		strcpy(lang->conf_launch_padmsk, "ボタン");
-		strcpy(lang->conf_launch_elfnum, "実行番号");
-		strcpy(lang->conf_launch_path, "ファイル");
+		strcpy(lang->conf_launch_path, "登録%d");
 		strcpy(lang->conf_launch_list, "全てのボタン設定を確認する");
 		strcpy(lang->conf_buttonsettinginit, "「ランチャー設定」を初期化する");
 		strcpy(lang->conf_launch_pad0, "対応させるボタンを押して下さい(方向キーでキャンセル)");
 		strcpy(lang->conf_launch_pad2, "DEFAULT は変更できません");
+		strcpy(lang->conf_insert, "挿入");
+		strcpy(lang->conf_delete, "消去");
 		//color
 		strcpy(lang->conf_background,    "背景の色      ");
 		strcpy(lang->conf_frame,         "フレームの色  ");
@@ -485,8 +508,19 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_linenumber, "テキストの行番号表\示");
 		strcpy(lang->conf_tabspaces,  "テキストのTABの文字数(半角換算)");
 		strcpy(lang->conf_chardisp,   "テキストの改行やTABのマーク表\示");
+		strcpy(lang->conf_wordwrap,   "テキストの行末の折り返し処理");
 		strcpy(lang->conf_fullscreen, "イメージのフルスクリーンモード");
+		strcpy(lang->conf_imageresize,"イメージのリサイズ処理");
+		strcpy(lang->conf_autodecode, "tek圧縮の自動伸張");
 		strcpy(lang->conf_viewerinit, "「ビューア設定」を初期化する");
+		strcpy(lang->conf_imageresizes[0], "OFF");
+		strcpy(lang->conf_imageresizes[1], "画像全体を描画領域全体にリサイズ");
+		strcpy(lang->conf_imageresizes[2], "OFF");
+		strcpy(lang->conf_imageresizes[3], "OFF");
+		strcpy(lang->conf_imageresizes[4], "OFF");
+		strcpy(lang->conf_imageresizes[5], "OFF");
+		strcpy(lang->conf_imageresizes[6], "OFF");
+		strcpy(lang->conf_imageresizes[7], "OFF");
 		//misc
 		strcpy(lang->conf_language, "LANGUAGE");
 		strcpy(lang->conf_language_us, "ENGLISH");

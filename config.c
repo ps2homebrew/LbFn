@@ -36,6 +36,14 @@ enum
 	DEF_USBM_DEVICES = 2,
 	DEF_USBKBD_FLAG = FALSE,
 	DEF_USBMOUSE_FLAG = FALSE,
+
+	DEF_TXT_LINENUM    = FALSE,
+	DEF_TXT_TABMODE    = 8,
+	DEF_TXT_CHARDISP   = FALSE,
+	DEF_IMG_FULLSCREEN = FALSE,
+	DEF_TXT_WORDWRAP   = FALSE,
+	DEF_IMG_RESIZE     = 1,
+	DEF_AUTODECODE     = TRUE,
 };
 
 //CONFIG
@@ -127,16 +135,15 @@ enum
 //LAUNCHER SETTING
 enum
 {
-	LAUNCH_BTNNUM=1,
-	LAUNCH_NAME,
-	LAUNCH_PADMSK,
-	LAUNCH_ELFNUM,
-	LAUNCH_PATH,
-	LAUNCH_LIST,
+	TIMEOUT=1,
 	FILENAME,
 	FILEALL,
-	TIMEOUT,
-	BUTTONINIT,
+	LAUNCH_LIST,
+	LAUNCH_NUM,		// L1:‘O‚Ö R1:ŽŸ‚Ö L2:ƒRƒs[ R2:ƒy[ƒXƒg  :ƒNƒŠƒA
+	LAUNCH_NAME,	// ›:•ÒW ~:ƒNƒŠƒA
+	LAUNCH_PADMSK,	// ›:•ÒW ~:ƒNƒŠƒA
+	LAUNCH_PATH,	// ›:•ÏX ~:ƒNƒŠƒA  :’Ç‰Á
+	BUTTONINIT=LAUNCH_PATH+MAX_ELF,
 };
 
 //FILER SETTING
@@ -236,8 +243,11 @@ enum
 	TXT_LINENUMBER=1,
 	TXT_TABSPACES,
 	TXT_CRLFTABDISP,
+	TXT_WORDWRAP,
 	IMG_FULLSCREEN,
+	TXT_AUTODECODE,
 	VIEWERINIT,
+	IMG_RESIZE,
 };
 
 //MISC SETTING
@@ -551,11 +561,14 @@ void InitDeviceSetting(void)
 // VIEWER SETTING‚ð‰Šú‰»
 void InitViewerSetting(void)
 {
-	setting->txt_linenumber = 0;
-	setting->txt_tabmode = 8;
-	setting->txt_chardisp = 0;
-	setting->img_fullscreen = 0;
-	set_viewerconfig(setting->txt_linenumber, setting->txt_tabmode, setting->txt_chardisp, setting->img_fullscreen);
+	setting->txt_linenumber = DEF_TXT_LINENUM;
+	setting->txt_tabmode 	= DEF_TXT_TABMODE;
+	setting->txt_chardisp 	= DEF_TXT_CHARDISP;
+	setting->img_fullscreen = DEF_IMG_FULLSCREEN;
+	setting->txt_wordwrap	= DEF_TXT_WORDWRAP;
+	setting->img_resize 	= DEF_IMG_RESIZE;
+	setting->txt_autodecode = DEF_AUTODECODE;
+	set_viewerconfig(setting->txt_linenumber, setting->txt_tabmode, setting->txt_chardisp, setting->img_fullscreen, setting->txt_wordwrap, setting->img_resize);
 }
 
 //-------------------------------------------------
@@ -772,6 +785,12 @@ int gscfgtostr(char *dst, int num)
 int strtoelfcfg(int num, char *src)
 {//	buttonX="TITLE",0x0003,"mc:/BOOT/BOOT.ELF","mass:/BOOT.ELF","host:BOOT.ELF"
 	int i,j,k;
+
+	for(j=0;j<MAX_ELF;j++)
+		setting->dirElf[num].path[j][0]=0;
+	setting->dirElf[num].name[0]=0;
+	setting->dirElf[num].padmsk=0;
+
 	i = explodeconfig(src);
 	if (i < 2) return 0;
 	j = 0;
@@ -997,8 +1016,14 @@ void saveConfig(char *mainMsg)
 	if(cnf_setstr("tabmode", tmp)<0) goto error;
 	sprintf(tmp, "%d", setting->txt_chardisp);
 	if(cnf_setstr("chardisp", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->txt_wordwrap);
+	if(cnf_setstr("autowrap", tmp)<0) goto error;
 	sprintf(tmp, "%d", setting->img_fullscreen);
 	if(cnf_setstr("fullscreen", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->img_resize);
+	if(cnf_setstr("imageresize", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->txt_autodecode);
+	if(cnf_setstr("autodecode", tmp)<0) goto error;
 	
 	ret = 0;
 	for(i=6;i<MAX_GSREG;i++){
@@ -1212,7 +1237,7 @@ void loadConfig(char *mainMsg)
 			if(cnf_getstr("language", tmp, "")>=0)
 				settingcheck(&setting->language, tmp, 0, NUM_LANG, DEF_LANGUAGE);
 			if(cnf_getstr("timeout", tmp, "")>=0)
-				settingcheck(&setting->timeout, tmp, 0, 1, DEF_TIMEOUT);
+				settingcheck(&setting->timeout, tmp, 0, 3600, DEF_TIMEOUT);
 			if(cnf_getstr("disc_control", tmp, "")>=0)
 				settingcheck(&setting->discControl, tmp, 0, 1, DEF_DISCCONTROL);
 			if(cnf_getstr("only_filename", tmp, "")>=0)
@@ -1232,7 +1257,7 @@ void loadConfig(char *mainMsg)
 			if(cnf_getstr("export_dir", tmp, "")>=0)
 				strcpy(setting->Exportdir, tmp);
 			if(cnf_getstr("tvmode", tmp, "")>=0)
-				settingcheck(&setting->tvmode, tmp, 0, 15, DEF_TVMODE);
+				settingcheck(&setting->tvmode, tmp, 0, MAX_GSREG-1, DEF_TVMODE);
 			if(cnf_getstr("default_title", tmp, "")>=0)
 				settingcheck(&setting->defaulttitle, tmp, 0, 1, DEF_DEFAULTTITLE);
 			if(cnf_getstr("default_detail", tmp, "")>=0)
@@ -1262,14 +1287,20 @@ void loadConfig(char *mainMsg)
 			if(cnf_getstr("usbmsfile", tmp, "")>=0)
 				strcpy(setting->usbmouse_path, tmp);
 			if(cnf_getstr("linenumber", tmp, "")>=0)
-				settingcheck(&setting->txt_linenumber, tmp, 0, 1, 0);
+				settingcheck(&setting->txt_linenumber, tmp, 0, 1, DEF_TXT_LINENUM);
 			if(cnf_getstr("tabmode", tmp, "")>=0)
-				settingcheck(&setting->txt_tabmode, tmp, 2, 12, 8);
+				settingcheck(&setting->txt_tabmode, tmp, 2, 12, DEF_TXT_TABMODE);
 			if(cnf_getstr("chardisp", tmp, "")>=0)
-				settingcheck(&setting->txt_chardisp, tmp, 0, 1, 0);
+				settingcheck(&setting->txt_chardisp, tmp, 0, 1, DEF_TXT_CHARDISP);
+			if(cnf_getstr("autowrap", tmp, "")>=0)
+				settingcheck(&setting->txt_wordwrap, tmp, 0, 1, DEF_TXT_WORDWRAP);
 			if(cnf_getstr("fullscreen", tmp, "")>=0)
-				settingcheck(&setting->img_fullscreen, tmp, 0, 1, 0);
-			set_viewerconfig(setting->txt_linenumber, setting->txt_tabmode, setting->txt_chardisp, setting->img_fullscreen);
+				settingcheck(&setting->img_fullscreen, tmp, 0, 1, DEF_IMG_FULLSCREEN);
+			if(cnf_getstr("imageresize", tmp, "")>=0)
+				settingcheck(&setting->img_resize, tmp, 0, 15, DEF_IMG_RESIZE);
+			if(cnf_getstr("autodecode", tmp, "")>=0)
+				settingcheck(&setting->txt_autodecode, tmp, 0, 1, DEF_AUTODECODE);
+			set_viewerconfig(setting->txt_linenumber, setting->txt_tabmode, setting->txt_chardisp, setting->img_fullscreen, setting->txt_wordwrap, setting->img_resize);
 
 			for (i=1; i<MAX_GSREG; i++) {
 				sprintf(gsregstr, "gsreg%d", i);
@@ -1815,10 +1846,10 @@ void gsconfig_easy(GSREG *gsregs)
 	char config[16][MAX_PATH];
 	char tmp[MAX_PATH];
 	char psmtable[5][6] = {	"32bpp", "24bpp", "16bpp", "8bpp", "4bpp"};
-	char *onoff[2] = {lang->conf_off, lang->conf_on};
+	char *onoff[3] = {lang->conf_off, lang->conf_on, "FIELD"};
 	char name[64] = "";
 	int maxwidth,maxheight;
-	int totalsize,changed=0,vmoded=0;
+	int totalsize,changed=0,vmoded=0,saved=1;
 	
 	maxwidth = gsregs[tvmode].defwidth * (gsregs[tvmode].magx +1);
 	maxheight = gsregs[tvmode].defheight * (gsregs[tvmode].magy +1);
@@ -1844,14 +1875,16 @@ void gsconfig_easy(GSREG *gsregs)
 			}
 			else if(new_pad & PAD_R1) {
 				if (sel==GSE_CONVERT)
-					if (num < 15) num++;
+					if (num < MAX_GSREG-1) num++;
 			}
 			else if(new_pad & PAD_CIRCLE){
 				if (sel==0) break;
 				if (sel==GSE_NAME) {
 					strcpy(tmp, name);
-					if(keyboard(tmp, 64)>=0)
+					if(keyboard(tmp, 64)>=0){
+						if (strcmp(name, tmp)) saved = 0;
 						strcpy(name, tmp);
+					}
 				} else if (sel == GSE_VMODE) {
 					if (tvmode < 5) tvmode++; else tvmode = 1;
 					maxwidth = gsregs[tvmode].defwidth * (gsregs[tvmode].magx +1);
@@ -1859,27 +1892,27 @@ void gsconfig_easy(GSREG *gsregs)
 					if (maxwidth>2048) maxwidth = 2048;
 					if (width>maxwidth) width = maxwidth;
 					if (height>maxheight) height = maxheight;
-					changed = TRUE;
+					changed = TRUE; saved = 0;
 				} else if (sel == GSE_WIDTH) {
 					if (paddata & PAD_SQUARE)
 						width += 64;
 					else
 						width += 4;
 					if (width>maxwidth) width = 128;
-					changed = TRUE;
+					changed = TRUE; saved = 0;
 				} else if (sel == GSE_HEIGHT) {
 					if (paddata & PAD_SQUARE)
 						height += 32;
 					else
 						height += 4;
 					if (height>maxheight) height = 128;
-					changed = TRUE;
+					changed = TRUE; saved = 0;
 				} else if (sel == GSE_DEPTH) {
 					depth = depth == ITO_RGBA32 ? ITO_RGBA16:ITO_RGBA32;
-					changed = TRUE;
+					changed = TRUE; saved = 0;
 				} else if (sel == GSE_DOUBLE) {
-					dbl = (dbl +1) % 2;
-					changed = TRUE;
+					dbl = (dbl +1) % 3;
+					changed = TRUE; saved = 0;
 				} else if (sel == GSE_AUTOAPPLY) {
 					autoapply ^= 1;
 				} else if (sel == GSE_CONVERT) {
@@ -1887,13 +1920,14 @@ void gsconfig_easy(GSREG *gsregs)
 					if (gsregs[num].name[0] == 0)
 						sprintf(gsregs[num].name, "CFG (%s,%dx%d)", gsregs[tvmode].name, width, height);
 					gsregs[num].loaded = TRUE;
+					saved = 1;
 				} else if (sel == GSE_INIT) {
 					//tvmode=ITO_VMODE_AUTO-1;
 					width=gsregs[tvmode].width;
 					height=gsregs[tvmode].height;
 					depth=gsregs[tvmode].psm;
 					dbl=gsregs[tvmode].doublebuffer;
-					changed = TRUE;
+					changed = TRUE; saved = 0;
 				}
 			}
 			else if(new_pad & PAD_CROSS){
@@ -1906,27 +1940,27 @@ void gsconfig_easy(GSREG *gsregs)
 					if (maxwidth>2048) maxwidth = 2048;
 					if (width>maxwidth) width = maxwidth;
 					if (height>maxheight) height = maxheight;
-					changed = TRUE;
+					changed = TRUE; saved = 0;
 				} else if (sel==GSE_WIDTH) {
 					if (paddata & PAD_SQUARE)
 						width -= 64;
 					else
 						width -= 4;
 					if (width<128) width = maxwidth;
-					changed = TRUE;
+					changed = TRUE; saved = 0;
 				} else if (sel==GSE_HEIGHT) {
 					if (paddata & PAD_SQUARE)
 						height -= 32;
 					else
 						height -= 4;
 					if (height<128) height = maxheight;
-					changed = TRUE;
+					changed = TRUE; saved = 0;
 				} else if (sel == GSE_INIT) {
 					width=gsregs[tvmode].defwidth;
 					height=gsregs[tvmode].defheight;
 					depth=gsregs[tvmode].psm;
 					dbl=gsregs[tvmode].doublebuffer;
-					changed = TRUE;
+					changed = TRUE; saved = 0;
 				}
 			}
 			else if(new_pad & PAD_SQUARE) {
@@ -1947,7 +1981,11 @@ void gsconfig_easy(GSREG *gsregs)
 						height=gsregs[num].height;
 						depth=gsregs[num].psm;
 						dbl=gsregs[num].doublebuffer;
-						changed = TRUE;
+						if (gsregs[num].ffmode) {
+							dbl = 2;
+							height <<= 1;
+						}
+						changed = TRUE; saved = 0;
 						maxwidth = gsregs[tvmode].defwidth * (gsregs[tvmode].magx +1);
 						maxheight = gsregs[tvmode].defheight * (gsregs[tvmode].magy +1);
 						if (maxwidth>2048) maxwidth = 2048;
@@ -1961,20 +1999,25 @@ void gsconfig_easy(GSREG *gsregs)
 		if (changed) {
 			gsregs[0] 				= gsregs[tvmode];
 			gsregs[0].width			= width;
-			gsregs[0].height		= height;
+			gsregs[0].height		= height >> (dbl > 1);
 			i						= (gsregs[tvmode].defwidth * (gsregs[0].magx +1)) / width;
 			if (i < 1) i = 1;
 			if (i > 16) i = 16;
 			gsregs[0].magx			= --i;
-			i						= (gsregs[tvmode].defheight * (gsregs[0].magy +1)) / height;
-			if (i < 1) i = 1;
-			if (i > 4) i = 4;
-			gsregs[0].magy			= --i;
+			if (dbl < 2) {
+				i					= (gsregs[tvmode].defheight * (gsregs[0].magy +1)) / height;
+				if (i < 1) i = 1;
+				if (i > 4) i = 4;
+				gsregs[0].magy		= --i;
+			} else {
+				gsregs[0].magy		= 0;
+			}
 			gsregs[0].psm			= depth;
 			gsregs[0].dither		= 0;
-			gsregs[0].doublebuffer	= dbl;
+			gsregs[0].doublebuffer	= dbl > 0;
+			gsregs[0].ffmode		= dbl > 1;
 			gsregs[0].defwidth		= width;
-			gsregs[0].defheight		= height;
+			gsregs[0].defheight		= height >> (dbl > 1);
 			gsregs[0].loaded		= TRUE;
 			strcpy(gsregs[0].name, name);
 			if (autoapply) {
@@ -2001,14 +2044,17 @@ void gsconfig_easy(GSREG *gsregs)
 			vmoded = FALSE;
 			changed = TRUE;
 		}
-		totalsize = ((((width+63)&-64) * height +8191) & -8192) * (dbl+1) * ((depth == 0)*2+2);
+		totalsize = ((((width+63)&-64) * (height >> (dbl > 1))+8191) & -8192) * ((dbl>0)+1) * ((depth == 0)*2+2);
 
 		//
 		if (redraw) {
 			strcpy(config[0], "..");
 			for(i=1;i<=GSE_INIT;i++){
 				if (i==GSE_NAME)
-					sprintf(config[i], "%s: %s", lang->gs_name, name);
+					if (name[0])
+						sprintf(config[i], "%s: %s", lang->gs_name, name);
+					else
+						sprintf(config[i], "%s: (auto)", lang->gs_name);
 				else if (i==GSE_VMODE)
 					sprintf(config[i], "%s: %s", lang->gs_vmode, gsregs[tvmode].name);
 				else if (i==GSE_WIDTH)
@@ -2022,7 +2068,11 @@ void gsconfig_easy(GSREG *gsregs)
 				else if (i==GSE_INFO)
 					sprintf(config[i], "%s: %4dKB/4096KB ", lang->gs_vramsize, (totalsize+1023)>>10);
 				else if (i==GSE_CONVERT) {
-					sprintf(config[i+1], "[%2d:%s]", num, gsregs[num].name);
+					if (gsregs[num].loaded != 1) {
+						sprintf(config[i+1], "[%2d:(none)]", num);
+					} else {
+						sprintf(config[i+1], "[%2d:%s]", num, gsregs[num].name);
+					}
 					sprintf(config[i], lang->gse_convert, config[i+1]);
 				}
 				else if (i==GSE_AUTOAPPLY)
@@ -2238,122 +2288,10 @@ void gsconfig(char *mainMsg)
 }
 
 //-------------------------------------------------
-//FreeMcBOOT Configture
-void fmcb_cfg(char *mainMsg)
-{
-	cnf_init();
-	cnf_load("mc0:/SYS-CONF/FREEMCB.CNF");
-	/*	uFree McBoot Configurator 1.3 beta 6v based
-				Load CNF from: 
-				Configutre launcher buttons...
-					..
-					BUTTON: 
-					PATH1:
-					PATH2:
-					PATH3:
-					CHECK ALL LAUNCHER SETTINGS
-				Configutre OSDSYS options...
-					..
-					Hacked OSDSYS:
-					Configutre Item xx:
-						..
-						Name:
-						Path1:
-						Path2:
-						Path3:
-					Configutre Scrolling Options...
-						..
-						Scroll Menu:
-						Displayed Items:
-						Menu y:
-						Cursor Max Velocity:
-						Cursor Acceleration:
-						Left Cursor:
-						Right Cursor:
-						Top Delimiter:
-						Bottom Delimiter:
-					Video Mode:
-					Skip MC update check:
-					Skip HDD update check:
-					Skip Disc Boot:
-					Skip Sony Logo:
-					Go to Browser:
-					Selected Color:		R:00  G:00  B:00  A:00  ¡
-					Unselected Color:	R:00  G:00  B:00  A:00  ¡
-					Menu X:
-					Enter:				X:        Y:
-					Version:			X:        Y:
-				Configutre ESR path...
-					..
-					Path1:
-					Path2:
-					Path3:
-				FastBoot:
-				Debug Screen:
-				Pad Delay:
-				Save CNF to:
-				Return
-
-CNF_version
-Debug_Screen
-FastBoot
-ESR_Path_E1
-ESR_Path_E2
-ESR_Path_E3
-pad_delay
-LK_Auto_E1
-LK_Circle_E1
-LK_Cross_E1
-LK_Square_E1
-LK_Triangle_E1
-LK_L1_E1
-LK_R1_E1
-LK_L2_E1
-LK_R2_E1
-LK_L3_E1
-LK_R3_E1
-LK_Up_E1
-LK_Down_E1
-LK_Left_E1
-LK_Right_E1
-LK_Start_E1
-LK_Select_E1
-hacked_OSDSYS
-OSDSYS_video_mode
-OSDSYS_Skip_Disc
-OSDSYS_Skip_Logo
-OSDSYS_Inner_Browser
-OSDSYS_selected_color
-OSDSYS_unselected_color
-OSDSYS_scroll_menu
-OSDSYS_menu_x
-OSDSYS_menu_y
-OSDSYS_enter_x
-OSDSYS_enter_y
-OSDSYS_version_x
-OSDSYS_version_y
-OSDSYS_cursor_max_velocity
-OSDSYS_cursor_acceleration
-OSDSYS_left_cursor
-OSDSYS_right_cursor
-OSDSYS_menu_top_delimiter
-OSDSYS_menu_bottom_delimiter
-OSDSYS_num_displayed_items
-OSDSYS_Skip_MC
-OSDSYS_Skip_HDD
-name_OSDSYS_ITEM_?
-path?_OSDSYS_ITEM_?
-
-	*/
-	cnf_free();
-	return;
-}
-
-//-------------------------------------------------
 //ƒ‰ƒ“ƒ`ƒƒ[Ý’è
 void config_button(SETTING *setting)
 {
-	char c[MAX_PATH];
+	char c[MAX_PATH], tmp[MAX_PATH] = "";
 	char msg0[MAX_PATH], msg1[MAX_PATH];
 	uint64 color;
 	int nList=0, sel=0, top=0, redraw=fieldbuffers;
@@ -2362,92 +2300,105 @@ void config_button(SETTING *setting)
 	int i,j,k;
 	char config[16][MAX_PATH];
 	char *textbuffer=0;
-	int textsize=0;
-	int btn=0, elf=0, timeout;
+	int textsize=0, btn=0, /* elfs=MAX_ELF, */timeout;
 	char none[2][16] = {"(none)", "DEFAULT"};
+	DIRELF cbrd = {
+		.name = "",
+		.path = {"","","","",""},
+		.padmsk = 0
+	};
 	
 	while(1){
 		waitPadReady(0, 0);
 		if(readpad()){
 			if(new_pad) {pushed=TRUE; redraw = framebuffers;}
-			if(new_pad & PAD_UP)
+			if(new_pad & PAD_TRIANGLE)
+				break;
+			else if(new_pad & PAD_UP)
 				sel--;
 			else if(new_pad & PAD_DOWN)
 				sel++;
-			else if(new_pad & PAD_LEFT){
-				if ((sel == LAUNCH_BTNNUM) || (sel == LAUNCH_NAME)){
-					if (btn > 0)
-						btn--;
-				} else if ((sel == LAUNCH_ELFNUM) || (sel == LAUNCH_PATH)){
-					if (elf > 0)
-						elf--;
-				} else if (sel >= LAUNCH_LIST) {
-					sel-=MAX_ROWS/2;
-					//if (sel==LAUNCH_BTNNUM) sel--;
-					//if (sel==LAUNCH_ELFNUM) sel--;
-					if ((sel>0) && (sel<LAUNCH_LIST)) sel=0;
+			else if(new_pad & PAD_LEFT)
+				sel-=MAX_ROWS/2;
+			else if(new_pad & PAD_RIGHT)
+				sel+=MAX_ROWS/2;
+			else if(new_pad & PAD_L1)
+				btn-=btn>0;
+			else if(new_pad & PAD_R1)
+				btn+=btn<MAX_BUTTON-1;
+			else if (new_pad & PAD_L2) {		// copy
+				pushed=FALSE;
+				strcpy(msg0, lang->conf_button_copied);
+				if (sel == LAUNCH_NUM) {
+					cbrd = setting->dirElf[btn];
+				} else if (sel == LAUNCH_NAME) {
+					strcpy(cbrd.name, setting->dirElf[btn].name);
+				} else if (sel == LAUNCH_PADMSK) {
+					cbrd.padmsk = setting->dirElf[btn].padmsk;
+				} else if ((sel >= LAUNCH_PATH) && (sel < LAUNCH_PATH+MAX_ELF)) {
+					strcpy(tmp, setting->dirElf[btn].path[sel-LAUNCH_PATH]);
+					strcpy(cbrd.path[sel-LAUNCH_PATH], tmp);
+				} else {
+					pushed=TRUE;
 				}
-			} else if(new_pad & PAD_RIGHT) {
-				if ((sel == LAUNCH_BTNNUM) || (sel == LAUNCH_NAME)){
-					if (btn < MAX_BUTTON-1)
-						btn++;
-				} else if ((sel == LAUNCH_ELFNUM) || (sel == LAUNCH_PATH)){
-					if (elf < MAX_ELF-1)
-						elf++;
-				} else if ((sel == 0) || (sel >= LAUNCH_LIST)) {
-					sel+=MAX_ROWS/2;
-					//if (sel==LAUNCH_BTNNUM) sel++;
-					//if (sel==LAUNCH_ELFNUM) sel++;
-					if (sel<LAUNCH_LIST) sel = LAUNCH_LIST;
+			}
+			else if (new_pad & PAD_R2) {		// paste
+				pushed=FALSE;
+				strcpy(msg0, lang->conf_button_pasted);
+				if (sel == LAUNCH_NUM) {
+					setting->dirElf[btn] = cbrd;
+				} else if (sel == LAUNCH_NAME) {
+					strcpy(setting->dirElf[btn].name, cbrd.name);
+				} else if (sel == LAUNCH_PADMSK) {
+					setting->dirElf[btn].padmsk = cbrd.padmsk;
+				} else if ((sel >= LAUNCH_PATH) && (sel < LAUNCH_PATH+MAX_ELF)) {
+					strcpy(setting->dirElf[btn].path[sel-LAUNCH_PATH], tmp);
+				} else {
+					pushed=TRUE;
 				}
-			} else if(new_pad & PAD_L1) {
-				//if (sel == LAUNCH_PATH)
-					if (btn>0) btn--;
-			} else if(new_pad & PAD_R1) {
-				//if (sel == LAUNCH_PATH)
-					if (btn<MAX_BUTTON-1) btn++;
-			} else if(new_pad & PAD_TRIANGLE)
-				break;
+			}
+			else if(new_pad & PAD_CROSS){	//~
+				if(sel==TIMEOUT) {
+					if (paddata & PAD_SQUARE)
+						setting->timeout-=60;
+					else
+						setting->timeout--;
+					if (setting->timeout < 1)
+						setting->timeout = 1;
+				}
+				else if (sel == LAUNCH_NUM) {
+					pushed=FALSE;
+					memset(&setting->dirElf[btn], 0, sizeof(DIRELF));
+					strcpy(msg0, lang->conf_button_deleted);
+				} else if (sel == LAUNCH_NAME) {
+					pushed=FALSE;
+					setting->dirElf[btn].name[0] = 0;
+					strcpy(msg0, lang->conf_button_deleted);
+				} else if (sel == LAUNCH_PADMSK) {
+					pushed=FALSE;
+					setting->dirElf[btn].padmsk = 0;
+					strcpy(msg0, lang->conf_button_deleted);
+				} else if ((sel >= LAUNCH_PATH) && (sel < LAUNCH_PATH+MAX_ELF)) {
+					pushed=FALSE;
+					setting->dirElf[btn].path[sel-LAUNCH_PATH][0] = 0;
+					strcpy(msg0, lang->conf_button_deleted);
+				}
+			}
 			else if(new_pad & PAD_CIRCLE){
 				if(sel==0)
 					break;
-				else if (sel == LAUNCH_BTNNUM) {
-					if (btn < MAX_BUTTON-1)
-						btn++;
-				} else if (sel == LAUNCH_NAME) {
-					strcpy(c, setting->dirElf[btn].name);
-					if (keyboard(c, MAX_TITLE)>=0) strcpy(setting->dirElf[btn].name, c);
-				} else if (sel == LAUNCH_PADMSK) {
-					if (btn != 0) {
-						drawDark();
-						drawMsg(lang->conf_launch_pad0);
-						timeout=-1;
-						i=0;
-						while(timeout != 0){
-							itoVSync();
-							waitPadReady(0, 0);
-							if (readpad()) {
-								if(new_pad) {
-									i|=new_pad;
-									timeout=8;
-								};
-								if(new_pad & (PAD_LEFT|PAD_RIGHT|PAD_UP|PAD_DOWN))
-									break;
-							}
-							if (timeout > 0) timeout--;
-						}
-						if (!(i & (PAD_LEFT|PAD_RIGHT|PAD_UP|PAD_DOWN)))
-							setting->dirElf[btn].padmsk=i;
-					} else {
-						pushed = FALSE;
-						strcpy(msg0, lang->conf_launch_pad2);
-					}
-				} else if (sel == LAUNCH_ELFNUM) {
-					if (elf < MAX_ELF-1)
-						elf++;
-				} else if (sel == LAUNCH_PATH) {
-					getFilePath(setting->dirElf[btn].path[elf], ELF_FILE);
+				else if(sel==TIMEOUT) {
+					if (paddata & PAD_SQUARE)
+						setting->timeout+=60;
+					else
+						setting->timeout++;
+					if (setting->timeout > 3600)
+						setting->timeout = 3600;
 				}
+				else if(sel==FILENAME)
+					setting->filename = !setting->filename;
+				else if(sel==FILEALL)
+					setting->fileall = !setting->fileall;
 				else if(sel==LAUNCH_LIST) {
 					// [ 1] TITLE___________________ BUTTON_____ ELFS...
 					textsize=0;
@@ -2491,21 +2442,40 @@ void config_button(SETTING *setting)
 						}
 					textsize-=2;
 					sprintf(c, "%s/%s", msg0, lang->conf_launch_list);
-					set_viewerconfig(0, 0, 0, 0);
+					set_viewerconfig(0, 0, 0, 0, 0, 0);
 					txtedit(0, c, textbuffer, textsize);
-					set_viewerconfig(setting->txt_linenumber, setting->txt_tabmode, setting->txt_chardisp, setting->img_fullscreen);
+					set_viewerconfig(setting->txt_linenumber, setting->txt_tabmode, setting->txt_chardisp, setting->img_fullscreen, setting->txt_wordwrap, setting->img_resize);
 				}
-				else if(sel==FILENAME)
-					setting->filename = !setting->filename;
-				else if(sel==FILEALL)
-					setting->fileall = !setting->fileall;
-				else if(sel==TIMEOUT) {
-					if (paddata & PAD_SQUARE)
-						setting->timeout+=60;
-					else
-						setting->timeout++;
-					if (setting->timeout > 3600)
-						setting->timeout = 3600;
+				else if (sel == LAUNCH_NAME) {
+					strcpy(c, setting->dirElf[btn].name);
+					if (keyboard(c, MAX_TITLE)>=0) strcpy(setting->dirElf[btn].name, c);
+				} else if (sel == LAUNCH_PADMSK) {
+					if (btn != 0) {
+						drawDark();
+						drawMsg(lang->conf_launch_pad0);
+						timeout=-1;
+						i=0;
+						while(timeout != 0){
+							itoVSync();
+							waitPadReady(0, 0);
+							if (readpad()) {
+								if(new_pad) {
+									i|=new_pad;
+									timeout=8;
+								};
+								if(new_pad & (PAD_LEFT|PAD_RIGHT|PAD_UP|PAD_DOWN))
+									break;
+							}
+							if (timeout > 0) timeout--;
+						}
+						if (!(i & (PAD_LEFT|PAD_RIGHT|PAD_UP|PAD_DOWN)))
+							setting->dirElf[btn].padmsk=i;
+					} else {
+						pushed = FALSE;
+						strcpy(msg0, lang->conf_launch_pad2);
+					}
+				} else if ((sel >= LAUNCH_PATH) && (sel < LAUNCH_PATH+MAX_ELF)) {
+					getFilePath(setting->dirElf[btn].path[sel-LAUNCH_PATH], ELF_FILE);
 				}
 				else if(sel==BUTTONINIT){
 					InitButtonSetting();
@@ -2513,34 +2483,15 @@ void config_button(SETTING *setting)
 					//pushed = FALSE;
 				}
 			}
-			else if(new_pad & PAD_CROSS){	//~
-				//if(sel>=DEFAULT && sel<=LAUNCHER12)
-				if (sel == LAUNCH_PATH)
-					setting->dirElf[btn].path[elf][0]=0;
-				else if (sel == LAUNCH_NAME)
-					setting->dirElf[btn].name[0]=0;
-				else if (sel == LAUNCH_BTNNUM){
-					if (btn > 0)
-						btn--;
-				} else if (sel == LAUNCH_ELFNUM){
-					if (elf > 0)
-						elf--;
-				}
-				else if(sel==TIMEOUT) {
-					if (paddata & PAD_SQUARE)
-						setting->timeout-=60;
-					else
-						setting->timeout--;
-					if (setting->timeout < 1)
-						setting->timeout = 1;
-				}
-			}
 			else if(new_pad & PAD_SQUARE){
-				if (sel == LAUNCH_PATH)
-					if(!strncmp(setting->dirElf[btn].path[elf], "mc", 2) && (setting->dirElf[btn].path[elf][3] == ':')){
-						sprintf(c, "mc%s", &setting->dirElf[btn].path[elf][3]);
-						strcpy(setting->dirElf[btn].path[elf], c);
+				if ((sel >= LAUNCH_PATH) && (sel < LAUNCH_PATH+MAX_ELF)) {
+					if(!strncmp(setting->dirElf[btn].path[sel-LAUNCH_PATH], "mc", 2) && (setting->dirElf[btn].path[sel-LAUNCH_PATH][3] == ':')){
+						sprintf(c, "mc%s", &setting->dirElf[btn].path[sel-LAUNCH_PATH][3]);
+						strcpy(setting->dirElf[btn].path[sel-LAUNCH_PATH], c);
 					}
+				} else if (sel == TIMEOUT) {
+					redraw = 0;
+				}
 			}
 		}
 		if (redraw) {
@@ -2548,23 +2499,9 @@ void config_button(SETTING *setting)
 				if(i==0){
 					strcpy(config[i], "..");
 				}
-				else if(i==LAUNCH_BTNNUM)
-					if (btn == 0)
-						sprintf(config[i], "%s: DEFAULT", lang->conf_launch_btnnum);
-					else
-						sprintf(config[i], "%s: %d", lang->conf_launch_btnnum, btn);
-				else if(i==LAUNCH_NAME)
-					sprintf(config[i], "%s: %s", lang->conf_launch_name, setting->dirElf[btn].name);
-				else if(i==LAUNCH_PADMSK) {
-					padmsktostr(c, setting->dirElf[btn].padmsk, "(none)");
-					sprintf(config[i], "%s: %s", lang->conf_launch_padmsk, c);
+				else if(i==TIMEOUT){	//TIMEOUT
+					sprintf(config[i], "%s: %d", lang->conf_timeout, setting->timeout);
 				}
-				else if(i==LAUNCH_ELFNUM)
-					sprintf(config[i], "%s: %d", lang->conf_launch_elfnum, elf+1);
-				else if(i==LAUNCH_PATH)
-					sprintf(config[i], "%s: %s", lang->conf_launch_path, setting->dirElf[btn].path[elf]);
-				else if(i==LAUNCH_LIST)
-					strcpy(config[i], lang->conf_launch_list);
 				else if(i==FILENAME){	//PRINT ONLY FILENAME
 					sprintf(config[i], "%s: " ,lang->conf_print_only_filename);
 					if(setting->filename)
@@ -2579,8 +2516,25 @@ void config_button(SETTING *setting)
 					else
 						strcat(config[i], lang->conf_off);
 				}
-				else if(i==TIMEOUT){	//TIMEOUT
-					sprintf(config[i], "%s: %d", lang->conf_timeout, setting->timeout);
+				else if(i==LAUNCH_LIST)
+					strcpy(config[i], lang->conf_launch_list);
+				else if(i==LAUNCH_NUM) {
+					if (btn == 0)
+						sprintf(config[i], lang->conf_launch_btnnum, "DEFAULT");
+					else {
+						sprintf(config[i+1], "%d", btn);
+						sprintf(config[i], lang->conf_launch_btnnum, config[i+1]);
+					}
+				}
+				else if(i==LAUNCH_NAME)
+					sprintf(config[i], "%s: %s", lang->conf_launch_name, setting->dirElf[btn].name);
+				else if(i==LAUNCH_PADMSK) {
+					padmsktostr(c, setting->dirElf[btn].padmsk, "(none)");
+					sprintf(config[i], "%s: %s", lang->conf_launch_padmsk, c);
+				}
+				else if((i>=LAUNCH_PATH) && (i<LAUNCH_PATH+MAX_ELF)){
+					sprintf(config[i+1], lang->conf_launch_path, i-LAUNCH_PATH+1);
+					sprintf(config[i], "%s: %s", config[i+1], setting->dirElf[btn].path[i-LAUNCH_PATH]);
 				}
 				else if(i==BUTTONINIT){
 					strcpy(config[i], lang->conf_buttonsettinginit);
@@ -2635,25 +2589,27 @@ void config_button(SETTING *setting)
 			// ‘€ìà–¾
 			if(sel==0)
 				sprintf(msg1, "›:%s ¢:%s", lang->gen_ok, lang->conf_up);
-			else if((sel==LAUNCH_BTNNUM)||(sel==LAUNCH_ELFNUM))
-				sprintf(msg1, "›:%s ~:%s ¢:%s", lang->conf_add, lang->conf_away, lang->conf_up);
-			else if(sel==LAUNCH_NAME)
-				sprintf(msg1, "›:%s ~:%s ¢:%s", lang->conf_edit, lang->conf_clear, lang->conf_up);
-			else if(sel==LAUNCH_PATH)
-				if ((!strncmp(setting->dirElf[btn].path[elf], "mc", 2)) && (setting->dirElf[btn].path[elf][3] == ':'))
-					sprintf(msg1, "›:%s ~:%s  :mc0,1->mc ¢:%s", lang->conf_edit, lang->conf_clear, lang->conf_up);
-				else
-					sprintf(msg1, "›:%s ~:%s ¢:%s", lang->conf_edit, lang->conf_clear, lang->conf_up);
-			else if(sel==LAUNCH_PADMSK)
-				sprintf(msg1, "›:%s ¢:%s", lang->conf_change, lang->conf_up);
-			else if(sel==LAUNCH_LIST)
-				sprintf(msg1, "›:%s ¢:%s", lang->gen_ok, lang->conf_up);
+			else if(sel==TIMEOUT)
+				sprintf(msg1, "›:%s ~:%s + :%s ¢:%s", lang->conf_add, lang->conf_away, lang->conf_fast, lang->conf_up);
 			else if(sel==FILENAME)
 				sprintf(msg1, "›:%s ¢:%s", lang->conf_change, lang->conf_up);
 			else if(sel==FILEALL)
 				sprintf(msg1, "›:%s ¢:%s", lang->conf_change, lang->conf_up);
-			else if(sel==TIMEOUT)
-				sprintf(msg1, "›:%s ~:%s ¢:%s", lang->conf_add, lang->conf_away, lang->conf_up);
+			else if(sel==LAUNCH_LIST)
+				sprintf(msg1, "›:%s ¢:%s", lang->gen_ok, lang->conf_up);
+			else if(sel==LAUNCH_NUM)
+				sprintf(msg1, "~:%s L1:%s R1:%s L2:%s R2:%s ¢:%s", lang->conf_clear, lang->gs_prev, lang->gs_next, lang->gs_copy, lang->gs_paste, lang->conf_up);
+				//			   ›:•ÒW ~:íœ L1:‘O‚Ö R1:ŽŸ‚Ö L2:ƒRƒs[(‘S‘Ì) R2:ƒy[ƒXƒg(‘S‘Ì)
+			else if(sel==LAUNCH_NAME)
+				sprintf(msg1, "›:%s ~:%s L1:%s R1:%s L2:%s R2:%s ¢:%s", lang->conf_edit, lang->conf_clear, lang->gs_prev, lang->gs_next, lang->gs_copy, lang->gs_paste, lang->conf_up);
+			else if(sel==LAUNCH_PADMSK)
+				sprintf(msg1, "›:%s ~:%s L1:%s R1:%s L2:%s R2:%s ¢:%s", lang->conf_change, lang->conf_clear, lang->gs_prev, lang->gs_next, lang->gs_copy, lang->gs_paste, lang->conf_up);
+			else if((sel>=LAUNCH_PATH) && (sel<LAUNCH_PATH+MAX_ELF)) {
+				if ((!strncmp(setting->dirElf[btn].path[sel-LAUNCH_PATH], "mc", 2)) && (setting->dirElf[btn].path[sel-LAUNCH_PATH][3] == ':'))
+					sprintf(msg1, "›:%s ~:%s  :¨mc L1:%s R1:%s L2:%s R2:%s ¢:%s", lang->conf_edit, lang->conf_clear, lang->gs_prev, lang->gs_next, lang->gs_copy, lang->gs_paste, lang->conf_up);
+				else
+					sprintf(msg1, "›:%s ~:%s L1:%s R1:%s L2:%s R2:%s ¢:%s", lang->conf_edit, lang->conf_clear, lang->gs_prev, lang->gs_next, lang->gs_copy, lang->gs_paste, lang->conf_up);
+			}
 			else if(sel==BUTTONINIT)
 				sprintf(msg1, "›:%s ¢:%s", lang->gen_ok, lang->conf_up);
 			setScrTmp(msg0, msg1);
@@ -2923,6 +2879,7 @@ void config_screen(SETTING *setting)
 				else if(sel==TVMODE){	//TVMODE
 					//tvmode•ÏX
 					config_screen_mode(setting);
+					redraw = framebuffers;
 				}
 				else if(sel==FONTHALF){	// fonthalf
 					if (GetFontHalf() > -7) {
@@ -3508,11 +3465,20 @@ void config_viewer(SETTING *setting)
 				else if(sel==IMG_FULLSCREEN){
 					setting->img_fullscreen = !setting->img_fullscreen;
 				}
+				else if(sel==TXT_WORDWRAP){
+					setting->txt_wordwrap ^= 1;
+				}
+				else if(sel==IMG_RESIZE){
+					setting->img_resize+=1;
+				}
+				else if(sel==TXT_AUTODECODE){
+					setting->txt_autodecode ^= 1;
+				}
 				else if(sel==VIEWERINIT){
 					//init
 					InitViewerSetting();
 				}
-				set_viewerconfig(setting->txt_linenumber, setting->txt_tabmode, setting->txt_chardisp, setting->img_fullscreen);
+				set_viewerconfig(setting->txt_linenumber, setting->txt_tabmode, setting->txt_chardisp, setting->img_fullscreen, setting->txt_wordwrap, setting->img_resize);
 			}
 			else if(new_pad & PAD_CROSS){	//~
 				if(sel==TXT_TABSPACES){
@@ -3520,7 +3486,9 @@ void config_viewer(SETTING *setting)
 						setting->txt_tabmode = setting->txt_tabmode - 2;
 					else
 						setting->txt_tabmode = 12;
-					set_viewerconfig(setting->txt_linenumber, setting->txt_tabmode, setting->txt_chardisp, setting->img_fullscreen);
+					set_viewerconfig(setting->txt_linenumber, setting->txt_tabmode, setting->txt_chardisp, setting->img_fullscreen, setting->txt_wordwrap, setting->img_resize);
+				} else if(sel==IMG_RESIZE){
+					setting->img_resize-=1;
 				}
 			}
 		}
@@ -3542,6 +3510,15 @@ void config_viewer(SETTING *setting)
 				}
 				else if(i==IMG_FULLSCREEN){
 					sprintf(config[i], "%s: %s", lang->conf_fullscreen, onoff[setting->img_fullscreen & 1]);
+				}
+				else if(i==TXT_WORDWRAP) {
+					sprintf(config[i], "%s: %s", lang->conf_wordwrap, onoff[setting->txt_wordwrap & 1]);
+				}
+				else if(i==IMG_RESIZE) {
+					sprintf(config[i], "%s: %s", lang->conf_imageresize, onoff[setting->img_resize & 1]);
+				}
+				else if(i==TXT_AUTODECODE) {
+					sprintf(config[i], "%s: %s", lang->conf_autodecode, onoff[setting->txt_autodecode & 1]);
 				}
 				else if(i==VIEWERINIT){
 					strcpy(config[i], lang->conf_viewerinit);
@@ -3596,16 +3573,15 @@ void config_viewer(SETTING *setting)
 			// ‘€ìà–¾
 			if(sel==0)
 				sprintf(msg1, "›:%s ¢:%s", lang->gen_ok, lang->conf_up);
-			else if(sel==TXT_LINENUMBER)
-				sprintf(msg1, "›:%s ¢:%s", lang->conf_change, lang->conf_up);
+			//else if(sel==TXT_LINENUMBER)
 			else if(sel==TXT_TABSPACES)
 				sprintf(msg1, "›:%s ~:%s ¢:%s", lang->conf_add, lang->conf_away, lang->conf_up);
-			else if(sel==TXT_CRLFTABDISP)
-				sprintf(msg1, "›:%s ¢:%s", lang->conf_change, lang->conf_up);
-			else if(sel==IMG_FULLSCREEN)
-				sprintf(msg1, "›:%s ¢:%s", lang->conf_change, lang->conf_up);
+			//else if(sel==TXT_CRLFTABDISP)
+			//else if(sel==IMG_FULLSCREEN)
 			else if(sel==VIEWERINIT)
 				sprintf(msg1, "›:%s ¢:%s", lang->gen_ok, lang->conf_up);
+			else
+				sprintf(msg1, "›:%s ¢:%s", lang->conf_change, lang->conf_up);
 			setScrTmp(msg0, msg1);
 			drawScr();
 			redraw--;
@@ -4209,7 +4185,10 @@ void config(char *mainMsg)
 			else if(new_pad & PAD_CIRCLE){
 				if(sel==BUTTONSETTING) config_button(setting);
 				if(sel==FILERSETTING) config_filer(setting);
-				if(sel==SCREENSETTING) config_screen(setting);
+				if(sel==SCREENSETTING) {
+					config_screen(setting);
+					redraw = fieldbuffers;
+				}
 				if(sel==COLORSETTING) config_color(setting);
 				if(sel==FONTSETTING) config_font(setting);
 				if(sel==DEVICESETTING) config_device(setting);
@@ -4248,7 +4227,7 @@ void config(char *mainMsg)
 					itoGsReset();
 					setupito(setting->tvmode);
 					SetHeight();
-					set_viewerconfig(setting->txt_linenumber, setting->txt_tabmode, setting->txt_chardisp, setting->img_fullscreen);
+					set_viewerconfig(setting->txt_linenumber, setting->txt_tabmode, setting->txt_chardisp, setting->img_fullscreen, setting->txt_wordwrap, setting->img_resize);
 					mainMsg[0] = 0;
 					break;
 				}

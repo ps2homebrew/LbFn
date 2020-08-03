@@ -1379,6 +1379,110 @@ void LaunchMain(void)
 			}
 		}
 
+
+		//キー入力
+		waitPadReady(0,0);
+		if(readpad()){
+			if(new_pad) {cancel=TRUE; timeout = 0; redraw = framebuffers;}
+			if(mode==BUTTON){
+				if(new_pad & PAD_UP){
+					sel=nList-1;
+					mode=DPAD;
+					mode_changed=TRUE;
+				}
+				else if(new_pad & PAD_DOWN){
+					sel=0;
+					if(use_default) sel=1; 
+					mode=DPAD;
+					mode_changed=TRUE;
+				}
+				else if(new_pad & PAD_LEFT || new_pad & PAD_RIGHT){
+					sel=0;
+					mode=DPAD_MISC;
+					mode_changed=TRUE;
+				}
+				else if(new_pad){
+					// 同時押し認識
+					padtimeout=8;
+					i=new_pad;
+					while(padtimeout != 0){
+						itoVSync();
+						waitPadReady(0, 0);
+						if (readpad()) {
+							if ((new_pad != 0) && !(new_pad & (PAD_LEFT|PAD_RIGHT|PAD_UP|PAD_DOWN))) {
+								i|=new_pad;
+								padtimeout=10;
+							}
+						}
+						if (padtimeout > 0) padtimeout--;
+					}
+					//i=pad_data;
+					for(j=1;j<MAX_BUTTON;j++){
+						if((setting->dirElf[j].padmsk == i) && setting->dirElf[j].path[0][0]) {
+							for(k=0;k<MAX_ELF;k++)
+								RunElf(setting->dirElf[j].path[k]);
+							redraw = fieldbuffers;
+						}
+					}
+				}
+			}
+			else if(mode==DPAD){
+				if(new_pad & PAD_UP){
+					sel--;
+					if(sel==0 && use_default) sel=nList-1;
+					if(sel<0) sel=nList-1;
+				}
+				else if(new_pad & PAD_DOWN){
+					sel++;
+					if(sel>=nList){
+						sel=0;
+						if(use_default) sel++;
+					}
+					
+				}
+				else if(new_pad & PAD_LEFT || new_pad & PAD_RIGHT){
+					sel=0;
+					mode=DPAD_MISC;
+					mode_changed=TRUE;
+				}
+				else if(new_pad & PAD_CROSS){
+					mode=BUTTON;
+					mode_changed=TRUE;
+				}
+				else if(new_pad & PAD_CIRCLE){
+					for(i=0;i<MAX_ELF;i++)
+						if (setting->dirElf[elfpath[sel]].path[i][0] != '\0')
+							RunElf(setting->dirElf[elfpath[sel]].path[i]);	//ランチャー
+					redraw=fieldbuffers;
+					mode=BUTTON;
+					mode_changed=TRUE;
+				}
+/*
+				else if(new_pad & PAD_R1){	//デバッグ
+				}
+*/
+			}
+			else if(mode==DPAD_MISC){
+				if(new_pad & PAD_UP){
+					sel--;
+					if(sel<0) sel=nList-1;
+				}
+				else if(new_pad & PAD_DOWN){
+					sel++;
+					if(sel>=nList) sel=0;
+				}
+				else if(new_pad & PAD_LEFT || new_pad & PAD_RIGHT || new_pad & PAD_CROSS){
+					sel=0;
+					mode=BUTTON;
+					mode_changed=TRUE;
+				}
+				else if(new_pad & PAD_CIRCLE){
+					RunElf(dummyElf[sel]);
+					redraw = fieldbuffers;
+				}
+			}
+		}
+
 		//表示するリストとELFのパスのリスト作成
 		for(i=0; i<MAX_BUTTON+4; i++){
 			list[i][0]=0;
@@ -1470,10 +1574,10 @@ void LaunchMain(void)
 								strcpy(name, setting->dirElf[i].path[j]);
 							}
 							strcat(tmp, name);
-							strcat(tmp, ",");
+							strcat(tmp, ", ");
 						}
 						for(j=strlen(tmp)-1;j>=0;j--){
-							if (tmp[j] != ',') break;
+							if ((tmp[j] != ',') && (tmp[j] != ' ')) break;
 							tmp[j]=0;
 						}
 						strcat(list[nList], tmp);
@@ -1521,107 +1625,10 @@ void LaunchMain(void)
 			}
 		}
 
-		//キー入力
-		waitPadReady(0,0);
-		if(readpad()){
-			if(new_pad) {cancel=TRUE; timeout = 0; redraw = framebuffers;}
-			if(mode==BUTTON){
-				if(new_pad & PAD_UP){
-					sel=nList-1;
-					mode=DPAD;
-					mode_changed=TRUE;
-				}
-				else if(new_pad & PAD_DOWN){
-					sel=0;
-					if(use_default) sel=1; 
-					mode=DPAD;
-					mode_changed=TRUE;
-				}
-				else if(new_pad & PAD_LEFT || new_pad & PAD_RIGHT){
-					sel=0;
-					mode=DPAD_MISC;
-					mode_changed=TRUE;
-				}
-				else if(new_pad){
-					// 同時押し認識
-					padtimeout=8;
-					i=new_pad;
-					while(padtimeout != 0){
-						itoVSync();
-						waitPadReady(0, 0);
-						if (readpad()) {
-							if ((new_pad != 0) && !(new_pad & (PAD_LEFT|PAD_RIGHT|PAD_UP|PAD_DOWN))) {
-								i|=new_pad;
-								padtimeout=10;
-							}
-						}
-						if (padtimeout > 0) padtimeout--;
-					}
-					//i=pad_data;
-					for(j=1;j<MAX_BUTTON;j++){
-						if((setting->dirElf[j].padmsk == i) && setting->dirElf[j].path[0][0])
-							for(k=0;k<MAX_ELF;k++)
-								RunElf(setting->dirElf[j].path[k]);
-					}
-				}
-			}
-			else if(mode==DPAD){
-				if(new_pad & PAD_UP){
-					sel--;
-					if(sel==0 && use_default) sel=nList-1;
-					if(sel<0) sel=nList-1;
-				}
-				else if(new_pad & PAD_DOWN){
-					sel++;
-					if(sel>=nList){
-						sel=0;
-						if(use_default) sel++;
-					}
-					
-				}
-				else if(new_pad & PAD_LEFT || new_pad & PAD_RIGHT){
-					sel=0;
-					mode=DPAD_MISC;
-					mode_changed=TRUE;
-				}
-				else if(new_pad & PAD_CROSS){
-					mode=BUTTON;
-					mode_changed=TRUE;
-				}
-				else if(new_pad & PAD_CIRCLE){
-					for(i=0;i<MAX_ELF;i++)
-						if (setting->dirElf[elfpath[sel]].path[i][0] != '\0')
-							RunElf(setting->dirElf[elfpath[sel]].path[i]);	//ランチャー
-				}
-/*
-				else if(new_pad & PAD_R1){	//デバッグ
-				}
-*/
-			}
-			else if(mode==DPAD_MISC){
-				if(new_pad & PAD_UP){
-					sel--;
-					if(sel<0) sel=nList-1;
-				}
-				else if(new_pad & PAD_DOWN){
-					sel++;
-					if(sel>=nList) sel=0;
-				}
-				else if(new_pad & PAD_LEFT || new_pad & PAD_RIGHT || new_pad & PAD_CROSS){
-					sel=0;
-					mode=BUTTON;
-					mode_changed=TRUE;
-				}
-				else if(new_pad & PAD_CIRCLE){
-					RunElf(dummyElf[sel]);
-				}
-			}
-		}
-
 		//画面描画開始
-		if(!mode_changed && redraw){
+		//if(!mode_changed && redraw){
+		if (mode_changed || redraw) {
 			clrScr(setting->color[COLOR_BACKGROUND]);
-
 /*
 			//モード表示
 			if(mode==BUTTON)

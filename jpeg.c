@@ -24,7 +24,7 @@ typedef struct
     unsigned short code[256];
     unsigned char  size[256];
     unsigned char  value[256];
-}HUFF;
+} __attribute__((packed)) HUFF;
 
 typedef struct
 {	// 40184bytes
@@ -81,7 +81,7 @@ typedef struct
     */
     int dummy[64];
     
-}JPEG;
+} __attribute__((packed)) JPEG;
 
 /* for 16bit */
 #define PIXEL16(r, g, b)	((r) << 10 | (g) << 5 | (b))

@@ -32,37 +32,10 @@ enum
 	TXT_UTF32LE,
 };
 
-enum
-{
-	FT_BINARY,
-	FT_ELF,
-	FT_JPG,
-	FT_PNG,
-	FT_GIF,
-	FT_BMP,
-	FT_MP3,
-	FT_AAC,
-	FT_AC3,
-	FT_PCM,
-	FT_TXT,
-	FT_ZIP,
-	FT_RAR,
-	FT_LZH,
-	FT_TEK,
-	FT_GZ,
-	FT_7Z,
-	FT_AVI,
-	FT_MPG,
-	FT_MP4,
-	FT_FNT,
-	FT_XML,
-	FT_HTM,
-	FT_TYPES,
-};
 static unsigned int ft_type[FT_TYPES] = {
-	FT_ELF, 
+	FT_ELF, FT_EXE,
 	FT_JPG, FT_PNG, FT_GIF, FT_BMP,
-	FT_MP3, FT_AAC, FT_AC3, FT_PCM,
+	FT_MP3, FT_AAC, FT_AC3, FT_PCM, FT_MID,
 	FT_TXT, FT_XML, FT_HTM,
 	FT_ZIP, FT_RAR, FT_LZH, FT_TEK, FT_GZ, FT_7Z,
 	FT_AVI, FT_MPG, FT_MP4,
@@ -70,9 +43,9 @@ static unsigned int ft_type[FT_TYPES] = {
 	0
 };
 static unsigned char ft_char[FT_TYPES][4] = {
-	"ELF",
+	"ELF", "EXE",
 	"JPG", "PNG", "GIF", "BMP",
-	"MP3", "AAC", "AC3", "WAV",
+	"MP3", "AAC", "AC3", "WAV", "MID",
 	"TXT", "XML", "HTM",
 	"ZIP", "RAR", "LZH", "TEK", "GZ ", "7Z ",
 	"AVI", "MPG", "MP4",
@@ -87,14 +60,15 @@ extern unsigned short sjistable[];
 //extern unsigned short ucstable[];
 static unsigned short ucstable[MAX_UNICODE];
 static int ucstabled=0;
+static int wordwrap=0;
 uint64 *activeclut=NULL;
 //static ofscache *line[];
-int chartable[] = {TXT_AUTO, TXT_SJIS, TXT_EUCJP, TXT_UTF8, -1};
-
+static int chartable[] = {TXT_AUTO, TXT_ASCII, TXT_SJIS, TXT_EUCJP, TXT_UTF8, -1};
+static char chartablename[][8] = {"AUTO", "ASCII", "SJIS", "EUCJP", "UTF8", ""};
 int bineditfile(int mode, char *file);
 int binedit(int mode, char *file, unsigned char *buffer, unsigned int size);
-int imgviewfile(char *file);
-int imgview(char *file, unsigned char *buffer, int w, int h, int bpp);
+int imgviewfile(int mode, char *file);
+int imgview(int mode, char *file, unsigned char *buffer, int w, int h, int bpp);
 int viewer_file(int mode, char *file);
 int viewer(int mode, char *file, unsigned char *buffer, unsigned int size);
 int pcmpause(void);
@@ -126,13 +100,13 @@ static void *X_malloc(size_t mallocsize)
 	if (ret == NULL)
 		printf("viewer: malloc failed (ofs: %08X, size: %d)\n", (unsigned int) ret, mallocsize);
 	else
-		printf("viewer: malloc vaild (ofs: %08X, size: %d)\n", (unsigned int) ret, mallocsize);
+		printf("viewer: malloc valid (ofs: %08X, size: %d)\n", (unsigned int) ret, mallocsize);
 	return ret;
 }
 static void X_free(void *mallocdata)
 {
 	if (mallocdata != NULL) {
-		printf("viewer: free vaild (ofs: %08X)\n", (unsigned int) mallocdata);
+		printf("viewer: free valid (ofs: %08X)\n", (unsigned int) mallocdata);
 		free(mallocdata);
 	} else 
 		printf("viewer: free failed (ofs: %08X)\n", (unsigned int) mallocdata);
@@ -155,59 +129,29 @@ static void *X_realloc(void *mallocdata, size_t mallocsize)
 //*/
 
 ////////////////////////////////
-// テキストビューア(オンメモリバッファ版)
-//	in:	mode	編集モード(b0=0:表示のみ,=1:編集可能)
-//  	*file	ファイル名(表示用)
-//  	*buffer	テキストデータ
-//  	size	テキストサイズ
-int txtedit(int mode, char *file, unsigned char *c, unsigned int size)
+// 文字コードの判定
+//	in:	*buffer	テキストデータ
+//		size	テキストサイズ
+//	out:(ret)	文字コード
+int txt_detect(unsigned char *c, unsigned int size)
 {
-	int x,y,z,w,u;
-	int crlf=0,cr=0,lf=0,lfcr=0,nlf=0,lines=0;
+	int w,x,y,z,u,charset,cp;
 	int ascii=0,sjis=0,eucjp=0,utf8=0,text=0,binary=0;
 	int sjisf=0,eucjpf=0,utf8f=0;
-	int cp=0,cs=0,maxbytes=0;
-	uint64 color1, color2;
-	int sel=0, top=0, selx=0, oldselx=0, oldsel=0;
-	int y0, y1, i, j;
-	int l2button=FALSE, oldl2=FALSE;
-	int textwidth, editmode=0;
 	
-	int scrnshot=0;
-	
-	char msg0[MAX_PATH], msg1[MAX_PATH], tmp[MAX_PATH];
-	ofscache line[MAX_LINES];
-	
-	charset = TXT_ASCII;
-	strcpy(msg0, file);
-	
-	// テキストバッファの改行コードと文字コードを判定しながら行数カウント
-	printf("viewer: detecting charset and counting lines...\n");
-	line[0].offset = 0;
-	line[0].bytes = 0;
+	// 文字コードを判定
+	printf("textdetect: detecting charset...\n");
 	for (x=0;x<size;x++) {
 		y = x + 1; z = y + 1; w = z + 1;
 		if (y>=size) y=size-1;
 		if (z>=size) z=size-1;
 		if (w>=size) w=size-1;
-		// 新行判定
-		if (nlf == 1) {
-			//if (line[lines].bytes > maxbytes)
-			//	maxbytes = line[lines].bytes;
-			lines++;
-			if (lines < MAX_LINES) {
-				line[lines].offset = x;
-				line[lines].bytes = 0;
-			}
-			if ((lines % 4096)==0) {
-				printf("viewer: Line %d Start: %08X\r\n", lines, x);
-			}
-		}
-		if (nlf > 0) nlf--;
 		// 文字コード判定
 		// 判定の対象はSJIS/EUC-JPとUTF-8のみサポート
 		// (UTF-16などは判定できない)
 		if ((c[x] > 0) && (c[x] <= 0x7F)) ascii++;
+		if ((c[x] == 0xCD) && (c[y] == 0xCD)) ascii+=4;
+		if ((c[x] == 0xC4) && (c[y] == 0xC4)) ascii+=4;
 		if (sjisf == 0) {
 			if (((c[x] > 0x00) && (c[x] <= 0x7F)) || ((c[x] >= 0xA1) && (c[x] <= 0xDF))) {
 				sjisf=1;
@@ -215,6 +159,7 @@ int txtedit(int mode, char *file, unsigned char *c, unsigned int size)
 				sjisf=2;
 			}
 			sjis+=sjisf;
+			if (sjisf == 0) sjis--;
 		}
 		if (sjisf > 0) sjisf--;
 		if (eucjpf == 0) {
@@ -228,6 +173,7 @@ int txtedit(int mode, char *file, unsigned char *c, unsigned int size)
 				eucjpf=3;
 			}
 			eucjp+=eucjpf;
+			if (eucjpf == 0) eucjp--;
 		}
 		if (eucjpf > 0) eucjpf--;
 		if (utf8f == 0) {
@@ -250,54 +196,98 @@ int txtedit(int mode, char *file, unsigned char *c, unsigned int size)
 				}
 			}
 			utf8+=utf8f;
+			if (utf8f == 0) utf8--;
 		}
 		if (utf8f > 0) utf8f--;
 		if (((c[x] != 13) && (c[x] != 10) && (c[x] != 9) && (c[x] < 0x20)) || (c[x] > 0xFE)) binary++;
 		if ((c[x] == 0) || (c[x] == 0xFF)) binary+=4;
 		if ((c[x] >= 0x40) && (c[x] < 0x7F) && (c[y] >= 0x40) && (c[y] < 0x7F)) text++;
-		// 改行コード判定
-		if (nlf == 0) {
-			if ((c[x] == 13) && (c[y] == 10)) {
-				nlf=2; crlf++;
-			} else if ((c[x] == 10) && (c[y] == 13)) {
-				nlf=2; lfcr++;
-			} else if (c[x] == 13) {
-				nlf=1; cr++;
-			} else if (c[x] == 10) {
-				nlf=1; lf++;
-			}
-			if (lines < MAX_LINES)
-				line[lines].bytes++;
-			if ((lines < MAX_LINES) && (nlf == 2)) line[lines].bytes++;
-			if (lines == MAX_LINES) break;
-		}
 	}
-	if (nlf > 0) {
-		//if (line[lines].bytes > maxbytes)
-		//	maxbytes = line[lines].bytes;
-		lines++;
-		if (lines < MAX_LINES) {
-			line[lines].offset = x;
-			line[lines].bytes = 0;
-		}
-	}
-	lines++;
-	
-	if (lines > MAX_LINES) lines = MAX_LINES;
 	charset = TXT_SJIS; cp = sjis;
-	if (eucjp > cp) {	charset = TXT_EUCJP; cp = eucjp;	}
-	if (utf8 > cp) {	charset = TXT_UTF8; cp = utf8;	}
-	if ((sjis == eucjp) && (sjis == utf8))
-		{	charset = TXT_ASCII; cp = sjis;	}
+	if (eucjp >= cp)	{charset = TXT_EUCJP; cp = eucjp;}
+	if (utf8 >= cp) 	{charset = TXT_UTF8; cp = utf8;	}
+	if (ascii >= cp)	{charset = TXT_ASCII; cp = ascii;}
+	if (binary >= cp)	{charset = TXT_BINARY; cp = binary;}
+	printf("textdetect:%d txt=%d,bin=%d, asc=%d,sjis=%d,euc=%d,utf8=%d pts.\n", charset, text, binary, ascii, sjis, eucjp, utf8);
+	return charset;
+}
+
+////////////////////////////////
+// 行数のカウント
+//	in:	*buffer	テキストデータ
+//		size	テキストサイズ
+//		*dist	ポインタキャッシュ配列へのポインタ
+//		maxcols	自動折り返しの設定(=0:折り返しをしない)
+//		maxrows	用意した*distの行数(カウントを中止する行数)
+//	out:(ret)	行数(最後の行を含む)
+int txt_count(unsigned char *c, unsigned int size, ofscache *dist, int maxcols, int maxrows)
+{
+	unsigned int x, y;
+	int t=0, line=0, maxcol;
+	
+	maxcol = maxcols;
+	if (maxcol < 0) maxcol = MAX_ROWS_X;
+	if (maxcol == 0) maxcol = size+1;
+	dist[line].offset = 0;
+	dist[line].bytes = 0;
+	
+	// 行数をカウント
+	printf("textcount: counting lines...\n");
+	for (x=0; x<size; x++) {
+		y = x + 1;
+		if (y >= size) y = x;
+		if ((c[x] == 13) || (c[x] == 10)) {
+			if ((c[x] != c[y]) && ((c[y] == 13) || (c[y] == 10))) {
+				dist[line].bytes++;
+				x++;
+			}
+			t = 1;
+		}
+		if ((++dist[line].bytes >= maxcol) || t) {
+			t = 0;
+			if (++line < maxrows) {
+				dist[line].offset = x+1;
+				dist[line].bytes = 0;
+			} else {
+				printf("textcount: abort the line count.\n");
+				break;
+			}
+		}
+	}
+	if (++line > maxrows) line = maxrows;
+	printf("textcount: result is %d line(s).\n", line);
+	return line;
+}
+
+////////////////////////////////
+// テキストビューア(オンメモリバッファ版)
+//	in:	mode	編集モード(b0=0:表示のみ,=1:編集可能)
+//  	*file	ファイル名(表示用)
+//  	*buffer	テキストデータ
+//  	size	テキストサイズ
+int txtedit(int mode, char *file, unsigned char *c, unsigned int size)
+{
+	int x,y,z,w,lines=0,linenum2;
+	//int crlf=0,cr=0,lf=0,lfcr=0,nlf=0,lines=0;
+	int cp=0,cs=0,maxbytes=0;
+	uint64 color1, color2;
+	int sel=0, top=0, selx=0, oldselx=0, oldsel=0;
+	int y0, y1, i, j;
+	int l2button=FALSE, oldl2=FALSE;
+	int textwidth, editmode=0;
+	char *onoff[2] = {lang->conf_off, lang->conf_on};
+	
+	int scrnshot=0;
+	
+	char msg0[MAX_PATH], msg1[MAX_PATH], tmp[MAX_PATH];
+	ofscache line[MAX_LINES];
+	
+	strcpy(msg0, file);
+	
+	charset = txt_detect(c, size);
+	lines = txt_count(c, size, line, wordwrap * (MAX_ROWS_X +6), MAX_LINES);
+	
 	cs = TXT_AUTO; cp=0;
-	printf("viewer: counted lines: %d\n", lines);
-	printf("viewer: charset point list: \n");
-	printf("\tASCII: %10d pts.\n", ascii);
-	printf("\tSJIS:  %10d pts.\n", sjis);
-	printf("\tEUCJP: %10d pts.\n", eucjp);
-	printf("\tUTF-8: %10d pts.\n", utf8);
-	printf("\tTEXT:  %10d pts.\n", text);
-	printf("\tBINARY: %9d pts.\n", binary);
 	redraw=fieldbuffers;
 	maxbytes=MAX_COLS-1;
 	while(1){
@@ -334,6 +324,10 @@ int txtedit(int mode, char *file, unsigned char *c, unsigned int size)
 					selx-= MAX_ROWS_X;
 				} else if (new_pad & PAD_R1) {
 					selx+= MAX_ROWS_X;
+				} else if (new_pad & PAD_R2) {
+					wordwrap ^= 1;
+					lines = txt_count(c, size, line, wordwrap * (MAX_ROWS_X +6), MAX_LINES);
+					redraw = fieldbuffers;
 				}
 			} else {
 				if (new_pad & PAD_UP)
@@ -388,6 +382,7 @@ int txtedit(int mode, char *file, unsigned char *c, unsigned int size)
 		textwidth = MAX_ROWS_X+6*(!linenum);
 		if(selx > MAX_COLS-textwidth)	selx=MAX_COLS-textwidth;
 		if(selx < 0)		selx=0;
+		if(wordwrap)		selx=0;
 		top = sel;
 
 		if((selx != oldselx) || (sel != oldsel)) {
@@ -406,10 +401,11 @@ int txtedit(int mode, char *file, unsigned char *c, unsigned int size)
 			y = SCREEN_MARGIN+FONT_HEIGHT*3;
 			color1 = setting->color[COLOR_TEXT];
 			color2 = setting->color[COLOR_HIGHLIGHTTEXT];
+			linenum2 = wordwrap ? 0:linenum;
 			for(i=0; i<MAX_ROWS ; i++) {
 				if (top+i >= lines)
 					break;
-				if (linenum && (top+i < lines)) {
+				if (linenum2 && (top+i < lines)) {
 					sprintf(tmp, "%7d", top+i+1);
 					printXY(tmp, 0, y, color1, TRUE);
 				}
@@ -422,7 +418,7 @@ int txtedit(int mode, char *file, unsigned char *c, unsigned int size)
 						z = line[MAX_LINES-1].offset;
 					}
 					w = txtdraw(c+z, w, cs, color1, color2);
-					if (linenum) {
+					if (linenum2) {
 						if (w > selx+MAX_ROWS_X) w = MAX_ROWS_X+selx;
 					} else {
 						if (w > selx+MAX_ROWS_X+6) w = MAX_ROWS_X+6+selx;
@@ -434,14 +430,14 @@ int txtedit(int mode, char *file, unsigned char *c, unsigned int size)
 					}
 						
 					if ((displine[0] != 0)&&(w>=selx))
-						printXY(displine[0]+selx, x+linenum*6*FONT_WIDTH, y, color1, TRUE);
+						printXY(displine[0]+selx, x+linenum2*6*FONT_WIDTH, y, color1, TRUE);
 					if ((displine[1] != 0)&&(w>=selx))
-						printXY(displine[1]+selx, x+linenum*6*FONT_WIDTH, y, color2, TRUE);
+						printXY(displine[1]+selx, x+linenum2*6*FONT_WIDTH, y, color2, TRUE);
 				}
         
 				y += FONT_HEIGHT;
 			}
-			if (linenum) {
+			if (linenum2) {
 				itoLine(setting->color[COLOR_FRAME], 7.5*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3, 0,
 					setting->color[COLOR_FRAME], 7.5*FONT_WIDTH, y, 0);	
 			}
@@ -467,8 +463,8 @@ int txtedit(int mode, char *file, unsigned char *c, unsigned int size)
 				int dialog_width;	//ダイアログ幅
 				int dialog_height;	//ダイアログ高さ
 
-				dialog_width = FONT_WIDTH*28;
-				dialog_height = FONT_HEIGHT*5;
+				dialog_width = FONT_WIDTH*29;
+				dialog_height = FONT_HEIGHT*6;
 				dialog_x = (SCREEN_WIDTH-dialog_width)/2;
 				dialog_y = (SCREEN_HEIGHT-dialog_height)/2;
 				// 描画開始
@@ -482,11 +478,13 @@ int txtedit(int mode, char *file, unsigned char *c, unsigned int size)
 				//
 				sprintf(tmp, "○:%s", lang->editor_l2popup_linenum);
 				printXY(tmp, x, y, setting->color[COLOR_TEXT], TRUE); y+=FONT_HEIGHT;
-				sprintf(tmp, "△:%s", lang->editor_l2popup_charset);
+				sprintf(tmp, "△:%s [%s]", lang->editor_l2popup_charset, chartablename[cp]);
 				printXY(tmp, x, y, setting->color[COLOR_TEXT], TRUE); y+=FONT_HEIGHT;
 				sprintf(tmp, "×:%s", lang->editor_l2popup_flicker);
 				printXY(tmp, x, y, setting->color[COLOR_TEXT], TRUE); y+=FONT_HEIGHT;
 				sprintf(tmp, "□:%s", lang->editor_l2popup_tabmode);
+				printXY(tmp, x, y, setting->color[COLOR_TEXT], TRUE); y+=FONT_HEIGHT;
+				sprintf(tmp, "R2:%s [%s]", lang->editor_l2popup_wordwrap, onoff[wordwrap&1]);
 				printXY(tmp, x, y, setting->color[COLOR_TEXT], TRUE); y+=FONT_HEIGHT;
 			}
 			setScrTmp(msg0, msg1);
@@ -769,7 +767,7 @@ int ucstableinit()
 
 ////////////////////////////////
 // 適切な形式で表示(ファイル指定版)
-//	in:	mode	編集モード(b0=0:表示のみ,=1:編集可能)
+//	in:	mode	編集モード(b0=0:表示のみ,=1:編集可能,b1=0:通常,=1:スライドモード)
 //  	file	ファイル名
 int viewer_file(int mode, char *file)
 {
@@ -824,30 +822,9 @@ int viewer_file(int mode, char *file)
 	return ret;
 }
 
-
-////////////////////////////////
-// 適切な形式で表示(オンメモリ版)
-//	in:	mode	編集モード(b0=0:表示のみ,=1:編集可能)
-//  	*file	ファイル名(表示用)
-//  	*buffer	バッファ
-//  	size	サイズ
-/*
-void seti32(unsigned char *p, int i) {
-	p[0] = i & 0xFF;
-	p[1] = (i & 0xFF00) >> 8;
-	p[2] = (i & 0xFF0000) >> 16;
-	p[3] = (i & 0xFF000000) >> 24;
-}//*/
-int viewer(int mode, char *file, unsigned char *c, unsigned int size)
+int formatcheck(unsigned char *c, unsigned int size)
 {
-	int type=FT_TXT,i,info[8],bpp,tvmode;
-	int *env;
-	unsigned char *buffer;
-	tvmode = setting->tvmode;
-	if (gsregs[tvmode].loaded != 1) tvmode = ITO_VMODE_AUTO-1;
-	bpp = setting->screen_depth[tvmode] > 0 ? (setting->screen_depth[tvmode]-1):4-gsregs[tvmode].psm;
-	drawMsg(lang->gen_decoding);
-	// 簡易版ファイル形式判別
+	int type=FT_TXT;
 	if ((size >= 32) && (c[0] == 0xFF) && (c[1] == 0xD8) && (c[2] == 0xFF)) {
 		type = FT_JPG;
 	} else if ((size >= 16) && (c[0] == 0x89) && (c[1] == 0x50) && (c[2] == 0x4E) && (c[3] == 0x47) && (c[4] == 0x0D) && (c[5] == 0x0A)) {
@@ -868,9 +845,11 @@ int viewer(int mode, char *file, unsigned char *c, unsigned int size)
 		type = FT_GZ;
 	} else if ((size >= 24) && (c[1] == 0xFF) && (c[2] == 0xFF) && (c[3] == 0xFF) && (c[4] == 0x01) && (c[5] == 0x00) && (c[6] == 0x00) && (c[7] == 0x00) && (c[8] == 0x4F) && (c[9] == 0x53) && (c[10] == 0x41) && (c[11] == 0x53) && (c[12] == 0x4B) && (c[13] == 0x43) && (c[14] == 0x4D) && (c[15] == 0x50)) {
 		type = FT_TEK;
+	} else if ((size >= 24) && (c[0] == 0x4D) && (c[1] == 0x54) && (c[2] == 0x68) && (c[3] == 0x64)) {
+		type = FT_MID;
 	} else if ((size >= 44) && (c[0] == 0x52) && (c[1] == 0x49) && (c[2] == 0x46) && (c[3] == 0x46) && (c[8] == 0x57) && (c[9] == 0x41) && (c[10] == 0x56) && (c[11] == 0x45)) {
 		type = FT_PCM;
-	} else if ((size >= 64) && (((c[0] == 0xFF) && ((c[1] & 0xF0) == 0xF0) && (c[4] == 0x00) && (c[5] = 0x00)) || ((c[0] == 0x49) && (c[1] == 0x44) && (c[2] == 0x33)))) {
+	} else if ((size >= 64) && ( ((c[0] == 0xFF) && ((c[1] & 0xF0) == 0xF0) && (c[4] == 0x00) && (c[5] == 0x00)) || ((c[0] == 0x49) && (c[1] == 0x44) && (c[2] == 0x33)) )) {
 		type = FT_MP3;
 	} else if ((size >= 64) && (c[4] == 0x66) && (c[5] == 0x74) && (c[6] == 0x79) && (c[7] == 0x70) && (c[8] == 0x4D) && (c[9] == 0x34) && (c[10] == 0x41) && (c[11] == 0x20)) {
 		type = FT_AAC;
@@ -900,8 +879,91 @@ int viewer(int mode, char *file, unsigned char *c, unsigned int size)
 		type = FT_XML;
 	} else if ((size >= 32) && (c[1] == 0x3C) && (c[2] == 0x3F) && (c[3] == 0x78) && (c[4] == 0x6D) && (c[5] == 0x6C) && (c[6] == 0x20)) {
 		type = FT_XML;
+	} else if ((size >= 32) && (c[0] == 0x4D) && (c[1] == 0x5A)) {
+		type = FT_EXE;
 	}
 	// BIN/ELF/JPG/PNG/GIF/BMP/MP3/AAC/AC3/PCM/TXT/ZIP/RAR/LZH/TEK/GZ/7Z
+	return type;
+}
+int formatcheckfile(char *file)
+{
+	int fd;
+	char *p;
+	unsigned char buffer[512];
+	unsigned int size;
+	char fullpath[MAX_PATH], tmp[MAX_PATH];
+	
+	if (!strncmp(file, "hdd0", 4)) {
+		sprintf(tmp, "hdd0:%s", &file[6]);
+		p = strchr(tmp, '/');
+		sprintf(fullpath, "pfs0:%s", p);
+		*p = 0;
+		//fileXioMount("pfs0:", tmp, FIO_MT_RDONLY);
+		if ((fd = fileXioOpen(fullpath, O_RDONLY, FIO_S_IRUSR | FIO_S_IWUSR | FIO_S_IXUSR | FIO_S_IRGRP | FIO_S_IWGRP | FIO_S_IXGRP | FIO_S_IROTH | FIO_S_IWOTH | FIO_S_IXOTH)) < 0){
+			//fileXioUmount("pfs0:");
+			return -1;
+		}
+		size = fileXioLseek(fd, 0, SEEK_END);
+		if (size > 512) size = 512;
+		fileXioLseek(fd, 0, SEEK_SET);
+		fileXioRead(fd, buffer, size);
+		fileXioClose(fd);
+		//fileXioUmount("pfs0:");
+	} else {
+		strcpy(fullpath, file);
+		fd = fioOpen(fullpath, O_RDONLY);
+		if (fd<0)
+			return -1;
+		size = fioLseek(fd, 0, SEEK_END);
+		if (size > 512) size = 512;
+		fioLseek(fd, 0, SEEK_SET);
+		fioRead(fd, buffer, size);
+		fioClose(fd);
+	}
+	return formatcheck(buffer, size);
+};
+
+////////////////////////////////
+// 適切な形式で表示(オンメモリ版)
+//	in:	mode	編集モード(b0=0:表示のみ,=1:編集可能)
+//  	*file	ファイル名(表示用)
+//  	*buffer	バッファ
+//  	size	サイズ
+/*
+void seti32(unsigned char *p, int i) {
+	p[0] = i & 0xFF;
+	p[1] = (i & 0xFF00) >> 8;
+	p[2] = (i & 0xFF0000) >> 16;
+	p[3] = (i & 0xFF000000) >> 24;
+}//*/
+int viewer(int mode, char *file, unsigned char *c, unsigned int size)
+{
+	int type=FT_TXT,i,info[8],bpp,tvmode;
+	int dsize=size,ret=-11;
+	int *env=NULL;
+	unsigned char *buffer=NULL, *decoded=NULL;
+	tvmode = setting->tvmode;
+	if (gsregs[tvmode].loaded != 1) tvmode = ITO_VMODE_AUTO-1;
+	bpp = setting->screen_depth[tvmode] > 0 ? (setting->screen_depth[tvmode]-1):4-gsregs[tvmode].psm;
+	if (setting->txt_autodecode && ((dsize = tek_getsize(c)) >= 0)) {
+		decoded = (unsigned char*)malloc(dsize);
+		if (decoded != NULL) {
+			if (tek_decomp(c, decoded, size)<0) {
+				free(decoded);
+				decoded=NULL;
+				printf("viewer: tek auto decode failed\n");
+			} else {
+				printf("viewer: decoded tek compression\n");
+			}
+		}
+	}
+	if (decoded == NULL) {
+		dsize = size;
+		decoded = c;
+	}
+	drawMsg(lang->gen_decoding);
+	type = formatcheck(decoded, dsize);
+	// 簡易版ファイル形式判別
 	for (i=0;i<FT_TYPES;i++) {
 		if (ft_type[i] == 0) {
 			printf("viewer: filetype: BINARY\n");
@@ -915,23 +977,27 @@ int viewer(int mode, char *file, unsigned char *c, unsigned int size)
 		case FT_JPG:
 		{
 			env = malloc(16384*sizeof(int));
-			if (env == NULL) return -2;
+			if (env == NULL) {
+				ret=-2;
+				break;
+			}
 			env[0] = 0; env[1] = 0;
-			i = info_JPEG(&env, info, size, c);
+			i = info_JPEG(env, info, dsize, decoded);
 			printf("viewer: info_JPEG returned: %d (env: %d,%d)\n", i, env[0], env[1]);
 			printf("viewer: info data: %d,%d,%dx%d\n", info[0], info[1], info[2], info[3]);
 			if ((info[0] != 0x0002) || (info[2] * info[3] == 0)) {
-				free(env);
+				//free(env);
 				break;
 			}
 			buffer = malloc(info[2] * info[3] * bpp);
 			if (buffer == NULL) {
 				if ((bpp <= 2) || ((bpp>2) && ((bpp=2)==2) && ((buffer = malloc(info[2] * info[3] * bpp))==NULL))) {
-					free(env);
-					return -2;
+					//free(env);
+					ret=-2;
+					break;
 				}
 			}
-			i = decode0_JPEG(env, size, c, bpp, buffer, 0);
+			i = decode0_JPEG(env, dsize, decoded, bpp, buffer, 0);
 			printf("viewer: decode0_JPEG(%dbpp) returned: %d (env: %d,%d)\n", bpp*8, i, env[0], env[1]);
 /*	デコード結果を表示できるようにヘッダをつけてPCにダンプ
 			// 32bppのヘッダ
@@ -948,14 +1014,16 @@ int viewer(int mode, char *file, unsigned char *c, unsigned int size)
 				fioWrite(fd, buffer, info[2] * info[3] * 4);
 				fioClose(fd);
 			}
-*/			i = imgview(file, buffer, info[2], info[3], bpp);
-			free(buffer);
-			free(env);
-			return i;
+*/			ret = imgview(mode, file, buffer, info[2], info[3], bpp);
+			//free(buffer);
+			//free(env);
+			//if ((decoded != NULL) && (decoded != c)) free(decoded);
+			//return i;
+			break;
 		}
 		case FT_BMP:
 		{
-			i = info_BMP(info, c, size);
+			i = info_BMP(info, decoded, dsize);
 			if (bpp > ((info[1] +7)>>3))
 				bpp = (info[1] +7)>>3;
 			if (bpp == 0) bpp++;
@@ -967,38 +1035,55 @@ int viewer(int mode, char *file, unsigned char *c, unsigned int size)
 			buffer = malloc(info[2] * info[3] * bpp);
 			if (buffer == NULL) {
 				if ((bpp <= 2) || ((bpp>2) && ((bpp=2)==2) && ((buffer = malloc(info[2] * info[3] * bpp))==NULL))) {
-					return -2;
+					//if ((decoded != NULL) && (decoded != c)) free(decoded);
+					//return -2;
+					ret = -2;
+					break;
 				}
 			}
-			i = decode_BMP(buffer, c, size, bpp);
+			i = decode_BMP(buffer, decoded, dsize, bpp);
 			printf("viewer: decode_BMP(%dbpp) returned: %d\n", bpp*8, i);
-			i = imgview(file, buffer, info[2], info[3], bpp);
-			free(buffer);
-			return i;
+			ret = imgview(mode, file, buffer, info[2], info[3], bpp);
+			//free(buffer);
+			//if ((decoded != NULL) && (decoded != c)) free(decoded);
+			//return i;
+			break;
 		}
 		case FT_GIF:
 		{
-			i = info_GIF(info, c, size);
+			i = info_GIF(info, decoded, dsize);
 			bpp = 1;
 			printf("viewer: info_GIF returned: %d\n", i);
 			printf("viewer: info data: %d,%dx%d(%dbpp)\n", info[0], info[2], info[3], info[1]);
 			if ((info[0] != 0x0008) || (info[2] * info[3] == 0))
 				break;
 			buffer = malloc(info[2] * info[3] * bpp);
-			if (buffer == NULL)
-				return -2;
-			i = decode_GIF(buffer, c, size, bpp);
+			if (buffer == NULL) {
+				//if ((decoded != NULL) && (decoded != c)) free(decoded);
+				//return -2;
+				ret = -2;
+				break;
+			}
+			i = decode_GIF(buffer, decoded, dsize, bpp);
 			printf("viewer: decode_GIF(%dbpp) returned: %d\n", bpp*8, i);
-			i = imgview(file, buffer, info[2], info[3], bpp);
-			free(buffer);
-			return i;
+			ret = imgview(mode, file, buffer, info[2], info[3], bpp);
+			//free(buffer);
+			//if ((decoded != NULL) && (decoded != c)) free(decoded);
+			//return i;
+			break;
 		}
 		case FT_PCM:
 		{
 			break;
 		}
 	}
-	return txtedit(mode, file, c, size);
+	if (env != NULL) free(env);
+	if (buffer != NULL) free(buffer);
+	if ((mode & 2) && (ret == -11)) ret = -1;
+	if (ret == -11)
+		ret = txtedit(mode, file, decoded, dsize);
+	if ((decoded != NULL) && (decoded != c)) free(decoded);
+	return ret;
 }
 
 static int memoryerror=0;
@@ -1038,7 +1123,7 @@ uint64 pget(unsigned char *buffer, int x, int y, int w, int h, int bpp)
 	}
 	return 0;
 }
-int imgview(char *file, unsigned char *buffer, int w, int h, int bpp)
+int imgview(int mode, char *file, unsigned char *buffer, int w, int h, int bpp)
 {
 	int redraw=fieldbuffers;
 	//int sl=0,st=0,sw=1,sh=1; // カーソル位置
@@ -1051,7 +1136,10 @@ int imgview(char *file, unsigned char *buffer, int w, int h, int bpp)
 	char msg0[MAX_PATH], msg1[MAX_PATH];
 	double mx,my,dx,dy;	// 倍率
 	strcpy(msg0, file);
-	sprintf(msg1, lang->editor_image_help, w, h);
+	if (mode & 2) 
+		sprintf(msg1, lang->editor_image_help2, w, h);
+	else
+		sprintf(msg1, lang->editor_image_help, w, h);
 	// イメージ全体をアスペクト比を保ったままビューポート全体に表示するように初期値を調整
 	// イメージ1ドット進むごとに画面はbx,byピクセル進む(=拡大率)
 	//mx = (double) vw / w;
@@ -1088,6 +1176,14 @@ int imgview(char *file, unsigned char *buffer, int w, int h, int bpp)
 						itoSetActiveFrameBuffer(itoGetActiveFrameBuffer()^1);
 					}
 				}
+			}
+			if (mode & 2) {
+				if (new_pad & PAD_L1) return 1;
+				if (new_pad & PAD_R1) return 2;
+				if (new_pad & PAD_LEFT) return 1;
+				if (new_pad & PAD_RIGHT) return 2;
+				if (new_pad & PAD_UP) return 1;
+				if (new_pad & PAD_DOWN) return 2;
 			}
 		}
 	
@@ -1164,12 +1260,12 @@ int imgview(char *file, unsigned char *buffer, int w, int h, int bpp)
 	return 0;
 }
 
-int set_viewerconfig(int linedisp, int tabspaces, int chardisp, int screenmode)
+int set_viewerconfig(int linedisp, int tabspaces, int chardisp, int screenmode, int textwrap, int drawtype)
 {
 	linenum = linedisp;
 	tabmode = tabspaces;
 	tabdisp = nldisp = chardisp;
 	fullscreen = screenmode;
+	wordwrap = textwrap;
 	return 0;
 }
-

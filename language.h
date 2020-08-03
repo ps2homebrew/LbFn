@@ -98,7 +98,9 @@ typedef struct
 	char editor_l2popup_charset[MAX_LANGUAGE_STR];
 	char editor_l2popup_linenum[MAX_LANGUAGE_STR];
 	char editor_l2popup_flicker[MAX_LANGUAGE_STR];
+	char editor_l2popup_wordwrap[MAX_LANGUAGE_STR];
 	char editor_image_help[MAX_LANGUAGE_STR];
+	char editor_image_help2[MAX_LANGUAGE_STR];
 
 	//config
 	char conf_savefailed[MAX_LANGUAGE_STR];
@@ -117,16 +119,22 @@ typedef struct
 	char conf_setting_device[MAX_LANGUAGE_STR];
 	char conf_setting_misc[MAX_LANGUAGE_STR];
 	//button
+	char conf_button_edit[MAX_LANGUAGE_STR];
+	char conf_button_alled[MAX_LANGUAGE_STR];
+	char conf_button_copied[MAX_LANGUAGE_STR];
+	char conf_button_deleted[MAX_LANGUAGE_STR];
+	char conf_button_pasted[MAX_LANGUAGE_STR];
 	char conf_launch_btnnum[MAX_LANGUAGE_STR];
 	char conf_launch_name[MAX_LANGUAGE_STR];
 	char conf_launch_padmsk[MAX_LANGUAGE_STR];
-	char conf_launch_elfnum[MAX_LANGUAGE_STR];
 	char conf_launch_path[MAX_LANGUAGE_STR];
 	char conf_launch_list[MAX_LANGUAGE_STR];
 	char conf_buttonsettinginit[MAX_LANGUAGE_STR];
 	char conf_launch_pad0[MAX_LANGUAGE_STR];
 	char conf_launch_pad1[MAX_LANGUAGE_STR];
 	char conf_launch_pad2[MAX_LANGUAGE_STR];
+	char conf_insert[MAX_LANGUAGE_STR];
+	char conf_delete[MAX_LANGUAGE_STR];
 	//color
 	char conf_background[MAX_LANGUAGE_STR];
 	char conf_frame[MAX_LANGUAGE_STR];
@@ -189,8 +197,12 @@ typedef struct
 	char conf_linenumber[MAX_LANGUAGE_STR];
 	char conf_tabspaces[MAX_LANGUAGE_STR];
 	char conf_chardisp[MAX_LANGUAGE_STR];
+	char conf_wordwrap[MAX_LANGUAGE_STR];
 	char conf_fullscreen[MAX_LANGUAGE_STR];
+	char conf_imageresize[MAX_LANGUAGE_STR];
+	char conf_autodecode[MAX_LANGUAGE_STR];
 	char conf_viewerinit[MAX_LANGUAGE_STR];
+	char conf_imageresizes[8][MAX_LANGUAGE_STR];
 	//misc
 	char conf_language[MAX_LANGUAGE_STR];
 	char conf_language_us[MAX_LANGUAGE_STR];
