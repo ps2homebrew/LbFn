@@ -115,6 +115,9 @@ typedef struct
 	char conf_ffmode[MAX_LANGUAGE_STR];
 	char conf_ffmode_field[MAX_LANGUAGE_STR];
 	char conf_ffmode_frame[MAX_LANGUAGE_STR];
+	char conf_screen_scan[MAX_LANGUAGE_STR];
+	char conf_screen_scan_full[MAX_LANGUAGE_STR];
+	char conf_screen_scan_crop[MAX_LANGUAGE_STR];
 	char conf_flickercontrol[MAX_LANGUAGE_STR];
 	char conf_screensettinginit[MAX_LANGUAGE_STR];
 	//network
@@ -146,6 +149,7 @@ typedef struct
 	char conf_fileicon[MAX_LANGUAGE_STR];
 	char conf_disc_ps2save_check[MAX_LANGUAGE_STR];
 	char conf_disc_elf_check[MAX_LANGUAGE_STR];
+	char conf_file_ps2save_check[MAX_LANGUAGE_STR];
 	char conf_file_elf_check[MAX_LANGUAGE_STR];
 	char conf_export_dir[MAX_LANGUAGE_STR];
 	char conf_defaulttitle[MAX_LANGUAGE_STR];

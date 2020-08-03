@@ -30,7 +30,7 @@
 #include "cnf.h"
 
 // バージョン
-#define LBF_VER "LbFn v0.69.1"
+#define LBF_VER "LbFn v0.70.1"
 
 // 垂直スキャンレート
 #define SCANRATE (ITO_VMODE_AUTO==ITO_VMODE_NTSC ? 60:50)
@@ -88,9 +88,14 @@ typedef struct
 	int interlace;
 	int ffmode_480i;
 	int ffmode_1080i;
+	int screen_scan_480i;
+	int screen_scan_480p;
+	int screen_scan_1080i;
+	int screen_scan_720p;
 	int fileicon;
 	int discPs2saveCheck;
 	int discELFCheck;
+	int filePs2saveCheck;
 	int fileELFCheck;
 	char Exportdir[MAX_PATH];
 	int defaulttitle;
@@ -149,6 +154,7 @@ extern int SCREEN_LEFT;
 extern int SCREEN_TOP;
 extern int interlace;
 extern int ffmode;
+extern int screenscan;
 extern int SCREEN_WIDTH;
 extern int SCREEN_HEIGHT;
 extern int SCREEN_MARGIN;

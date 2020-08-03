@@ -1857,8 +1857,8 @@ psberror:
 #endif
 
 //-------------------------------------------------
-//ゲームタイトルをファイル名に変換
-void title2filename(const unsigned char *in, unsigned char *out)
+//windowsでファイル名に使えない文字は「_」に変換
+void filenameFix(const unsigned char *in, unsigned char *out)
 {
 	int len;
 	int i=0;
@@ -1866,7 +1866,6 @@ void title2filename(const unsigned char *in, unsigned char *out)
 	len = strlen(in);
 	memcpy(out, in, len);
 	for(i=0;i<len;i++){
-		//windowsでファイル名に使えない文字は「_」に変換
 		if(out[i]==0x22) out[i]='_';	// '"'
 		if(out[i]==0x2A) out[i]='_';	// '*'
 		if(out[i]==0x2C) out[i]='_';	// ','
@@ -2325,12 +2324,14 @@ int psuExport(const char *path, const FILEINFO *file, int sjisout)
 			strcpy(outpath, path);
 
 		//出力するpsuファイル名
-		strcpy(tmp, file->name);
-		if(sjisout){
-			if(file->title[0]){
-				//ファイル名に使えない文字を変換
-				title2filename(file->title, tmp);
-			}
+		if(sjisout==TRUE){
+			if(file->title[0])
+				filenameFix(file->title, tmp);	//ファイル名に使えない文字を変換
+			else
+				filenameFix(file->name, tmp);
+		}
+		else{
+			filenameFix(file->name, tmp);
 		}
 
 		//出力先がmcのときにファイル名の文字数を調べる
@@ -2852,10 +2853,21 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 					tmp[0]=0;
 				}
 			}
-			else{
-				//mcとhddとmass
+			else if(!strncmp(path, "mc", 2)){
+				//mc
 				ret = getGameTitle(path, &files[i], tmp);
 				if(ret<0) tmp[0]=0;
+			}
+			else{
+				//hddとmass
+				if(setting->filePs2saveCheck){
+					ret = getGameTitle(path, &files[i], tmp);
+					if(ret<0) tmp[0]=0;
+				}
+				else{
+					ret=-1;
+					tmp[0]=0;
+				}
 			}
 			//sjisの英数字と記号をASCIIに変換
 			memset(files[i].title, 0, 65);

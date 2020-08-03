@@ -51,6 +51,7 @@ int font_bold;
 
 int interlace;
 int ffmode;
+int screenscan;
 //ascii
 int init_ascii=0;	//初期化したかしていないかのフラグ
 char *font_ascii=NULL;	//フォントのバッファ
@@ -140,60 +141,116 @@ void setupito(int tvmode)
 	else
 		vmode = ITO_VMODE_NTSC;
 
-	switch(vmode)
-	{
-		case ITO_VMODE_NTSC:
+	if(screenscan){
+		switch(vmode)
 		{
-			buffer_width = 640;
-			buffer_height= 448;
-			psm = ITO_RGBA32;
-			break;
-		}
-		case ITO_VMODE_PAL:
-		{
-			buffer_width = 640;
-			buffer_height= 512;
-			psm = ITO_RGBA32;
-			break;
-		}
-		case 0x50://480p
-		{
-			buffer_width = 640;
-			buffer_height= 448;
-			psm = ITO_RGBA32;
-			//setting->interlace = ITO_NON_INTERLACE;
-			//setting->ffmode = ITO_FIELD;
-			break;
-		}
-		case 0x51://1080i
-		{
-			buffer_width = 960;//-48;
-			buffer_height= 1080;//-56;
-			psm = ITO_RGBA16;
-			//setting->interlace = ITO_NON_INTERLACE;
-			//setting->ffmode = ITO_FIELD;
-			break;
-		}
-		case 0x52://720p:
-		{
-			buffer_width = 1280-64;
-			buffer_height= 720-36;
-			psm = ITO_RGBA16;
-			//setting->interlace = ITO_NON_INTERLACE;
-			//setting->ffmode = ITO_FIELD;
-			break;
-		}
-		default:
-		{
-			//NTSC
-			buffer_width = 640;
-			buffer_height= 448;
-			psm = ITO_RGBA32;
-			vmode = ITO_VMODE_NTSC;
-			break;
+			case ITO_VMODE_NTSC:
+			{
+				buffer_width = 704;
+				buffer_height= 480;
+				psm = ITO_RGBA32;
+				break;
+			}
+			case ITO_VMODE_PAL:
+			{
+				buffer_width = 704;
+				buffer_height= 576;
+				psm = ITO_RGBA32;
+				break;
+			}
+			case 0x50://480p
+			{
+				buffer_width = 768;
+				buffer_height= 480;
+				psm = ITO_RGBA32;
+				//setting->interlace = ITO_NON_INTERLACE;
+				//setting->ffmode = ITO_FIELD;
+				break;
+			}
+			case 0x51://1080i
+			{
+				buffer_width = 960;//-48;
+				buffer_height= 1080;//-56;
+				psm = ITO_RGBA16;
+				//setting->interlace = ITO_NON_INTERLACE;
+				//setting->ffmode = ITO_FIELD;
+				break;
+			}
+			case 0x52://720p:
+			{
+				buffer_width = 1280;//-64;
+				buffer_height= 720;//-36;
+				psm = ITO_RGBA16;
+				//setting->interlace = ITO_NON_INTERLACE;
+				//setting->ffmode = ITO_FIELD;
+				break;
+			}
+			default:
+			{
+				//NTSC
+				buffer_width = 704;
+				buffer_height= 480;
+				psm = ITO_RGBA32;
+				vmode = ITO_VMODE_NTSC;
+				break;
+			}
 		}
 	}
-
+	else{
+		switch(vmode)
+		{
+			case ITO_VMODE_NTSC:
+			{
+				buffer_width = 640;
+				buffer_height= 448;
+				psm = ITO_RGBA32;
+				break;
+			}
+			case ITO_VMODE_PAL:
+			{
+				buffer_width = 640;
+				buffer_height= 512;
+				psm = ITO_RGBA32;
+				break;
+			}
+			case 0x50://480p
+			{
+				buffer_width = 640;
+				buffer_height= 448;
+				psm = ITO_RGBA32;
+				//setting->interlace = ITO_NON_INTERLACE;
+				//setting->ffmode = ITO_FIELD;
+				break;
+			}
+			case 0x51://1080i
+			{
+				buffer_width = 960-64;//-48;
+				buffer_height= 1080-56;
+				psm = ITO_RGBA16;
+				//setting->interlace = ITO_NON_INTERLACE;
+				//setting->ffmode = ITO_FIELD;
+				break;
+			}
+			case 0x52://720p:
+			{
+				buffer_width = 1280-64;
+				buffer_height= 720-36;
+				psm = ITO_RGBA16;
+				//setting->interlace = ITO_NON_INTERLACE;
+				//setting->ffmode = ITO_FIELD;
+				break;
+			}
+			default:
+			{
+				//NTSC
+				buffer_width = 640;
+				buffer_height= 448;
+				psm = ITO_RGBA32;
+				vmode = ITO_VMODE_NTSC;
+				break;
+			}
+		}
+	}
 	// screen resolution
 	screen_env.screen.width		= buffer_width;
 	screen_env.screen.height	= buffer_height;
@@ -371,81 +428,158 @@ void drawFrame(int x1, int y1, int x2, int y2, uint64 color)
 void SetHeight(void)
 {
 	//SCREEN_WIDTHとSCREEN_HEIGHT
-	switch(setting->tvmode)
-	{
-		case 0:	//AUTO
+	if(screenscan){
+		switch(setting->tvmode)
 		{
-			SCREEN_WIDTH = 640;
-			SCREEN_LEFT = setting->screen_x_480i;
-			SCREEN_TOP = setting->screen_y_480i;
-			if(ITO_VMODE_AUTO==ITO_VMODE_NTSC){
-				//NTSC
+			case 0:	//AUTO
+			{
+				SCREEN_WIDTH = 704;
+				SCREEN_LEFT = setting->screen_x_480i;
+				SCREEN_TOP = setting->screen_y_480i;
+				if(ITO_VMODE_AUTO==ITO_VMODE_NTSC){
+					//NTSC
+					if(setting->ffmode_480i==FALSE && setting->interlace==TRUE)
+						SCREEN_HEIGHT = 480;
+					else
+						SCREEN_HEIGHT = 240;
+				}
+				else{
+					//PAL
+					if(setting->ffmode_480i==FALSE && setting->interlace==TRUE)
+						SCREEN_HEIGHT = 576;
+					else
+						SCREEN_HEIGHT = 288;
+				}
+				break;
+			}
+			case 1:	//NTSC
+			{
+				SCREEN_WIDTH = 704;
+				SCREEN_LEFT = setting->screen_x_480i;
+				SCREEN_TOP = setting->screen_y_480i;
+				if(setting->ffmode_480i==FALSE && setting->interlace==TRUE)
+					SCREEN_HEIGHT = 480;
+				else
+					SCREEN_HEIGHT = 240;
+				break;
+			}
+			case 2:	//PAL
+			{
+				SCREEN_WIDTH = 704;
+				SCREEN_LEFT = setting->screen_x_480i;
+				SCREEN_TOP = setting->screen_y_480i;
+				if(setting->ffmode_480i==FALSE && setting->interlace==TRUE)
+					SCREEN_HEIGHT = 576;
+				else
+					SCREEN_HEIGHT = 288;
+				break;
+			}
+			case 3:	//480p
+			{
+				SCREEN_LEFT = setting->screen_x_480p;
+				SCREEN_TOP = setting->screen_y_480p;
+				SCREEN_WIDTH = 720;
+				SCREEN_HEIGHT = 480;
+				break;
+			}
+			case 4:	//720p
+			{
+				SCREEN_LEFT = setting->screen_x_720p;
+				SCREEN_TOP = setting->screen_y_720p;
+				SCREEN_WIDTH = 1280;
+				SCREEN_HEIGHT = 720;
+				break;
+			}
+			case 5:	//1080i
+			{
+				SCREEN_WIDTH = 960;//1280;1440-72;//1920-96;
+				SCREEN_LEFT = setting->screen_x_1080i;
+				SCREEN_TOP = setting->screen_y_1080i;
+				if(setting->ffmode_1080i==FALSE)
+					SCREEN_HEIGHT = 1080;
+				else
+					SCREEN_HEIGHT = 540;
+				//SCREEN_HEIGHT = 1024;
+				break;
+			}
+		}
+	}
+	else{
+		switch(setting->tvmode)
+		{
+			case 0:	//AUTO
+			{
+				SCREEN_WIDTH = 640;
+				SCREEN_LEFT = setting->screen_x_480i;
+				SCREEN_TOP = setting->screen_y_480i;
+				if(ITO_VMODE_AUTO==ITO_VMODE_NTSC){
+					//NTSC
+					if(setting->ffmode_480i==FALSE && setting->interlace==TRUE)
+						SCREEN_HEIGHT = 448;
+					else
+						SCREEN_HEIGHT = 224;
+				}
+				else{
+					//PAL
+					if(setting->ffmode_480i==FALSE && setting->interlace==TRUE)
+						SCREEN_HEIGHT = 512;
+					else
+						SCREEN_HEIGHT = 256;
+				}
+				break;
+			}
+			case 1:	//NTSC
+			{
+				SCREEN_WIDTH = 640;
+				SCREEN_LEFT = setting->screen_x_480i;
+				SCREEN_TOP = setting->screen_y_480i;
 				if(setting->ffmode_480i==FALSE && setting->interlace==TRUE)
 					SCREEN_HEIGHT = 448;
 				else
 					SCREEN_HEIGHT = 224;
+				break;
 			}
-			else{
-				//PAL
+			case 2:	//PAL
+			{
+				SCREEN_WIDTH = 640;
+				SCREEN_LEFT = setting->screen_x_480i;
+				SCREEN_TOP = setting->screen_y_480i;
 				if(setting->ffmode_480i==FALSE && setting->interlace==TRUE)
 					SCREEN_HEIGHT = 512;
 				else
 					SCREEN_HEIGHT = 256;
+				break;
 			}
-			break;
-		}
-		case 1:	//NTSC
-		{
-			SCREEN_WIDTH = 640;
-			SCREEN_LEFT = setting->screen_x_480i;
-			SCREEN_TOP = setting->screen_y_480i;
-			if(setting->ffmode_480i==FALSE && setting->interlace==TRUE)
-				SCREEN_HEIGHT = 448;
-			else
-				SCREEN_HEIGHT = 224;
-			break;
-		}
-		case 2:	//PAL
-		{
-			SCREEN_WIDTH = 640;
-			SCREEN_LEFT = setting->screen_x_480i;
-			SCREEN_TOP = setting->screen_y_480i;
-			if(setting->ffmode_480i==FALSE && setting->interlace==TRUE)
-				SCREEN_HEIGHT = 512;
-			else
-				SCREEN_HEIGHT = 256;
-			break;
-		}
-		case 3:	//480p
-		{
-			SCREEN_LEFT = setting->screen_x_480p;
-			SCREEN_TOP = setting->screen_y_480p;
-			SCREEN_WIDTH = 640+16;
-			SCREEN_HEIGHT = 480-32;
-			break;
-		}
-		case 4:	//720p
-		{
-			SCREEN_LEFT = setting->screen_x_720p;
-			SCREEN_TOP = setting->screen_y_720p;
-			SCREEN_WIDTH = 1280-64;
-			SCREEN_HEIGHT = 720-32;
-			break;
-		}
-		case 5:	//1080i
-		{
-			SCREEN_WIDTH = 960-48;//1280;1440-72;//1920-96;
-			SCREEN_LEFT = setting->screen_x_1080i;
-			SCREEN_TOP = setting->screen_y_1080i;
-			if(setting->ffmode_1080i==FALSE)
-				SCREEN_HEIGHT = 1024;
-			else
-				SCREEN_HEIGHT = 512;
-			//SCREEN_HEIGHT = 1024;
-			break;
+			case 3:	//480p
+			{
+				SCREEN_LEFT = setting->screen_x_480p;
+				SCREEN_TOP = setting->screen_y_480p;
+				SCREEN_WIDTH = 640;
+				SCREEN_HEIGHT = 480-32;
+				break;
+			}
+			case 4:	//720p
+			{
+				SCREEN_LEFT = setting->screen_x_720p;
+				SCREEN_TOP = setting->screen_y_720p;
+				SCREEN_WIDTH = 1280-64;
+				SCREEN_HEIGHT = 720-32;
+				break;
+			}
+			case 5:	//1080i
+			{
+				SCREEN_WIDTH = 960-64;//-48;//1280;1440-72;//1920-96;
+				SCREEN_LEFT = setting->screen_x_1080i;
+				SCREEN_TOP = setting->screen_y_1080i;
+				if(setting->ffmode_1080i==FALSE)
+					SCREEN_HEIGHT = 1024;
+				else
+					SCREEN_HEIGHT = 512;
+				//SCREEN_HEIGHT = 1024;
+				break;
+			}
 		}
 	}
-
 	//FONT_WIDTH
 	FONT_WIDTH = ascii_data.width + char_Margin;
 

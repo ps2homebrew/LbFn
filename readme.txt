@@ -1,5 +1,5 @@
 -------------------------------------------
-LbFn version 0.69.1src by nika (2008/11/01)
+LbFn version 0.70.1src by nika (2008/11/03)
 -------------------------------------------
 
 ƒ\[ƒX‚ð‰ü•Ï‚·‚é‚±‚Æ‚É§ŒÀ‚Í‚ ‚è‚Ü‚¹‚ñ
@@ -12,7 +12,7 @@ LbF‚ÆLbFn‚ª‚»‚ê‚¼‚êLaunchELF‚ÆLbF‚ð‰ü•Ï‚µ‚½‚à‚Ì‚Æ‚¢‚¤‚±‚Æ‚ð‚í‚©‚é‚æ‚¤‚É‚µ‚Ä‚­‚¾‚
 œ–ÆÓ
 Eƒ‰ƒCƒZƒ“ƒX‚ÍALaunchELF‚Æ“¯‚¶
 EŽ©ŒÈÓ”C‚ÅŽg‚Á‚Ä‚­‚¾‚³‚¢B”z•zŽ©—RB
-ELbFn‚Å‰ü•Ï‚µ‚½•”•ª‚ðyiŽ‚É–â‚¢‡‚í‚¹‚½‚è‚µ‚È‚¢‚Å‰º‚³‚¢B
+ELbFn‚Å‰ü•Ï‚µ‚½•”•ª‚ðyiŽ‚É–â‚¢‡‚í‚¹‚½‚è‚µ‚È‚¢‚Å‚­‚¾‚³‚¢B
 
 œŽÓŽ«
 ELbF

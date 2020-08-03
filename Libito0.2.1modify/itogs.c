@@ -87,13 +87,11 @@ void itoGsEnvSubmit(itoGsEnv* env)
 					break;
 				}
 				case 640:
+				case 704:
+				case 720:
+				case 768:
 				{
 					ito.screen.mag_x = 3; 
-					break;
-				}
-				case 720:
-				{
-					ito.screen.mag_x = 3;
 					break;
 				}
 				//-----------------------------------------------------------------

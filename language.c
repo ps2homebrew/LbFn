@@ -131,6 +131,9 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_ffmode_frame, "FRAME");
 		strcpy(lang->conf_screen_x, "SCREEN X");
 		strcpy(lang->conf_screen_y, "SCREEN Y");
+		strcpy(lang->conf_screen_scan, "SCREEN SIZE");
+		strcpy(lang->conf_screen_scan_crop, "NORMAL");
+		strcpy(lang->conf_screen_scan_full, "FULL");
 		strcpy(lang->conf_flickercontrol, "FLICKER CONTROL");
 		strcpy(lang->conf_screensettinginit, "SCREEN SETTING INIT");
 		//network
@@ -162,6 +165,7 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_fileicon, "FILEICON");
 		strcpy(lang->conf_disc_ps2save_check, "DISC PS2SAVE CHECK");
 		strcpy(lang->conf_disc_elf_check, "DISC ELF CHECK");
+		strcpy(lang->conf_file_ps2save_check, "FILE PS2SAVE CHECK");
 		strcpy(lang->conf_file_elf_check, "FILE ELF CHECK");
 		strcpy(lang->conf_export_dir, "EXPORT DIR");
 		strcpy(lang->conf_defaulttitle, "DEFAULT SHOW TITLE");
@@ -280,13 +284,16 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_ps1save, "PS1 セーブ    ");
 		strcpy(lang->conf_elffile, "ELF ファイル  ");
 		strcpy(lang->conf_psufile, "PSU ファイル  ");
-		strcpy(lang->conf_screen_x, "画面位置 X");
-		strcpy(lang->conf_screen_y, "画面位置 Y");
 		strcpy(lang->conf_tvmode, "TV MODE");
 		strcpy(lang->conf_interlace, "インターレース");
 		strcpy(lang->conf_ffmode, "FFMODE");
 		strcpy(lang->conf_ffmode_field, "FIELD");
 		strcpy(lang->conf_ffmode_frame, "FRAME");
+		strcpy(lang->conf_screen_x, "画面位置 X");
+		strcpy(lang->conf_screen_y, "画面位置 Y");
+		strcpy(lang->conf_screen_scan, "画面サイズ");
+		strcpy(lang->conf_screen_scan_crop, "ノーマル");
+		strcpy(lang->conf_screen_scan_full, "フル");
 		strcpy(lang->conf_flickercontrol, "フリッカー調整");
 		strcpy(lang->conf_screensettinginit, "「画面設定」を初期化する");
 		//network
@@ -318,6 +325,7 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_fileicon, "FileBrowserのアイコン");
 		strcpy(lang->conf_disc_ps2save_check, "CD/DVDのときセーブデータか調べる");
 		strcpy(lang->conf_disc_elf_check, "CD/DVDのときELFか調べる");
+		strcpy(lang->conf_file_ps2save_check, "CD/DVD/MC以外のときセーブデータか調べる");
 		strcpy(lang->conf_file_elf_check, "CD/DVD以外のときELFか調べる");
 		strcpy(lang->conf_export_dir, "エクスポートフォルダ");
 		strcpy(lang->conf_defaulttitle, "ゲームタイトル表\示をデフォルトにする");

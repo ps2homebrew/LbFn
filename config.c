@@ -24,6 +24,7 @@ enum
 	DEF_SCREEN_Y_D3 = 66,
 	DEF_SCREEN_X_D4 = 331,
 	DEF_SCREEN_Y_D4 = 42,
+	DEF_SCREEN_SCAN = FALSE,	//FALSE=NORMAL TRUE=FULL
 	DEF_FLICKERCONTROL = TRUE,
 	DEF_TVMODE = 0,	//0=auto 1=ntsc 2=pal 3=480p 4=720p 5=1080i
 	DEF_INTERLACE = TRUE,	//FALSE=ITO_NON_INTERLACE TRUE=ITO_INTERLACE
@@ -43,6 +44,7 @@ enum
 	DEF_FILEICON = TRUE,
 	DEF_DISCPS2SAVECHECK = FALSE,
 	DEF_DISCELFCHECK = FALSE,
+	DEF_FILEPS2SAVECHECK = TRUE,
 	DEF_FILEELFCHECK = TRUE,
 	DEF_LANGUAGE = LANG_ENGLISH,
 };
@@ -93,6 +95,7 @@ enum
 	COLOR10,
 	COLOR11,
 	TVMODE,
+	SCREENSIZE,
 	INTERLACE,
 	FFMODE,
 	SCREEN_X,
@@ -136,6 +139,7 @@ enum
 	FILEICON,
 	PS2SAVECHECK,
 	ELFCHECK,
+	FILEPS2SAVECHECK,
 	FILEELFCHECK,
 	EXPORTDIR,
 	DEFAULTTITLE,
@@ -159,6 +163,7 @@ void SetScreenPosVM()
 			SCREEN_TOP = setting->screen_y_480i;
 			interlace = setting->interlace;
 			ffmode = setting->ffmode_480i;
+			screenscan = setting->screen_scan_480i;
 			break;
 		}
 		case 3:	//480p
@@ -167,6 +172,7 @@ void SetScreenPosVM()
 			SCREEN_TOP = setting->screen_y_480p;
 			interlace = ITO_NON_INTERLACE;
 			ffmode = ITO_FIELD;
+			screenscan = setting->screen_scan_480p;
 			break;
 		}
 		case 4:	//720p
@@ -175,6 +181,7 @@ void SetScreenPosVM()
 			SCREEN_TOP = setting->screen_y_720p;
 			interlace = ITO_NON_INTERLACE;
 			ffmode = ITO_FIELD;
+			screenscan = setting->screen_scan_720p;
 			break;
 		}
 		case 5:	//1080i
@@ -183,6 +190,7 @@ void SetScreenPosVM()
 			SCREEN_TOP = setting->screen_y_1080i;
 			interlace = ITO_INTERLACE;
 			ffmode = setting->ffmode_1080i;
+			screenscan = setting->screen_scan_1080i;
 			break;
 		}
 	}
@@ -199,24 +207,28 @@ void SetScreenPosXY()
 		{
 			setting->screen_x_480i = SCREEN_LEFT;
 			setting->screen_y_480i = SCREEN_TOP;
+			setting->screen_scan_480i = screenscan;
 			break;
 		}
 		case 3:	//480p
 		{
 			setting->screen_x_480p = SCREEN_LEFT;
 			setting->screen_y_480p = SCREEN_TOP;
+			setting->screen_scan_480p = screenscan;
 			break;
 		}
 		case 4:	//720p
 		{
 			setting->screen_x_720p = SCREEN_LEFT;
 			setting->screen_y_720p = SCREEN_TOP;
+			setting->screen_scan_720p = screenscan;
 			break;
 		}
 		case 5:	//1080i
 		{
 			setting->screen_x_1080i = SCREEN_LEFT;
 			setting->screen_y_1080i = SCREEN_TOP;
+			setting->screen_scan_1080i = screenscan;
 			break;
 		}
 	}
@@ -289,6 +301,10 @@ void InitScreenSetting(void)
 	setting->screen_y_720p = DEF_SCREEN_Y_D4;
 	setting->screen_x_1080i = DEF_SCREEN_X_D3;
 	setting->screen_y_1080i = DEF_SCREEN_Y_D3;
+	setting->screen_scan_480i = DEF_SCREEN_SCAN;
+	setting->screen_scan_480i = DEF_SCREEN_SCAN;
+	setting->screen_scan_480i = DEF_SCREEN_SCAN;
+	setting->screen_scan_480i = DEF_SCREEN_SCAN;
 	setting->flickerControl = DEF_FLICKERCONTROL;
 	setting->tvmode = DEF_TVMODE;
 	setting->interlace = DEF_INTERLACE;
@@ -321,6 +337,7 @@ void InitMiscSetting(void)
 	setting->fileicon = DEF_FILEICON;
 	setting->discPs2saveCheck = DEF_DISCPS2SAVECHECK;
 	setting->discELFCheck = DEF_DISCELFCHECK;
+	setting->filePs2saveCheck = DEF_FILEPS2SAVECHECK;
 	setting->fileELFCheck = DEF_FILEELFCHECK;
 	setting->Exportdir[0] = 0;
 	setting->language = DEF_LANGUAGE;
@@ -473,6 +490,14 @@ void saveConfig(char *mainMsg)
 	if(cnf_setstr("screen_pos_x_1080i", tmp)<0) goto error;
 	sprintf(tmp, "%d", setting->screen_y_1080i);
 	if(cnf_setstr("screen_pos_y_1080i", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->screen_scan_480i);
+	if(cnf_setstr("screen_scan_480i", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->screen_scan_480p);
+	if(cnf_setstr("screen_scan_480p", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->screen_scan_720p);
+	if(cnf_setstr("screen_scan_720p", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->screen_scan_1080i);
+	if(cnf_setstr("screen_scan_1080i", tmp)<0) goto error;
 	sprintf(tmp, "%d", setting->flickerControl);
 	if(cnf_setstr("flicker_control", tmp)<0) goto error;
 	sprintf(tmp, "%d", setting->language);
@@ -489,6 +514,8 @@ void saveConfig(char *mainMsg)
 	if(cnf_setstr("ps2save_check", tmp)<0) goto error;
 	sprintf(tmp, "%d", setting->discELFCheck);
 	if(cnf_setstr("elf_check", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->filePs2saveCheck);
+	if(cnf_setstr("file_ps2save_check", tmp)<0) goto error;
 	sprintf(tmp, "%d", setting->fileELFCheck);
 	if(cnf_setstr("file_elf_check", tmp)<0) goto error;
 	strcpy(tmp, setting->Exportdir);
@@ -717,6 +744,14 @@ void loadConfig(char *mainMsg)
 				setting->screen_x_1080i = atoi(tmp);
 			if(cnf_getstr("screen_pos_y_1080i", tmp, "")>=0)
 				setting->screen_y_1080i = atoi(tmp);
+			if(cnf_getstr("screen_scan_480i", tmp, "")>=0)
+				setting->screen_scan_480i = atoi(tmp);
+			if(cnf_getstr("screen_scan_480p", tmp, "")>=0)
+				setting->screen_scan_480p = atoi(tmp);
+			if(cnf_getstr("screen_scan_720p", tmp, "")>=0)
+				setting->screen_scan_720p = atoi(tmp);
+			if(cnf_getstr("screen_scan_1080i", tmp, "")>=0)
+				setting->screen_scan_1080i = atoi(tmp);
 			if(cnf_getstr("flicker_control", tmp, "")>=0){
 				setting->flickerControl = atoi(tmp);
 				if(setting->flickerControl<0 || setting->flickerControl>1)
@@ -756,6 +791,11 @@ void loadConfig(char *mainMsg)
 				setting->discELFCheck = atoi(tmp);
 				if(setting->discELFCheck<0 || setting->discELFCheck>1)
 					setting->discELFCheck = DEF_DISCELFCHECK;
+			}
+			if(cnf_getstr("file_ps2save_check", tmp, "")>=0){
+				setting->filePs2saveCheck = atoi(tmp);
+				if(setting->filePs2saveCheck<0 || setting->filePs2saveCheck>1)
+					setting->filePs2saveCheck = DEF_FILEPS2SAVECHECK;
 			}
 			if(cnf_getstr("file_elf_check", tmp, "")>=0){
 				setting->fileELFCheck = atoi(tmp);
@@ -1103,6 +1143,13 @@ void config_screen(SETTING *setting)
 					SetScreenPosXY();
 					itoSetScreenPos(SCREEN_LEFT, SCREEN_TOP);
 				}
+				else if(sel==SCREENSIZE){	//画面サイズ
+					screenscan = !screenscan;
+					SetScreenPosXY();
+					itoGsReset();
+					setupito(setting->tvmode);
+					SetHeight();
+				}
 				else if(sel==FLICKERCONTROL)	//フリッカーコントロール
 					setting->flickerControl = !setting->flickerControl;
 				else if(sel==SCREENINIT){	//SCREEN SETTING INIT
@@ -1274,6 +1321,13 @@ void config_screen(SETTING *setting)
 			else if(i==SCREEN_Y){	//SCREEN Y
 				sprintf(config[i],"%s: %3d", lang->conf_screen_y, SCREEN_TOP);
 			}
+			else if(i==SCREENSIZE){	//SCREEN SIZE
+				sprintf(config[i],"%s: ", lang->conf_screen_scan);
+				if(screenscan)
+					strcat(config[i], lang->conf_screen_scan_full);
+				else
+					strcat(config[i], lang->conf_screen_scan_crop);
+			}
 			else if(i==FLICKERCONTROL){	//FLICKER CONTROL
 				sprintf(config[i],"%s: ", lang->conf_flickercontrol);
 				if(setting->flickerControl)
@@ -1285,7 +1339,7 @@ void config_screen(SETTING *setting)
 				strcpy(config[i], lang->conf_screensettinginit);
 			}
 		}
-		nList=19;
+		nList=20;
 
 		// リスト表示用変数の正規化
 		if(top > nList-MAX_ROWS)	top=nList-MAX_ROWS;
@@ -1364,6 +1418,8 @@ void config_screen(SETTING *setting)
 		else if(sel==INTERLACE)
 			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
 		else if(sel==FFMODE)
+			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
+		else if(sel==SCREENSIZE)
 			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
 		else if(sel==FLICKERCONTROL)
 			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
@@ -1859,6 +1915,8 @@ void config_misc(SETTING *setting)
 					setting->discPs2saveCheck = !setting->discPs2saveCheck;
 				else if(sel==ELFCHECK)
 					setting->discELFCheck = !setting->discELFCheck;
+				else if(sel==FILEPS2SAVECHECK)
+					setting->filePs2saveCheck = !setting->filePs2saveCheck;
 				else if(sel==FILEELFCHECK)
 					setting->fileELFCheck = !setting->fileELFCheck;
 				else if(sel==EXPORTDIR){
@@ -1925,7 +1983,7 @@ void config_misc(SETTING *setting)
 					strcat(config[i], lang->conf_off);
 			}
 			else if(i==PS2SAVECHECK){	//DISC PS2SAVE CHECK
-				sprintf(config[6], "%s: " ,lang->conf_disc_ps2save_check);
+				sprintf(config[i], "%s: " ,lang->conf_disc_ps2save_check);
 				if(setting->discPs2saveCheck)
 					strcat(config[i], lang->conf_on);
 				else
@@ -1934,6 +1992,13 @@ void config_misc(SETTING *setting)
 			else if(i==ELFCHECK){	//DISC ELF CHECK
 				sprintf(config[i], "%s: " ,lang->conf_disc_elf_check);
 				if(setting->discELFCheck)
+					strcat(config[i], lang->conf_on);
+				else
+					strcat(config[i], lang->conf_off);
+			}
+			else if(i==FILEPS2SAVECHECK){	//FILE PS2SAVE CHECK
+				sprintf(config[i], "%s: " ,lang->conf_file_ps2save_check);
+				if(setting->filePs2saveCheck)
 					strcat(config[i], lang->conf_on);
 				else
 					strcat(config[i], lang->conf_off);
@@ -1968,7 +2033,7 @@ void config_misc(SETTING *setting)
 				strcpy(config[i], lang->conf_miscsettinginit);
 			}
 		}
-		nList=13;
+		nList=14;
 
 		// リスト表示用変数の正規化
 		if(top > nList-MAX_ROWS)	top=nList-MAX_ROWS;
@@ -2030,6 +2095,8 @@ void config_misc(SETTING *setting)
 		else if(sel==PS2SAVECHECK)
 			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
 		else if(sel==ELFCHECK)
+			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
+		else if(sel==FILEPS2SAVECHECK)
 			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
 		else if(sel==FILEELFCHECK)
 			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
