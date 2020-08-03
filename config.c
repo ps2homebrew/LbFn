@@ -240,7 +240,7 @@ void saveConfig(char *mainMsg)
 
 	//cnfファイルのパス
 	//hostから起動しているか調べる
-	if(!strncmp(LaunchElfDir, "host", 4)){
+	if(boot==HOST_BOOT){
 		//有効なmcのSYS-CONFフォルダ
 		sprintf(path, "mc%d:/SYS-CONF/LBF.CNF", CheckMC());
 	}
@@ -254,7 +254,7 @@ void saveConfig(char *mainMsg)
 		// 開けなかったら、SYS-CONFの設定ファイルを開く
 		else{
 			//mcから起動しているか調べる
-			if(!strncmp(LaunchElfDir, "mc", 2))
+			if(boot==MC_BOOT)
 				//mcのとき
 				mcport = LaunchElfDir[2]-'0';
 			else{
@@ -350,7 +350,7 @@ void saveConfig(char *mainMsg)
 	}
 
 	//cnfファイルのパス
-	if(!strncmp(LaunchElfDir, "host", 4)){
+	if(boot==HOST_BOOT){
 		//有効なmcのSYS-CONFフォルダ
 		sprintf(path, "mc%d:/SYS-CONF/LBF.CNF", CheckMC());
 	}
@@ -381,7 +381,7 @@ void loadConfig(char *mainMsg)
 
 	//cnfファイルのパス
 	//hostから起動しているか調べる
-	if(!strncmp(LaunchElfDir, "host", 4)){
+	if(boot==HOST_BOOT){
 		//有効なmcのSYS-CONFフォルダ
 		strcpy(path, "mc0:/SYS-CONF/LBF.CNF");
 		fd = fioOpen(path, O_RDONLY);
@@ -406,7 +406,7 @@ void loadConfig(char *mainMsg)
 		// 開けなかったら、SYS-CONFの設定ファイルを開く
 		else{
 			//mcから起動しているか調べる
-			if(!strncmp(LaunchElfDir, "mc", 2))
+			if(boot==MC_BOOT)
 				//mcのとき
 				mcport = LaunchElfDir[2]-'0';
 			else

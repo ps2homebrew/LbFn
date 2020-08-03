@@ -222,7 +222,7 @@ int ynDialog(const char *message)
 }
 
 //-------------------------------------------------
-// 確認ダイアログ
+// メッセージダイアログ
 void MessageDialog(const char *message)
 {
 	char msg[512];
@@ -517,11 +517,16 @@ int getDir(const char *path, FILEINFO *info)
 	int max=MAX_ENTRY-2;
 	int n;
 	
-	if(!strncmp(path, "mc", 2))			n=readMC(path, info, max);
-	else if(!strncmp(path, "hdd", 3))	n=readHDD(path, info, max);
-	else if(!strncmp(path, "mass", 4))	n=readMASS(path, info, max);
-	else if(!strncmp(path, "cdfs", 4))	n=readCD(path, info, max);
-	else return 0;
+	if(!strncmp(path, "mc", 2))
+		n=readMC(path, info, max);
+	else if(!strncmp(path, "hdd", 3))
+		n=readHDD(path, info, max);
+	else if(!strncmp(path, "mass", 4))
+		n=readMASS(path, info, max);
+	else if(!strncmp(path, "cdfs", 4))
+		n=readCD(path, info, max);
+	else
+		return 0;
 	
 	return n;
 }
@@ -704,7 +709,6 @@ int menu(const char *path, const char *file)
 
 		// 操作説明
 		x = FONT_WIDTH*2;
-		//y = SCREEN_MARGIN+FONT_HEIGHT*20;
 		y = SCREEN_MARGIN+(MAX_ROWS+4)*FONT_HEIGHT;
 		itoSprite(setting->color[0],
 			0, y,
@@ -2059,14 +2063,6 @@ int keyboard(char *out, int max)
 		x=((KEY_W/4)-FONT_WIDTH*strlen(lang->gen_cancel))/2;
 		sprintf(tmp, "%s",lang->gen_cancel);
 		printXY(tmp, KEY_X+KEY_W/2+x, KEY_Y+FONT_HEIGHT*10, setting->color[3], TRUE);
-/*		//カーソル表示
-		if(sel<=WFONTS*HFONTS)
-			x = KEY_X+FONT_WIDTH*2 + (sel%WFONTS)*FONT_WIDTH*3;	//CANCEL以外
-		else
-			x = KEY_X+FONT_WIDTH*11;	//CANCEL
-		y = KEY_Y+FONT_HEIGHT*2 + (sel/WFONTS)*FONT_HEIGHT;
-		drawChar('>', x, y, setting->color[3]);
-*/
 		// 操作説明
 		x = FONT_WIDTH*2;
 		//y = SCREEN_MARGIN+FONT_HEIGHT*20;

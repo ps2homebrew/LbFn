@@ -1,5 +1,5 @@
 -------------------------------------------
-LbF version 0.48src by yi (2006/9/04)
+LbF version 0.49src by yi (2006/9/10)
 http://yi-ps2.hp.infoseek.co.jp/
 -------------------------------------------
 
@@ -15,3 +15,10 @@ http://yi-ps2.hp.infoseek.co.jp/
 ÅEUnofficial LaunchELF
   EP + dlanor + various contributors
   http://www.ps2-scene.org/
+
+ÅEmyPS2
+  http://www.ntba2.de/
+
+ÅEAltimit v0.1 (alpha test version)
+  http://svn.ps2dev.org/listing.php?repname=ps2ware&path=%2Ftrunk%2Faltimit%2F&rev=0&sc=0
+

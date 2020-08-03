@@ -24,6 +24,7 @@
 #include <debug.h>
 #include <ito.h>
 #include <cdvd_rpc.h>
+#include <smod.h>
 #include "cd.h"
 #include "mass_rpc.h"
 
@@ -31,10 +32,19 @@
 #include "cnf.h"
 
 // バージョン
-#define LBF_VER "LbF v0.48"
+#define LBF_VER "LbF v0.49"
 
 // 垂直スキャンレート
 #define SCANRATE (ITO_VMODE_AUTO==ITO_VMODE_NTSC ? 60:50)
+
+#define UNK_BOOT 0
+#define CD_BOOT 1
+#define MC_BOOT 2
+#define HOST_BOOT 3
+#define PFS_BOOT 4
+#define VFS_BOOT 5
+#define HDD_BOOT 6
+#define MASS_BOOT 7
 
 enum
 {
@@ -50,15 +60,6 @@ enum
 	MAX_ENTRY = 2048,
 //	MAX_ROWS = 16,
 	MAX_PARTITIONS=100
-};
-
-//getFilePathのモード
-enum
-{
-	ANY_FILE = 0,
-	ELF_FILE,
-	DIR,
-	FNT_FILE
 };
 
 typedef struct
@@ -89,8 +90,9 @@ typedef struct
 	int KanjiMarginLeft;
 } SETTING;
 
+/* main.c */
 extern char LaunchElfDir[MAX_PATH], LastDir[MAX_NAME];
-
+extern int boot;
 void loadCdModules(void);
 void loadUsbModules(void);
 void loadHddModules(void);
@@ -100,7 +102,7 @@ int checkELFheader(const char *filename);
 void RunLoaderElf(char *filename, char *);
 
 /* draw.c */
-//SetFontMarginとGetFontMarginの種類
+//SetFontMargin GetFontMargin
 enum
 {
 	CHAR_MARGIN = 0,
@@ -111,14 +113,14 @@ enum
 	KANJI_FONT_MARGIN_LEFT
 };
 
-//GetCurrentPosの種類
+//GetCurrentPos
 enum
 {
 	CURRENTPOS_X = 0,
 	CURRENTPOS_Y
 };
 
-//GetFontSizeの種類
+//GetFontSize
 enum
 {
 	ASCII_FONT_WIDTH = 0,
@@ -170,6 +172,13 @@ void loadConfig(char *);
 void config(char *);
 
 /* filer.c */
+enum	//getFilePath
+{
+	ANY_FILE = 0,
+	ELF_FILE,
+	DIR,
+	FNT_FILE
+};
 void MessageDialog(const char *message);
 int newdir(const char *path, const char *name);
 int keyboard(char *out, int max);

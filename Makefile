@@ -23,13 +23,12 @@ all: $(EE_BIN)
 usbd.s:
 	bin2s $(PS2SDK)/iop/irx/usbd.irx usbd.s usbd_irx
 
-#usb_mass.irx AulaunchELF3.60
+#usb_mass.irx ulaunchELF 4.01
 usb_mass.s:
 	bin2s modules/usb_mass.irx usb_mass.s usb_mass_irx
 
-#cdvd.irx ulaunchELF3.60
+#cdvd.irx ulaunchELF 4.01
 cdvd.s:
-#	bin2s $(PS2DEV)/libcdvd/lib/cdvd.irx cdvd.s cdvd_irx
 	bin2s modules/cdvd.irx cdvd.s cdvd_irx
 
 poweroff.s:
@@ -42,7 +41,6 @@ filexio.s:
 	bin2s $(PS2SDK)/iop/irx/fileXio.irx filexio.s filexio_irx
 
 ps2dev9.s:
-#	bin2s modules/ps2dev9.irx ps2dev9.s ps2dev9_irx
 	bin2s $(PS2SDK)/iop/irx/ps2dev9.irx ps2dev9.s ps2dev9_irx
 
 ps2atad.s:
@@ -64,9 +62,10 @@ ps2smap.s:
 	bin2s $(PS2ETH)/smap/ps2smap.irx ps2smap.s ps2smap_irx
 
 ps2ip.s:
-	bin2s $(PS2SDK)/iop/irx/ps2ip.irx ps2ip.s ps2ip_irx
+#	bin2s $(PS2SDK)/iop/irx/ps2ip.irx ps2ip.s ps2ip_irx
+	bin2s modules/ps2ip.irx ps2ip.s ps2ip_irx
 
-#ps2ftpd.irx uLaunchELF3.60
+#ps2ftpd.irx uLaunchELF 4.01
 ps2ftpd.s:
 	bin2s modules/ps2ftpd.irx ps2ftpd.s ps2ftpd_irx
 
