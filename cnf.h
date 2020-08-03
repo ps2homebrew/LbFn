@@ -2,6 +2,7 @@
 #define CNF_H__
 
 #define MAX_CNF_KEYSTR 100
+#define MAX_CNF_DATASTR MAX_CNF_KEYSTR+MAX_PATH+1
 #define MAX_CNF_LINE 100
 
 int cnf_init(void);

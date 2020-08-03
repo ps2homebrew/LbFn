@@ -32,7 +32,7 @@
 #include "cnf.h"
 
 // バージョン
-#define LBF_VER "LbF v0.52"
+#define LBF_VER "LbF v0.53"
 
 // 垂直スキャンレート
 #define SCANRATE (ITO_VMODE_AUTO==ITO_VMODE_NTSC ? 60:50)
@@ -88,6 +88,7 @@ typedef struct
 	int AsciiMarginLeft;
 	int KanjiMarginTop;
 	int KanjiMarginLeft;
+	int MassFileSizeCheck;
 } SETTING;
 
 /* main.c */

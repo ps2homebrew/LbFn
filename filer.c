@@ -98,9 +98,6 @@ const unsigned char sjis_lookup_82[256] = {
   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,  // 0xF0
 };
 
-size_t freeSpace;
-int mcfreeSpace;
-int vfreeSpace;
 int cut;
 int nclipFiles, nmarks, nparties;
 int title;
@@ -383,7 +380,7 @@ int readMC(const char *path, FILEINFO *info, int max)
 	for(i=j=0; i<ret; i++)
 	{
 		if(mcDir[i].attrFile & MC_ATTR_SUBDIR &&
-		(!strcmp(mcDir[i].name,".") || !strcmp(mcDir[i].name,"..")))
+		(!strcmp(mcDir[i].name, ".") || !strcmp(mcDir[i].name, "..")))
 			continue;
 		strcpy(info[j].name, mcDir[i].name);
 		if(mcDir[i].attrFile & MC_ATTR_SUBDIR)
@@ -421,8 +418,8 @@ int readCD(const char *path, FILEINFO *info, int max)
 	for(i=j=0; i<n; i++)
 	{
 		if(TocEntryList[i].fileProperties & 0x02 &&
-		 (!strcmp(TocEntryList[i].filename,".") ||
-		  !strcmp(TocEntryList[i].filename,"..")))
+		 (!strcmp(TocEntryList[i].filename, ".") ||
+		  !strcmp(TocEntryList[i].filename, "..")))
 			continue;
 		strcpy(info[j].name, TocEntryList[i].filename);
 		if(TocEntryList[i].fileProperties & 0x02)
@@ -430,7 +427,7 @@ int readCD(const char *path, FILEINFO *info, int max)
 		else
 			info[j].attr = FIO_S_IFREG;
 		info[j].fileSizeByte = TocEntryList[i].fileSize;
-		memset(&info[j].modifyTime,0,sizeof(PS2TIME)); //取得できない
+		memset(&info[j].modifyTime, 0, sizeof(PS2TIME)); //取得できない
 		j++;
 	}
 	
@@ -483,12 +480,12 @@ int readHDD(const char *path, FILEINFO *info, int max)
 			strcpy(info[i].name, parties[i]);
 			info[i].attr = FIO_S_IFDIR;
 			info[i].fileSizeByte = 0;
-			memset(&info[i].modifyTime,0,sizeof(PS2TIME));
+			memset(&info[i].modifyTime, 0, sizeof(PS2TIME));
 		}
 		return nparties;
 	}
 	
-	getHddParty(path,NULL,party,dir);
+	getHddParty(path, NULL, party, dir);
 	ret = mountParty(party);
 	if(ret<0) return 0;
 	dir[3] = ret+'0';
@@ -497,7 +494,7 @@ int readHDD(const char *path, FILEINFO *info, int max)
 	
 	while(fileXioDread(fd, &dirbuf)){
 		if(dirbuf.stat.mode & FIO_S_IFDIR &&
-		(!strcmp(dirbuf.name,".") || !strcmp(dirbuf.name,"..")))
+		(!strcmp(dirbuf.name, ".") || !strcmp(dirbuf.name, "..")))
 			continue;
 		
 		info[i].attr = dirbuf.stat.mode;
@@ -530,8 +527,7 @@ int readMASS(const char *path, FILEINFO *info, int max)
 	
 	ret = usb_mass_getFirstDirentry((char*)path+5, &record);
 	while(ret > 0){
-		if(record.attr & 0x10 &&
-		(!strcmp(record.name,".") || !strcmp(record.name,".."))){
+		if(record.attr & 0x10 && (!strcmp(record.name, ".") || !strcmp(record.name, ".."))){
 			ret = usb_mass_getNextDirentry(&record);
 			continue;
 		}
@@ -541,8 +537,19 @@ int readMASS(const char *path, FILEINFO *info, int max)
 			info[n].attr = FIO_S_IFDIR;
 		else
 			info[n].attr = FIO_S_IFREG;
-		//info[n].fileSizeByte = record.size; //取得できない
-		info[n].fileSizeByte = 0;
+		//ファイルサイズ
+		if(setting->MassFileSizeCheck){
+			int fd;
+			char fullpath[MAX_PATH];
+			sprintf(fullpath, "%s%s", path, info[n].name);
+			fd = fioOpen(fullpath, O_RDONLY);
+			info[n].fileSizeByte = fioLseek(fd,0,SEEK_END);
+			fioClose(fd);
+		}
+		else{
+			//info[n].fileSizeByte = record.size; //取得できない
+			info[n].fileSizeByte = 0;
+		}
 		info[n].modifyTime.unknown = 0;
 		info[n].modifyTime.sec = 0;//record.time[2]; //取得できない
 		info[n].modifyTime.min = record.time[1];
@@ -587,7 +594,7 @@ int getGameTitle(const char *path, const FILEINFO *file, char *out)
 	int fd=-1, dirfd=-1, size, hddin=FALSE, ret;
 	
 	if(file->attr & FIO_S_IFREG) return -1;
-	if(path[0]==0 || !strcmp(path,"hdd0:/")) return -1;
+	if(path[0]==0 || !strcmp(path, "hdd0:/")) return -1;
 	
 	if(!strncmp(path, "hdd", 3)){
 		getHddParty(path, file, party, dir);
@@ -603,13 +610,13 @@ int getGameTitle(const char *path, const FILEINFO *file, char *out)
 		if((dirfd=fileXioDopen(dir)) < 0) goto error;
 		while(fileXioDread(dirfd, &dirEnt)){
 			if(dirEnt.stat.mode & FIO_S_IFREG &&
-			 !strcmp(dirEnt.name,"icon.sys")){
+			 !strcmp(dirEnt.name, "icon.sys")){
 				strcat(dir, "icon.sys");
 				if((fd=fileXioOpen(dir, O_RDONLY, fileMode)) < 0)
 					goto error;
-				if((size=fileXioLseek(fd,0,SEEK_END)) <= 0x100)
+				if((size=fileXioLseek(fd, 0, SEEK_END)) <= 0x100)
 					goto error;
-				fileXioLseek(fd,0xC0,SEEK_SET);
+				fileXioLseek(fd, 0xC0, SEEK_SET);
 				fileXioRead(fd, out, 16*4);
 				out[16*4] = 0;
 				fileXioClose(fd); fd=-1;
@@ -622,8 +629,8 @@ int getGameTitle(const char *path, const FILEINFO *file, char *out)
 	else{
 		strcat(dir, "icon.sys");
 		if((fd=fioOpen(dir, O_RDONLY)) < 0) goto error;
-		if((size=fioLseek(fd,0,SEEK_END)) <= 0x100) goto error;
-		fioLseek(fd,0xC0,SEEK_SET);
+		if((size=fioLseek(fd, 0, SEEK_END)) <= 0x100) goto error;
+		fioLseek(fd, 0xC0, SEEK_SET);
 		fioRead(fd, out, 16*4);
 		out[16*4] = 0;
 		fioClose(fd); fd=-1;
@@ -653,6 +660,7 @@ int menu(const char *path, const char *file)
 
 	// メニュー項目有効・無効設定
 	memset(enable, TRUE, NUM_MENU);	//全部TRUEにする
+
 	if(!strcmp(path,"hdd0:/") || path[0]==0){
 		enable[COPY] = FALSE;
 		enable[CUT] = FALSE;
@@ -667,9 +675,10 @@ int menu(const char *path, const char *file)
 
 	if(!strncmp(path, "mc", 2))
 		enable[RENAME] = FALSE;
-	if(!strncmp(path, "hdd", 3)){
+
+	if(!strncmp(path, "hdd", 3))
 		enable[EXPORT] = FALSE;
-	}
+
 	if(!strncmp(path,"cdfs",4)){
 		enable[CUT] = FALSE;
 		enable[PASTE] = FALSE;
@@ -804,7 +813,7 @@ size_t getFileSize(const char *path, const FILEINFO *file)
 		}else{
 			fd = fioOpen(dir, O_RDONLY);
 			size = fioLseek(fd,0,SEEK_END);
-			fioClose(fd);;
+			fioClose(fd);
 		}
 	}
 	return size;
@@ -989,7 +998,7 @@ int copy(const char *outPath, const char *inPath, FILEINFO file, int n)
 	}
 	else
 		sprintf(in, "%s%s", inPath, file.name);
-	//入力パスがHDDのときマウント
+	//出力パスがHDDのときマウント
 	if(hddout){
 		if(pfsout<0){
 			if(pfsin==0) pfsout=1;
@@ -2164,89 +2173,62 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 
 	// ファイルリスト設定
 	if(path[0]==0){
-		strcpy(files[0].name, "mc0:");
-		files[0].attr = FIO_S_IFDIR;
-		files[0].type=TYPE_OTHER;
-		memset(&files[0].modifyTime,0,sizeof(PS2TIME));
-
-		strcpy(files[1].name, "mc1:");
-		files[1].attr = FIO_S_IFDIR;
-		files[1].type=TYPE_OTHER;
-		memset(&files[1].modifyTime,0,sizeof(PS2TIME));
-
-		strcpy(files[2].name, "hdd0:");
-		files[2].attr = FIO_S_IFDIR;
-		files[2].type=TYPE_OTHER;
-		memset(&files[2].modifyTime,0,sizeof(PS2TIME));
-
-		strcpy(files[3].name, "cdfs:");
-		files[3].attr = FIO_S_IFDIR;
-		files[3].type=TYPE_OTHER;
-		memset(&files[3].modifyTime,0,sizeof(PS2TIME));
-
-		strcpy(files[4].name, "mass:");
-		files[4].attr = FIO_S_IFDIR;
-		files[4].type=TYPE_OTHER;
-		memset(&files[4].modifyTime,0,sizeof(PS2TIME));
-		nfiles = 5;
-		for(i=0; i<nfiles; i++)
-			files[i].title[0]=0;
-		if(cnfmode==ELF_FILE){
-			strcpy(files[nfiles].name, "MISC");
-			files[nfiles].attr = FIO_S_IFDIR;
-			files[nfiles].type=TYPE_OTHER;
-			memset(&files[nfiles].modifyTime,0,sizeof(PS2TIME));
-			nfiles++;
+		for(i=0;i<5;i++){
+			memset(&files[i].modifyTime,0,sizeof(PS2TIME));
+			files[i].fileSizeByte = 0;
+			files[i].attr = FIO_S_IFDIR;
+			if(i==0) strcpy(files[i].name, "mc0:");
+			if(i==1) strcpy(files[i].name, "mc1:");
+			if(i==2) strcpy(files[i].name, "hdd0:");
+			if(i==3) strcpy(files[i].name, "cdfs:");
+			if(i==4) strcpy(files[i].name, "mass:");
+			files[i].title[0] = 0;
+			files[i].type = TYPE_OTHER;
 		}
-		vfreeSpace=FALSE;
+		nfiles = 5;
+		if(cnfmode==ELF_FILE){
+			memset(&files[5].modifyTime,0,sizeof(PS2TIME));
+			files[5].fileSizeByte = 0;
+			files[5].attr = FIO_S_IFDIR;
+			strcpy(files[5].name, "MISC");
+			files[5].type = TYPE_OTHER;
+			files[5].title[0] = 0;
+			nfiles = 6;
+		}
+		//vfreeSpace=FALSE;
 	}
 	else if(!strcmp(path, "MISC/")){
-		strcpy(files[0].name, "..");
-		files[0].attr = FIO_S_IFDIR;
-		files[0].type=TYPE_OTHER;
-		memset(&files[0].modifyTime,0,sizeof(PS2TIME));
-
-		strcpy(files[1].name, "FileBrowser");
-		files[1].attr = FIO_S_IFREG;
-		files[1].type=TYPE_OTHER;
-		memset(&files[1].modifyTime,0,sizeof(PS2TIME));
-
-		strcpy(files[2].name, "PS2Browser");
-		files[2].attr = FIO_S_IFREG;
-		files[2].type=TYPE_OTHER;
-		memset(&files[2].modifyTime,0,sizeof(PS2TIME));
-
-		strcpy(files[3].name, "PS2Disc");
-		files[3].attr = FIO_S_IFREG;
-		files[3].type=TYPE_OTHER;
-		memset(&files[3].modifyTime,0,sizeof(PS2TIME));
-
-		strcpy(files[4].name, "PS2Net");	//PS2Net uLaunchELF3.60
-		files[4].attr = FIO_S_IFREG;
-		files[4].type=TYPE_OTHER;
-		memset(&files[4].modifyTime,0,sizeof(PS2TIME));
-
-		strcpy(files[5].name, "INFO");
-		files[5].attr = FIO_S_IFREG;
-		files[5].type=TYPE_OTHER;
-		memset(&files[5].modifyTime,0,sizeof(PS2TIME));
-
-		strcpy(files[6].name, "CONFIG");
-		files[6].attr = FIO_S_IFREG;
-		files[6].type=TYPE_OTHER;
-		memset(&files[6].modifyTime,0,sizeof(PS2TIME));
-
+		for(i=0;i<7;i++){
+			memset(&files[i].modifyTime,0,sizeof(PS2TIME));
+			files[i].fileSizeByte = 0;
+			if(i==0)
+				files[i].attr = FIO_S_IFDIR;
+			else
+				files[i].attr = FIO_S_IFREG;
+			if(i==0) strcpy(files[i].name, "..");
+			if(i==1) strcpy(files[i].name, "FileBrowser");
+			if(i==2) strcpy(files[i].name, "PS2Browser");
+			if(i==3) strcpy(files[i].name, "PS2Disc");
+			if(i==4) strcpy(files[i].name, "PS2Net");	//PS2Net uLaunchELF3.60
+			if(i==5) strcpy(files[i].name, "INFO");
+			if(i==6) strcpy(files[i].name, "CONFIG");
+			files[i].title[0] = 0;
+			files[i].type = TYPE_OTHER;
+		}
 		nfiles = 7;
-		for(i=0; i<nfiles; i++)
-			files[i].title[0]=0;
 	}
 	else{
-		strcpy(files[0].name, "..");
+		//files[0]を初期化
+		memset(&files[0].modifyTime, 0, sizeof(PS2TIME));
+		files[0].fileSizeByte = 0;
 		files[0].attr = FIO_S_IFDIR;
+		strcpy(files[0].name, "..");
+		files[0].title[0] = 0;
 		files[0].type=TYPE_OTHER;
-		memset(&files[0].modifyTime,0,sizeof(PS2TIME));
+
+		//ファイルリストとファイル数を取得
 		nfiles = getDir(path, &files[1]) + 1;
-		if(strcmp(ext,"*")){	//ファイルマスク
+		if(strcmp(ext, "*")){	//ファイルマスク
 			for(i=j=1; i<nfiles; i++){
 				if(files[i].attr & FIO_S_IFDIR)
 					files[j++] = files[i];
@@ -2258,7 +2240,8 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 			}
 			nfiles = j;
 		}
-		//ゲームタイトルとファイルタイプ取得
+
+		//ゲームタイトルとファイルタイプを取得
 		for(i=1; i<nfiles; i++){
 			//ゲームタイトル取得
 			if( !strncmp(path, "cdfs", 4)){
@@ -2278,8 +2261,7 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 				if(ret<0) tmp[0]=0;
 			}
 			//sjisの英数字と記号をASCIIに変換
-			memset(files[i].title,0,65);
-//			files[i].title[0]=0;
+			memset(files[i].title, 0, 65);
 			sjis2ascii(tmp, files[i].title);
 
 			//タイプ取得
@@ -2299,7 +2281,7 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 					else
 						files[i].type=TYPE_ELF;
 				}
-				else if( !strncmp(path,"hdd",3)&&strcmp(path,"hdd0:/") ){
+				else if( !strncmp(path, "hdd", 3)&&strcmp(path, "hdd0:/") ){
 					checkELFret = checkELFheader(fullpath); 	//checkELFheader
 					mountedParty[0][0]=0;
 					if(checkELFret<0)
@@ -2307,12 +2289,12 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 					else
 						files[i].type=TYPE_ELF;
 					//HDDのとき再マウント
-					strcpy(file.name,files[i].name);
-					strcpy(file.title,files[i].title);
+					strcpy(file.name, files[i].name);
+					strcpy(file.title, files[i].title);
 					file.attr=files[i].attr;
 					file.type=files[i].type;
 					//
-					getHddParty(path,&file,party,dir);
+					getHddParty(path, &file, party, dir);
 					mountParty(party);
 				}
 				else if( !strncmp(path, "cdfs", 4)){
@@ -2329,8 +2311,10 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 				}
 			}
 		}
-		if(!strcmp(path, "hdd0:/"))
-			vfreeSpace=FALSE;
+		//ソート
+		if(!strcmp(path, "hdd0:/")){
+			//vfreeSpace=FALSE;
+		}
 		else if(nfiles>1)
 			sort(&files[1], 0, nfiles-2);
 	}
@@ -2354,6 +2338,9 @@ void getFilePath(char *out, int cnfmode)
 	size_t size;
 	int code;
 	int detail=0;	//詳細表示 0:なし 1:サイズ 2:更新日時
+	size_t freeSpace=0;
+	int mcfreeSpace=0;
+	int vfreeSpace=FALSE;	//空き容量表示フラグ
 
 	if(cnfmode==ANY_FILE)
 		strcpy(ext, "*");
@@ -2402,6 +2389,50 @@ void getFilePath(char *out, int cnfmode)
 			else if(new_pad & PAD_L1) {	// タイトル表示切り替え
 				title = !title;
 				cd=TRUE;
+			}
+			else if(new_pad & PAD_R2){	//GETSIZE
+				if(path[0]==0 || !strcmp(path,"hdd0:/") || !strcmp(path,"MISC/")){
+				}
+				else if(nmarks==0 && !strcmp(files[sel].name, "..")){
+				}
+				else{
+					if(nmarks==0){
+						drawMsg("SIZE =");
+						size=getFileSize(path, &files[sel]);
+					}
+					else{
+						drawMsg(lang->filer_checkingsize);
+						for(i=size=0; i<nfiles; i++){
+							if(marks[i])
+								size+=getFileSize(path, &files[i]);
+							if(size<0) size=-1;
+						}
+					}
+					//
+					if(size<0){
+						strcpy(msg0, lang->filer_getsizefailed);
+					}
+					else{
+						if(size >= 1024*1024)
+							sprintf(msg0, "SIZE = %.1f MByte", (double)size/1024/1024);
+						else if(size >= 1024)
+							sprintf(msg0, "SIZE = %.1f KByte", (double)size/1024);
+						else
+							sprintf(msg0, "SIZE = %d Byte", size);
+					}
+					pushed = FALSE;
+				}
+			}
+			else if(new_pad & PAD_R3){	//FILEICON
+				setting->fileicon = !setting->fileicon;
+				if(setting->fileicon) cd=TRUE;
+			}
+			else if(new_pad & PAD_L3){	//FLICKERCONTROL
+				setting->flickerControl = !setting->flickerControl;
+			}
+			else if(new_pad & PAD_L2) {	//詳細表示
+				detail++;
+				if(detail==3) detail=0;
 			}
 			//ELF_FILE ELF選択時
 			if(cnfmode==ELF_FILE){
@@ -2459,7 +2490,7 @@ void getFilePath(char *out, int cnfmode)
 			}
 			//DIR ディレクトリ選択時
 			else if(cnfmode==DIR){
-				if(new_pad & PAD_START) {
+				if(new_pad & PAD_START) {	//ディレクトリを決定
 					if( path[0]!=0 && strcmp(path, "hdd0:/")!=0 && strncmp(path, "cdfs", 4)!=0 ){
 						strcpy(out, path);
 						break;
@@ -2553,8 +2584,7 @@ void getFilePath(char *out, int cnfmode)
 								}
 							}
 							if(ret>=0){
-								vfreeSpace=FALSE;	//空きスペース再計算
-								cd=TRUE;
+								cd=TRUE;	//空きスペース再計算
 							}
 							else{
 								strcpy(msg0, lang->filer_deletefailed);
@@ -2585,7 +2615,6 @@ void getFilePath(char *out, int cnfmode)
 						}
 						else{
 							if(cut) nclipFiles=0;
-							vfreeSpace=FALSE;	//空きスペース再計算
 						}
 						cd=TRUE;
 					}
@@ -2612,11 +2641,12 @@ void getFilePath(char *out, int cnfmode)
 						}
 					}
 					else if(ret==GETSIZE){	// サイズ表示
-						drawMsg(lang->filer_checkingsize);
 						if(nmarks==0){
+							drawMsg("SIZE =");
 							size=getFileSize(path, &files[sel]);
 						}
 						else{
+							drawMsg(lang->filer_checkingsize);
 							for(i=size=0; i<nfiles; i++){
 								if(marks[i])
 									size+=getFileSize(path, &files[i]);
@@ -2655,7 +2685,6 @@ void getFilePath(char *out, int cnfmode)
 							sprintf(msg0, "%s %s", lang->filer_exportto, tmp);
 							pushed = FALSE;
 							cd = TRUE;
-							vfreeSpace=FALSE;	//空きスペース再計算
 						}
 					}
 					else if(ret==IMPORT){	// psuファイルからインポート
@@ -2674,7 +2703,6 @@ void getFilePath(char *out, int cnfmode)
 							sprintf(msg0, "%s %s", lang->filer_importto, tmp);
 							pushed = FALSE;
 							cd = TRUE;
-							vfreeSpace=FALSE;	//空きスペース再計算
 						}
 					}
 				}
@@ -2705,59 +2733,6 @@ void getFilePath(char *out, int cnfmode)
 						}
 					}
 				}
-				else if(new_pad & PAD_R2){	//GETSIZE
-/*
-					//コンフィグ
-					config(msg0);
-					pushed = FALSE;
-					if(setting->discControl) loadCdModules();
-					if(setting->fileicon) cd=TRUE;
-*/
-					if(!strcmp(path,"hdd0:/") || path[0]==0){
-					}
-					else if(nmarks==0 && !strcmp(files[sel].name, "..")){
-					}
-					else{
-						drawMsg(lang->filer_checkingsize);
-						if(nmarks==0){
-							size=getFileSize(path, &files[sel]);
-						}
-						else{
-							for(i=size=0; i<nfiles; i++){
-								if(marks[i])
-									size+=getFileSize(path, &files[i]);
-								if(size<0) size=-1;
-							}
-						}
-						//
-						if(size<0){
-							strcpy(msg0, lang->filer_getsizefailed);
-						}
-						else{
-							if(size >= 1024*1024)
-								sprintf(msg0, "SIZE = %.1f MByte", (double)size/1024/1024);
-							else if(size >= 1024)
-								sprintf(msg0, "SIZE = %.1f KByte", (double)size/1024);
-							else
-								sprintf(msg0, "SIZE = %d Byte", size);
-						}
-						pushed = FALSE;
-					}
-				}
-				else if(new_pad & PAD_R3){
-					//FILEICON
-					setting->fileicon = !setting->fileicon;
-					if(setting->fileicon)
-						cd=TRUE;
-				}
-				else if(new_pad & PAD_L3){
-					//FILEICON
-					setting->flickerControl = !setting->flickerControl;
-				}
-				else if(new_pad & PAD_L2) {	//デバッグ
-					detail++;
-					if(detail==3) detail=0;
-				}
 			}
 		}
 		// 上位フォルダ移動
@@ -2775,17 +2750,20 @@ void getFilePath(char *out, int cnfmode)
 			}
 			cd=TRUE;
 		}
-		// フォルダ移動
+		//フォルダ移動（移動先のフォルダが現在のフォルダと同じときはファイルリストを更新）
 		if(cd){
 			nfiles = setFileList(path, ext, files, cnfmode);
 			// 空き容量取得
+			vfreeSpace=FALSE;	//空き容量表示フラグ
 			if(cnfmode==ANY_FILE){
 				if(!strncmp(path, "mc", 2)){
 					mcGetInfo(path[2]-'0', 0, NULL, &mcfreeSpace, NULL);
+					mcSync(0,NULL,NULL);
+					freeSpace = mcfreeSpace*1024;
+					vfreeSpace=TRUE;
 				}
 				else if(!strncmp(path,"hdd",3)&&strcmp(path,"hdd0:/")){
-					freeSpace = 
-					fileXioDevctl("pfs0:",PFSCTL_GET_ZONE_FREE,NULL,0,NULL,0)*fileXioDevctl("pfs0:",PFSCTL_GET_ZONE_SIZE,NULL,0,NULL,0);
+					freeSpace = fileXioDevctl("pfs0:",PFSCTL_GET_ZONE_FREE,NULL,0,NULL,0)*fileXioDevctl("pfs0:",PFSCTL_GET_ZONE_SIZE,NULL,0,NULL,0);
 					vfreeSpace=TRUE;
 				}
 			}
@@ -2815,7 +2793,7 @@ void getFilePath(char *out, int cnfmode)
 		if(sel < 0)			sel=0;
 		if(sel >= top+MAX_ROWS)	top=sel-MAX_ROWS+1;
 		if(sel < top)			top=sel;
-		
+
 		// 画面描画開始
 		clrScr(setting->color[0]);
 		// ファイルリスト
@@ -2877,14 +2855,17 @@ void getFilePath(char *out, int cnfmode)
 				printXY(tmp, x+FONT_WIDTH*4, y, color, TRUE);
 			}
 			//詳細表示
-			if(path[0] && strcmp(path,"hdd0:/")){
+			if(path[0]==0 || !strcmp(path,"hdd0:/") || !strcmp(path,"MISC/")){
+				//何もしない
+			}
+			else{
 				if(detail==1){
 					int len;
 					if(files[top+i].attr & FIO_S_IFDIR)
 						sprintf(tmp,"<DIR>");
 					else{
-						//massは、ファイルサイズを取得できない
-						if(!strncmp(path,"mass",4)){
+						//setting->MassFileSizeCheck==0のときは、ファイルサイズを取得していない
+						if(!strncmp(path,"mass",4) && !setting->MassFileSizeCheck){
 							strcpy(tmp,"- B ");
 						}
 						else{
@@ -2983,12 +2964,6 @@ void getFilePath(char *out, int cnfmode)
 		setScrTmp(msg0, msg1);
 
 		// フリースペース表示
-		if(!strncmp(path, "mc", 2) && !vfreeSpace && !cnfmode){
-			if(mcSync(1,NULL,NULL)!=0){
-				freeSpace = mcfreeSpace*1024;
-				vfreeSpace=TRUE;
-			}
-		}
 		if(vfreeSpace){
 			if(freeSpace >= 1024*1024)
 				sprintf(tmp, "[%.1fMB free]", (double)freeSpace/1024/1024);
@@ -2997,14 +2972,13 @@ void getFilePath(char *out, int cnfmode)
 			else
 				sprintf(tmp, "[%dB free]", freeSpace);
 			ret=strlen(tmp);
+/*
 			itoSprite(setting->color[0],
-				SCREEN_WIDTH-FONT_WIDTH*(ret+2),
-				SCREEN_MARGIN+FONT_HEIGHT,
-				SCREEN_WIDTH-FONT_WIDTH*2,
-				SCREEN_MARGIN+FONT_HEIGHT*2, 0);
+				SCREEN_WIDTH-FONT_WIDTH*(ret+2), SCREEN_MARGIN,
+				SCREEN_WIDTH-FONT_WIDTH*2, SCREEN_MARGIN+FONT_HEIGHT, 0);
+*/
 			printXY(tmp,
-				SCREEN_WIDTH-FONT_WIDTH*(ret+2),
-				SCREEN_MARGIN+FONT_HEIGHT,
+				SCREEN_WIDTH-FONT_WIDTH*(ret+2), SCREEN_MARGIN,
 				setting->color[3], TRUE);
 		}
 		drawScr();

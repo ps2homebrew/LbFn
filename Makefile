@@ -71,7 +71,7 @@ ps2ftpd.s:
 
 #------------------------------------
 clean:
-	rm *.o *.s
+	rm -f $(EE_BIN) *.o *.s
 
 #------------------------------------
 cd.o config.o draw.o elf.o filer.o main.o pad.o language.o cnf.o:launchelf.h language.h cnf.h

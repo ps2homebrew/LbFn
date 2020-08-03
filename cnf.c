@@ -2,13 +2,13 @@
 
 typedef struct
 {
-	char cnf_str[MAX_CNF_LINE][MAX_PATH];
+	char cnf_str[MAX_CNF_LINE][MAX_CNF_DATASTR];
 } CNF;
 
 int cnf_lines;
 
-CNF *cnf=NULL;
-int init=FALSE;
+CNF *cnf = NULL;
+int init = FALSE;
 
 //-------------------------------------------------
 //初期化
@@ -20,8 +20,8 @@ int cnf_init(void)
 	if(cnf==NULL) return FALSE;
 
 	memset(cnf, 0, sizeof(CNF));
-	cnf_lines=0;
-	init=TRUE;
+	cnf_lines = 0;
+	init = TRUE;
 
 	return TRUE;
 }
@@ -31,10 +31,9 @@ int cnf_init(void)
 void cnf_free(void)
 {
 	//
-	if(init==TRUE){
-		free(cnf);
-	}
-	init=FALSE;
+	if(init==TRUE) free(cnf);
+	init = FALSE;
+
 	return;
 }
 
@@ -59,7 +58,7 @@ int cnf_load(char* cnfpath)
 
 	//
 	fseek(fp, 0, SEEK_END);
-	size=ftell(fp);
+	size = ftell(fp);
 	fseek(fp, 0, SEEK_SET);
 	cnftmp = (char*)malloc(size);
 	fread(cnftmp, sizeof(char), size, fp);
@@ -69,7 +68,7 @@ int cnf_load(char* cnfpath)
 
 	for(i=j=k=0; i<size; i++){
 		if(cnftmp[i]==0x0D && cnftmp[i+1]==0x0A){
-			if(i-k<MAX_PATH){
+			if(i-k<MAX_CNF_DATASTR){
 				cnftmp[i]=0;
 				strcpy(cnf->cnf_str[j++], &cnftmp[k]);
 			}
@@ -77,10 +76,10 @@ int cnf_load(char* cnfpath)
 				break;
 			if(j>=MAX_CNF_LINE)
 				break;
-			k=i+2;
+			k = i+2;
 		}
 	}
-	cnf_lines=j;
+	cnf_lines = j;
 
 	free(cnftmp);
 	return 0;
@@ -93,9 +92,9 @@ int cnf_load(char* cnfpath)
 // -1:セーブ失敗
 int cnf_save(char* cnfpath)
 {
-	FILE *fp=NULL;
+	FILE *fp = NULL;
 	int i;
-	char tmp[MAX_PATH+3];
+	char tmp[MAX_CNF_DATASTR+3];
 
 	//
 	if(init==FALSE) return -1;
@@ -126,17 +125,17 @@ int cnf_getstr(const char* key, char *str, const char* Default)
 
 	if(init==FALSE) return -1;
 
+	//キーが長い
+	if(strlen(Default)>MAX_CNF_KEYSTR) return -2;
+
 	strcpy(str, Default);
 
-	//キーが長い
-	if(strlen(key)>MAX_CNF_KEYSTR) return -2;
-
-	strcpy(keyname,key);
-	strcat(keyname,"=");
-	ret=0;
+	strcpy(keyname, key);
+	strcat(keyname, "=");
+	ret = 0;
 	for(i=0;i<cnf_lines;i++){
 		if(!strncmp(cnf->cnf_str[i], keyname, strlen(keyname))){
-			strcpy(str,cnf->cnf_str[i]+strlen(keyname));
+			strcpy(str, cnf->cnf_str[i]+strlen(keyname));
 			ret=1;
 			break;
 		}
@@ -166,7 +165,7 @@ int cnf_setstr(const char* key, char *str)
 	//キーが長い
 	if(strlen(key)>MAX_CNF_KEYSTR) return -2;
 	//文字列が長い
-	if(strlen(key)+strlen(str)+1>MAX_PATH) return -3;
+	if(strlen(key)+strlen(str)+1>MAX_CNF_DATASTR) return -3;
 
 	strcpy(keyname, key);
 	strcat(keyname, "=");
@@ -179,11 +178,10 @@ int cnf_setstr(const char* key, char *str)
 	}
 
 	//キーが見つからなかったら追加
-	if(cnf_lines>=MAX_CNF_LINE){
+	if(cnf_lines>=MAX_CNF_LINE)
 		//追加できない
-		//printf("追加エラー\n");
 		return -4;
-	}
+
 	sprintf(cnf->cnf_str[cnf_lines], "%s=%s", key, str);
 	cnf_lines++;
 

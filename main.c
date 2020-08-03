@@ -1039,6 +1039,15 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	//フォルダ名がcdrom0から始まるパスのとき変換 original source myPS2
+	if(!strncmp(LaunchElfDir, "cdrom0", 6)){
+		char strTemp[256];
+
+		p = strchr(LaunchElfDir, ':');
+		snprintf(strTemp, sizeof(strTemp), "cdfs%s", p);
+		strcpy(LaunchElfDir, strTemp);
+	}
+
 	//ブートしたデバイス	original source altimit
 	boot = 0;
 	if(!strncmp(LaunchElfDir, "cd", 2))
@@ -1066,12 +1075,14 @@ int main(int argc, char *argv[])
 	initsbv_patches();
 	loadModules();
 
-	//mass
-	if(boot == MASS_BOOT) loadUsbModules();
-
 	//
 	mcInit(MC_TYPE_MC);
 	setupPad();
+
+	//cd
+	if(boot==CD_BOOT) loadCdModules();
+	//mass
+	if(boot==MASS_BOOT) loadUsbModules();
 
 	//CNFファイルを読み込む前に初期化
 	InitLanguage();

@@ -1,6 +1,6 @@
 #include "launchelf.h"
 
-#define NUM_CNF_KEY 44
+#define NUM_CNF_KEY 45
 //設定ファイルのキー
 const char *cnf_keyname[NUM_CNF_KEY] = 
 {
@@ -37,8 +37,8 @@ const char *cnf_keyname[NUM_CNF_KEY] =
 	"font_bold",
 	"ascii_margin_top",
 	"ascii_margin_left",
-	"aanji_margin_top",
-	"aanji_margin_left",
+	"kanji_margin_top",
+	"kanji_margin_left",
 	//
 	"screen_pos_x",
 	"screen_pos_y",
@@ -53,6 +53,7 @@ const char *cnf_keyname[NUM_CNF_KEY] =
 	"export_dir",
 	"interlace",
 	"ffmode",
+	"mass_filesize_check",
 };
 
 //デフォルトの設定の値
@@ -87,6 +88,7 @@ enum
 	DEF_DISCPS2SAVECHECK = FALSE,
 	DEF_DISCELFCHECK = FALSE,
 	DEF_LANGUAGE = LANG_ENGLISH,
+	DEF_MASSFILESIZECHECK = TRUE,
 };
 
 //CONFIG
@@ -106,7 +108,17 @@ enum
 {
 	DEFAULT=1,
 	LAUNCHER1,
-	LAUNCHER12=13,
+	LAUNCHER2,
+	LAUNCHER3,
+	LAUNCHER4,
+	LAUNCHER5,
+	LAUNCHER6,
+	LAUNCHER7,
+	LAUNCHER8,
+	LAUNCHER9,
+	LAUNCHER10,
+	LAUNCHER11,
+	LAUNCHER12,
 	BUTTONINIT,
 };
 
@@ -114,7 +126,13 @@ enum
 enum
 {
 	COLOR1=1,
-	COLOR8=8,
+	COLOR2,
+	COLOR3,
+	COLOR4,
+	COLOR5,
+	COLOR6,
+	COLOR7,
+	COLOR8,
 	INTERLACE,
 	FFMODE,
 	SCREEN_X,
@@ -158,6 +176,7 @@ enum
 	FILEICON,
 	PS2SAVECHECK,
 	ELFCHECK,
+	MASSCHECK,
 	EXPORTDIR,
 	MISCINIT,
 };
@@ -187,7 +206,7 @@ int CheckMC(void)
 
 //-------------------------------------------------
 // BUTTON SETTINGを初期化
-void InitButtonSetting(SETTING *setting)
+void InitButtonSetting(void)
 {
 	int i;
 
@@ -199,7 +218,7 @@ void InitButtonSetting(SETTING *setting)
 
 //-------------------------------------------------
 // SCREEN SETTINGを初期化
-void InitScreenSetting(SETTING *setting)
+void InitScreenSetting(void)
 {
 	setting->color[0] = DEF_COLOR1;
 	setting->color[1] = DEF_COLOR2;
@@ -218,7 +237,7 @@ void InitScreenSetting(SETTING *setting)
 
 //-------------------------------------------------
 // FONT SETTINGを初期化
-void InitFontSetting(SETTING *setting)
+void InitFontSetting(void)
 {
 	strcpy(setting->AsciiFont, "systemfont");
 	strcpy(setting->KanjiFont, "systemfont");
@@ -233,7 +252,7 @@ void InitFontSetting(SETTING *setting)
 
 //-------------------------------------------------
 // MISC SETTINGを初期化
-void InitMiscSetting(SETTING *setting)
+void InitMiscSetting(void)
 {
 	setting->timeout = DEF_TIMEOUT;
 	setting->filename = DEF_FILENAME;
@@ -243,16 +262,17 @@ void InitMiscSetting(SETTING *setting)
 	setting->discELFCheck = DEF_DISCELFCHECK;
 	setting->Exportdir[0] = 0;
 	setting->language = DEF_LANGUAGE;
+	setting->MassFileSizeCheck = DEF_MASSFILESIZECHECK;
 }
 
 //-------------------------------------------------
 // 設定を初期化
-void InitSetting(SETTING *setting)
+void InitSetting(void)
 {
-	InitButtonSetting(setting);
-	InitScreenSetting(setting);
-	InitFontSetting(setting);
-	InitMiscSetting(setting);
+	InitButtonSetting();
+	InitScreenSetting();
+	InitFontSetting();
+	InitMiscSetting();
 }
 
 //-------------------------------------------------
@@ -264,10 +284,14 @@ void saveConfig(char *mainMsg)
 	int i, ret, error;
 
 	//cnfファイルのパス
-	if(boot==CD_BOOT || boot==MC_BOOT || boot==MASS_BOOT){
+	if(boot==CD_BOOT){
+		//cdから起動しているときは、設定ファイルを保存しない
+		mainMsg[0] = 0;
+		return;
+	}
+	else if(boot==MC_BOOT || boot==MASS_BOOT){
 		// LaunchELFが実行されたパスから設定ファイルを開く
 		sprintf(path, "%sLBF.CNF", LaunchElfDir);
-		if(boot==CD_BOOT) strcat(path, ";1");
 		if((fd = fioOpen(path, O_RDONLY)) >= 0)
 			fioClose(fd);
 		else{
@@ -357,6 +381,8 @@ void saveConfig(char *mainMsg)
 			sprintf(tmp, "%d", setting->interlace);
 		if(i==43)
 			sprintf(tmp, "%d", setting->ffmode);
+		if(i==44)
+			sprintf(tmp, "%d", setting->MassFileSizeCheck);
 		//
 		ret = cnf_setstr(cnf_keyname[i], tmp);
 		if(ret<0){
@@ -422,7 +448,6 @@ void loadConfig(char *mainMsg)
 	if(boot==CD_BOOT || boot==MC_BOOT || boot==MASS_BOOT){
 		// LaunchELFが実行されたパスから設定ファイルを開く
 		sprintf(path, "%sLBF.CNF", LaunchElfDir);
-		if(boot==CD_BOOT) strcat(path, ";1");
 		if((fd = fioOpen(path, O_RDONLY)) >= 0)
 			fioClose(fd);
 		else{
@@ -449,7 +474,7 @@ void loadConfig(char *mainMsg)
 	}
 
 	//設定を初期化する
-	InitSetting(setting);
+	InitSetting();
 
 	cnf_init();
 
@@ -549,12 +574,17 @@ void loadConfig(char *mainMsg)
 					if(setting->ffmode<0 || setting->ffmode>1)
 						setting->ffmode = DEF_FFMODE;
 				}
+				if(i==44){
+					setting->MassFileSizeCheck = atoi(tmp);
+					if(setting->MassFileSizeCheck<0 || setting->MassFileSizeCheck>1)
+						setting->MassFileSizeCheck = DEF_MASSFILESIZECHECK;
+				}
 			}
 		}
 		//バージョンチェック
 		if(cnf_version!=2){
 			//Setting初期化
-			InitSetting(setting);
+			InitSetting();
 			//ファイルサイズを0にする
 			fd = fioOpen(path, O_WRONLY | O_TRUNC | O_CREAT);
 			fioClose(fd);
@@ -618,7 +648,7 @@ void config_button(SETTING *setting)
 					}
 				}
 				else if(sel==BUTTONINIT){
-					InitButtonSetting(setting);
+					InitButtonSetting();
 					//sprintf(msg0, "%s", "Initialize Button Setting");
 					//pushed = FALSE;
 				}
@@ -628,24 +658,53 @@ void config_button(SETTING *setting)
 					setting->dirElf[sel-1][0]=0;
 			}
 		}
-		//BUTTON SETTING
-		strcpy(config[0], "..");
-		strcpy(config[1], "DEFAULT: ");
-		strcpy(config[2], "○     : ");
-		strcpy(config[3], "×     : ");
-		strcpy(config[4], "□     : ");
-		strcpy(config[5], "△     : ");
-		strcpy(config[6], "L1     : ");
-		strcpy(config[7], "R1     : ");
-		strcpy(config[8], "L2     : ");
-		strcpy(config[9], "R2     : ");
-		strcpy(config[10],"L3     : ");
-		strcpy(config[11],"R3     : ");
-		strcpy(config[12],"START  : ");
-		strcpy(config[13],"SELECT : ");
-		strcpy(config[14],lang->conf_buttonsettinginit);
-		for(i=0; i<13; i++)
-			strcat(config[i+1], setting->dirElf[i]);
+		for(i=0;i<=BUTTONINIT;i++){
+			if(i==0){
+				strcpy(config[i], "..");
+			}
+			else if(i==DEFAULT){
+				sprintf(config[i], "DEFAULT: %s", setting->dirElf[0]);
+			}
+			else if(i==LAUNCHER1){
+				sprintf(config[i], "○     : %s", setting->dirElf[1]);
+			}
+			else if(i==LAUNCHER2){
+				sprintf(config[i], "×     : %s", setting->dirElf[2]);
+			}
+			else if(i==LAUNCHER3){
+				sprintf(config[i], "□     : %s", setting->dirElf[3]);
+			}
+			else if(i==LAUNCHER4){
+				sprintf(config[i], "△     : %s", setting->dirElf[4]);
+			}
+			else if(i==LAUNCHER5){
+				sprintf(config[i], "L1     : %s", setting->dirElf[5]);
+			}
+			else if(i==LAUNCHER6){
+				sprintf(config[i], "R1     : %s", setting->dirElf[6]);
+			}
+			else if(i==LAUNCHER7){
+				sprintf(config[i], "L2     : %s", setting->dirElf[7]);
+			}
+			else if(i==LAUNCHER8){
+				sprintf(config[i], "R2     : %s", setting->dirElf[8]);
+			}
+			else if(i==LAUNCHER9){
+				sprintf(config[i], "L3     : %s", setting->dirElf[9]);
+			}
+			else if(i==LAUNCHER10){
+				sprintf(config[i], "R3     : %s", setting->dirElf[10]);
+			}
+			else if(i==LAUNCHER11){
+				sprintf(config[i], "START  : %s", setting->dirElf[11]);
+			}
+			else if(i==LAUNCHER12){
+				sprintf(config[i], "SELECT : %s", setting->dirElf[12]);
+			}
+			else if(i==BUTTONINIT){
+				strcpy(config[i], lang->conf_buttonsettinginit);
+			}
+		}
 		nList=15;
 
 		// リスト表示用変数の正規化
@@ -737,10 +796,30 @@ void config_screen(SETTING *setting)
 			else if(new_pad & PAD_DOWN)
 				sel++;
 			else if(new_pad & PAD_LEFT){
-				if(sel>=COLOR1 && sel<=COLOR8) sel_x--;
+				if(sel>=COLOR1 && sel<=COLOR8){
+					sel_x--;
+					if(sel_x<0){
+						sel_x=2;
+						sel--;
+					}
+				}
+				else if(sel>INTERLACE)
+					sel=INTERLACE;
+				else
+					sel=0;
 			}
 			else if(new_pad & PAD_RIGHT){
-				if(sel>=COLOR1 && sel<=COLOR8) sel_x++;
+				if(sel>=COLOR1 && sel<=COLOR8){
+					sel_x++;
+					if(sel_x>2){
+						sel_x=0;
+						sel++;
+					}
+				}
+				else if(sel==0)
+					sel=INTERLACE;
+				else
+					sel+=MAX_ROWS/2;
 			}
 			else if(new_pad & PAD_TRIANGLE)
 				break;
@@ -754,16 +833,6 @@ void config_screen(SETTING *setting)
 					if(sel_x==1 && g<255) g++;
 					if(sel_x==2 && b<255) b++;
 					setting->color[sel-1] = ITO_RGBA(r, g, b, 0);
-				}
-				else if(sel==SCREEN_X){	//SCREEN X
-					setting->screen_x++;
-					screen_env.screen.x = setting->screen_x;
-					itoSetScreenPos(setting->screen_x, setting->screen_y);
-				}
-				else if(sel==SCREEN_Y){	//SCREEN Y
-					setting->screen_y++;
-					screen_env.screen.y = setting->screen_y;
-					itoSetScreenPos(setting->screen_x, setting->screen_y);
 				}
 				else if(sel==INTERLACE){	//インターレース
 					setting->interlace = !setting->interlace;
@@ -779,11 +848,21 @@ void config_screen(SETTING *setting)
 					setupito(ITO_INIT_DISABLE);
 					SetHeight();
 				}
+				else if(sel==SCREEN_X){	//SCREEN X
+					setting->screen_x++;
+					screen_env.screen.x = setting->screen_x;
+					itoSetScreenPos(setting->screen_x, setting->screen_y);
+				}
+				else if(sel==SCREEN_Y){	//SCREEN Y
+					setting->screen_y++;
+					screen_env.screen.y = setting->screen_y;
+					itoSetScreenPos(setting->screen_x, setting->screen_y);
+				}
 				else if(sel==FLICKERCONTROL)	//フリッカーコントロール
 					setting->flickerControl = !setting->flickerControl;
 				else if(sel==SCREENINIT){	//SCREEN SETTING INIT
 					//init
-					InitScreenSetting(setting);
+					InitScreenSetting();
 					itoGsReset();
 					setupito(ITO_INIT_DISABLE);
 					SetHeight();
@@ -869,45 +948,56 @@ void config_screen(SETTING *setting)
 				if(preset>5) preset=0;
 			}
 		}
-		//SCREEN SETTING
-		sprintf(config[0], "..");
-		for(i=0;i<8;i++){
-			r = setting->color[i] & 0xFF;
-			g = setting->color[i] >> 8 & 0xFF;
-			b = setting->color[i] >> 16 & 0xFF;
-			if(i==0) sprintf(config[1], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_background, r, g, b);
-			if(i==1) sprintf(config[2], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_frame, r, g, b);
-			if(i==2) sprintf(config[3], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_highlighttext, r, g, b);
-			if(i==3) sprintf(config[4], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_normaltext, r, g, b);
-			if(i==4) sprintf(config[5], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_folder, r, g, b);
-			if(i==5) sprintf(config[6], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_file, r, g, b);
-			if(i==6) sprintf(config[7], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_ps2save, r, g, b);
-			if(i==7) sprintf(config[8], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_elffile, r, g, b);
+
+		//
+		for(i=0;i<=SCREENINIT;i++){
+			if(i==0){
+				sprintf(config[i], "..");
+			}
+			else if(i>=COLOR1 && i<=COLOR8){	//COLOR
+				r = setting->color[i-1] & 0xFF;
+				g = setting->color[i-1] >> 8 & 0xFF;
+				b = setting->color[i-1] >> 16 & 0xFF;
+				if(i==COLOR1) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_background, r, g, b);
+				if(i==COLOR2) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_frame, r, g, b);
+				if(i==COLOR3) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_highlighttext, r, g, b);
+				if(i==COLOR4) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_normaltext, r, g, b);
+				if(i==COLOR5) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_folder, r, g, b);
+				if(i==COLOR6) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_file, r, g, b);
+				if(i==COLOR7) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_ps2save, r, g, b);
+				if(i==COLOR8) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_elffile, r, g, b);
+			}
+			else if(i==INTERLACE){	//INTERLACE
+				sprintf(config[i], "%s: ", lang->conf_interlace);
+				if(setting->interlace)
+					strcat(config[i], lang->conf_on);
+				else
+					strcat(config[i], lang->conf_off);
+			}
+			else if(i==FFMODE){	//FFMODE
+				sprintf(config[i],"%s: ", lang->conf_ffmode);
+				if(setting->ffmode)
+					strcat(config[i], lang->conf_ffmode_frame);
+				else
+					strcat(config[i], lang->conf_ffmode_field);
+			}
+			else if(i==SCREEN_X){	//SCREEN X
+				sprintf(config[i],"%s: %3d", lang->conf_screen_x, setting->screen_x);
+			}
+			else if(i==SCREEN_Y){	//SCREEN Y
+				sprintf(config[i],"%s: %3d", lang->conf_screen_y, setting->screen_y);
+			}
+			else if(i==FLICKERCONTROL){	//FLICKER CONTROL
+				sprintf(config[i],"%s: ", lang->conf_flickercontrol);
+				if(setting->flickerControl)
+					strcat(config[i], lang->conf_on);
+				else
+					strcat(config[i], lang->conf_off);
+			}
+			else if(i==SCREENINIT){	//INIT
+				strcpy(config[i], lang->conf_screensettinginit);
+			}
 		}
-		//INTERLACE
-		sprintf(config[9], "%s: ", lang->conf_interlace);
-		if(setting->interlace)
-			strcat(config[9], lang->conf_on);
-		else
-			strcat(config[9], lang->conf_off);
-		//FFMODE
-		sprintf(config[10],"%s: ", lang->conf_ffmode);
-		if(setting->ffmode)
-			strcat(config[10], lang->conf_ffmode_frame);
-		else
-			strcat(config[10], lang->conf_ffmode_field);
-		//SCREEN X
-		sprintf(config[11],"%s: %3d", lang->conf_screen_x, setting->screen_x);
-		//SCREEN Y
-		sprintf(config[12],"%s: %3d", lang->conf_screen_y, setting->screen_y);
-		//FLICKER CONTROL
-		sprintf(config[13],"%s: ", lang->conf_flickercontrol);
-		if(setting->flickerControl)
-			strcat(config[13], lang->conf_on);
-		else
-			strcat(config[13], lang->conf_off);
-		//INIT
-		strcpy(config[14], lang->conf_screensettinginit);
 		nList=15;
 
 		// リスト表示用変数の正規化
@@ -917,8 +1007,6 @@ void config_screen(SETTING *setting)
 		if(sel < 0)			sel=0;
 		if(sel >= top+MAX_ROWS)	top=sel-MAX_ROWS+1;
 		if(sel < top)			top=sel;
-		if(sel_x < 0)			sel_x=2;
-		if(sel_x > 2)			sel_x=0;
 
 		// 画面描画開始
 		clrScr(setting->color[0]);
@@ -1071,18 +1159,28 @@ void config_network(SETTING *setting)
 			else if(new_pad & PAD_CROSS){	//×
 			}
 		}
-		//MISC SETTING
-		sprintf(config[0], "..");
-		//IPADDRESS
-		sprintf(config[1], "%s: %s", lang->conf_ipaddress, ip);
-		//NETMASK
-		sprintf(config[2], "%s: %s", lang->conf_netmask, netmask);
-		//GATEWAY
-		sprintf(config[3], "%s: %s", lang->conf_gateway, gw);
-		//NETWORKSAVE
-		strcpy(config[4],lang->conf_ipoverwrite);
-		//NETWORKINIT
-		strcpy(config[5],lang->conf_ipsettinginit);
+
+		//
+		for(i=0;i<=NETWORKINIT;i++){
+			if(i==0){
+				sprintf(config[i], "..");
+			}
+			else if(i==IPADDRESS){	//IPADDRESS
+				sprintf(config[i], "%s: %s", lang->conf_ipaddress, ip);
+			}
+			else if(i==NETMASK){	//NETMASK
+				sprintf(config[i], "%s: %s", lang->conf_netmask, netmask);
+			}
+			else if(i==GATEWAY){	//GATEWAY
+				sprintf(config[i], "%s: %s", lang->conf_gateway, gw);
+			}
+			else if(i==NETWORKSAVE){	//NETWORKSAVE
+				strcpy(config[i],lang->conf_ipoverwrite);
+			}
+			else if(i==NETWORKINIT){	//NETWORKINIT
+				strcpy(config[i],lang->conf_ipsettinginit);
+			}
+		}
 		nList=6;
 
 		// リスト表示用変数の正規化
@@ -1234,7 +1332,7 @@ void config_font(SETTING *setting)
 				}
 				else if(sel==FONTINIT){
 					//init
-					InitFontSetting(setting);
+					InitFontSetting();
 					InitFontAscii(setting->AsciiFont);
 					InitFontKnaji(setting->KanjiFont);
 					SetFontMargin(CHAR_MARGIN, setting->CharMargin);
@@ -1283,32 +1381,47 @@ void config_font(SETTING *setting)
 				}
 			}
 		}
-		//FONT SETTING
-		sprintf(config[0], "..");
-		//ASCIIFONT
-		sprintf(config[1], "%s: %s", lang->conf_AsciiFont, setting->AsciiFont);
-		//KANJIFONT
-		sprintf(config[2], "%s: %s", lang->conf_KanjiFont, setting->KanjiFont);
-		//CHARMARGIN
-		sprintf(config[3], "%s: %d", lang->conf_CharMargin, setting->CharMargin);
-		//LINEMARGIN
-		sprintf(config[4], "%s: %d", lang->conf_LineMargin, setting->LineMargin);
-		//FONTBOLD
-		sprintf(config[5], "%s: ", lang->conf_FontBold);
-		if(setting->FontBold)
-			strcat(config[5], lang->conf_on);
-		else
-			strcat(config[5], lang->conf_off);
-		//ASCIIMARGINTOP
-		sprintf(config[6], "%s: %d", lang->conf_AsciiMarginTop, setting->AsciiMarginTop);
-		//ASCIIMARGINLEFT
-		sprintf(config[7], "%s: %d", lang->conf_AsciiMarginLeft, setting->AsciiMarginLeft);
-		//KANJIMARGINTOP
-		sprintf(config[8], "%s: %d", lang->conf_KanjiMarginTop, setting->KanjiMarginTop);
-		//KANJIMARGINLEFT
-		sprintf(config[9], "%s: %d", lang->conf_KanjiMarginLeft, setting->KanjiMarginLeft);
-		//FONT INIT
-		strcpy(config[10], lang->conf_fontsettinginit);
+
+		//
+		for(i=0;i<=FONTINIT;i++){
+			if(i==0){
+				sprintf(config[i], "..");
+			}
+			else if(i==ASCIIFONT){	//ASCIIFONT
+				sprintf(config[i], "%s: %s", lang->conf_AsciiFont, setting->AsciiFont);
+			}
+			else if(i==KANJIFONT){	//KANJIFONT
+				sprintf(config[i], "%s: %s", lang->conf_KanjiFont, setting->KanjiFont);
+			}
+			else if(i==CHARMARGIN){	//CHARMARGIN
+				sprintf(config[i], "%s: %d", lang->conf_CharMargin, setting->CharMargin);
+			}
+			else if(i==LINEMARGIN){	//LINEMARGIN
+				sprintf(config[i], "%s: %d", lang->conf_LineMargin, setting->LineMargin);
+			}
+			else if(i==FONTBOLD){	//FONTBOLD
+				sprintf(config[i], "%s: ", lang->conf_FontBold);
+				if(setting->FontBold)
+					strcat(config[i], lang->conf_on);
+				else
+					strcat(config[i], lang->conf_off);
+			}
+			else if(i==ASCIIMARGINTOP){	//ASCIIMARGINTOP
+				sprintf(config[i], "%s: %d", lang->conf_AsciiMarginTop, setting->AsciiMarginTop);
+			}
+			else if(i==ASCIIMARGINLEFT){	//ASCIIMARGINLEFT
+				sprintf(config[i], "%s: %d", lang->conf_AsciiMarginLeft, setting->AsciiMarginLeft);
+			}
+			else if(i==KANJIMARGINTOP){	//KANJIMARGINTOP
+				sprintf(config[i], "%s: %d", lang->conf_KanjiMarginTop, setting->KanjiMarginTop);
+			}
+			else if(i==KANJIMARGINLEFT){	//KANJIMARGINLEFT
+				sprintf(config[i], "%s: %d", lang->conf_KanjiMarginLeft, setting->KanjiMarginLeft);
+			}
+			else if(i==FONTINIT){	//FONT INIT
+				strcpy(config[i], lang->conf_fontsettinginit);
+			}
+		}
 		nList=11;
 
 		// リスト表示用変数の正規化
@@ -1423,21 +1536,23 @@ void config_misc(SETTING *setting)
 				}
 				else if(sel==TIMEOUT)
 					setting->timeout++;
-				else if(sel==FILENAME)
-					setting->filename = !setting->filename;
 				else if(sel==DISCCONTROL)
 					setting->discControl = !setting->discControl;
+				else if(sel==FILENAME)
+					setting->filename = !setting->filename;
 				else if(sel==FILEICON)
 					setting->fileicon = !setting->fileicon;
 				else if(sel==PS2SAVECHECK)
 						setting->discPs2saveCheck = !setting->discPs2saveCheck;
 				else if(sel==ELFCHECK)
 						setting->discELFCheck = !setting->discELFCheck;
+				else if(sel==MASSCHECK)
+					setting->MassFileSizeCheck = !setting->MassFileSizeCheck;
 				else if(sel==EXPORTDIR)
 					getFilePath(setting->Exportdir, DIR);
 				else if(sel==MISCINIT){
 					//init
-					InitMiscSetting(setting);
+					InitMiscSetting();
 					SetLanguage(setting->language);
 					//sprintf(msg0, "%s", "Initialize Misc Setting");
 					//pushed = FALSE;
@@ -1450,51 +1565,72 @@ void config_misc(SETTING *setting)
 					setting->Exportdir[0]='\0';
 			}
 		}
-		//MISC SETTING
-		sprintf(config[0], "..");
-		//LANG
-		sprintf(config[1], "%s: ", lang->conf_language);
-		if(setting->language==LANG_ENGLISH)
-			strcat(config[1], lang->conf_language_us);
-		else if(setting->language==LANG_JAPANESE)
-			strcat(config[1], lang->conf_language_jp);
-		//TIMEOUT
-		sprintf(config[2], "%s: %d", lang->conf_timeout, setting->timeout);
-		//DISC CONTROL
-		sprintf(config[3], "%s: " ,lang->conf_disc_control);
-		if(setting->discControl)
-			strcat(config[3], lang->conf_on);
-		else
-			strcat(config[3], lang->conf_off);
-		//PRINT ONLY FILENAME
-		sprintf(config[4], "%s: " ,lang->conf_print_only_filename);
-		if(setting->filename)
-			strcat(config[4], lang->conf_on);
-		else
-			strcat(config[4], lang->conf_off);
-		//FILEICON
-		sprintf(config[5], "%s: " ,lang->conf_fileicon);
-		if(setting->fileicon)
-			strcat(config[5], lang->conf_on);
-		else
-			strcat(config[5], lang->conf_off);
-		//DISC PS2SAVE CHECK
-		sprintf(config[6], "%s: " ,lang->conf_disc_ps2save_check);
-		if(setting->discPs2saveCheck)
-			strcat(config[6], lang->conf_on);
-		else
-			strcat(config[6], lang->conf_off);
-		//DISC ELF CHECK
-		sprintf(config[7], "%s: " ,lang->conf_disc_elf_check);
-		if(setting->discELFCheck)
-			strcat(config[7], lang->conf_on);
-		else
-			strcat(config[7], lang->conf_off);
-		//EXPORT DIR
-		sprintf(config[8], "%s: %s", lang->conf_export_dir, setting->Exportdir);
-		//INIT
-		strcpy(config[9], lang->conf_miscsettinginit);
-		nList=10;
+
+		//
+		for(i=0;i<=MISCINIT;i++){
+			if(i==0){
+				sprintf(config[i], "..");
+			}
+			else if(i==LANG){	//LANG
+				sprintf(config[i], "%s: ", lang->conf_language);
+				if(setting->language==LANG_ENGLISH)
+					strcat(config[i], lang->conf_language_us);
+				else if(setting->language==LANG_JAPANESE)
+					strcat(config[i], lang->conf_language_jp);
+			}
+			else if(i==TIMEOUT){	//TIMEOUT
+				sprintf(config[i], "%s: %d", lang->conf_timeout, setting->timeout);
+			}
+			else if(i==DISCCONTROL){	//DISC CONTROL
+				sprintf(config[i], "%s: " ,lang->conf_disc_control);
+				if(setting->discControl)
+					strcat(config[i], lang->conf_on);
+				else
+					strcat(config[i], lang->conf_off);
+			}
+			else if(i==FILENAME){	//PRINT ONLY FILENAME
+				sprintf(config[i], "%s: " ,lang->conf_print_only_filename);
+				if(setting->filename)
+					strcat(config[i], lang->conf_on);
+				else
+					strcat(config[i], lang->conf_off);
+			}
+			else if(i==FILEICON){	//FILEICON
+				sprintf(config[i], "%s: " ,lang->conf_fileicon);
+				if(setting->fileicon)
+					strcat(config[i], lang->conf_on);
+				else
+					strcat(config[i], lang->conf_off);
+			}
+			else if(i==PS2SAVECHECK){	//DISC PS2SAVE CHECK
+				sprintf(config[6], "%s: " ,lang->conf_disc_ps2save_check);
+				if(setting->discPs2saveCheck)
+					strcat(config[i], lang->conf_on);
+				else
+					strcat(config[i], lang->conf_off);
+			}
+			else if(i==ELFCHECK){	//DISC ELF CHECK
+				sprintf(config[i], "%s: " ,lang->conf_disc_elf_check);
+				if(setting->discELFCheck)
+					strcat(config[i], lang->conf_on);
+				else
+					strcat(config[i], lang->conf_off);
+			}
+			else if(i==MASSCHECK){	//MASS FILESIZE CHECK
+				sprintf(config[i], "%s: " ,lang->conf_mass_filesize_check);
+				if(setting->MassFileSizeCheck)
+					strcat(config[i], lang->conf_on);
+				else
+					strcat(config[i], lang->conf_off);
+			}
+			else if(i==EXPORTDIR){	//EXPORT DIR
+				sprintf(config[i], "%s: %s", lang->conf_export_dir, setting->Exportdir);
+			}
+			else if(i==MISCINIT){	//INIT
+				strcpy(config[i], lang->conf_miscsettinginit);
+			}
+		}
+		nList=11;
 
 		// リスト表示用変数の正規化
 		if(top > nList-MAX_ROWS)	top=nList-MAX_ROWS;
@@ -1556,6 +1692,8 @@ void config_misc(SETTING *setting)
 		else if(sel==PS2SAVECHECK)
 			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
 		else if(sel==ELFCHECK)
+			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
+		else if(sel==MASSCHECK)
 			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
 		else if(sel==EXPORTDIR)
 			sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_edit, lang->conf_clear, lang->conf_up);

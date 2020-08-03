@@ -128,6 +128,7 @@ typedef struct
 	char conf_disc_ps2save_check[MAX_LANGUAGE_STR];
 	char conf_disc_elf_check[MAX_LANGUAGE_STR];
 	char conf_export_dir[MAX_LANGUAGE_STR];
+	char conf_mass_filesize_check[MAX_LANGUAGE_STR];
 	char conf_miscsettinginit[MAX_LANGUAGE_STR];
 
 	char conf_ok[MAX_LANGUAGE_STR];

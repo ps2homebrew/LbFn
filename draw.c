@@ -129,8 +129,8 @@ void drawDialogTmp(int x1, int y1, int x2, int y2, uint64 color1, uint64 color2)
 	//
 	itoSprite(color1, x1, y1, x2, y2, 0);
 	drawFrame(x1+2, y1+2, x2-2, y2-2, color2);
-
 }
+
 //-------------------------------------------------
 // 画面表示のテンプレート
 void setScrTmp(const char *msg0, const char *msg1)
@@ -143,11 +143,11 @@ void setScrTmp(const char *msg0, const char *msg1)
 	color2 = color|0x10000000;	//半透明
 
 	// バージョン表記
-	printXY(LBF_VER, SCREEN_WIDTH-FONT_WIDTH*11, SCREEN_MARGIN, setting->color[3], TRUE);
-	
+	printXY(LBF_VER, FONT_WIDTH*2, SCREEN_MARGIN, setting->color[3], TRUE);
+
 	// メッセージ
-	printXY(msg0, FONT_WIDTH*2, SCREEN_MARGIN+FONT_HEIGHT*1, setting->color[3], TRUE);
-	
+	printXY(msg0, FONT_WIDTH*2, SCREEN_MARGIN+FONT_HEIGHT, setting->color[3], TRUE);
+
 	//FLICKER CONTROL: ON
 	if( (setting->flickerControl)||(SCREEN_HEIGHT==448) ){
 		//アルファブレンド有効
@@ -175,7 +175,8 @@ void drawMsg(const char *msg)
 {
 	itoSprite(setting->color[0], 0, SCREEN_MARGIN+FONT_HEIGHT,
 		SCREEN_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*2, 0);
-	printXY(msg, SCREEN_MARGIN, SCREEN_MARGIN+FONT_HEIGHT,
+	//メッセージ
+	printXY(msg, FONT_WIDTH*2, SCREEN_MARGIN+FONT_HEIGHT,
 		setting->color[3], TRUE);
 	drawScr();
 }
@@ -227,7 +228,6 @@ void setupito(int flag)
 		ITO_ALPHA_VALUE_SRC, // C = ALPHA VALUE SOURCE
 		ITO_ALPHA_COLOR_DST, // C = COLOR DEST
 		0x80);				 // Fixed Value
-
 }
 
 //-------------------------------------------------
@@ -283,7 +283,7 @@ void drawFrame(int x1, int y1, int x2, int y2, uint64 color)
 void SetHeight(void)
 {
 	//SCREEN_HEIGHT
-	if(setting->ffmode == FALSE && setting->interlace==TRUE)
+	if(setting->ffmode==FALSE && setting->interlace==TRUE)
 		SCREEN_HEIGHT = 448;
 	else
 		SCREEN_HEIGHT = 224;
@@ -302,8 +302,8 @@ void SetHeight(void)
 
 	//SCREEN_MARGIN
 	SCREEN_MARGIN = (SCREEN_HEIGHT - ((MAX_ROWS+5) * FONT_HEIGHT))/2;
-
 }
+
 //------------------------------------------------------------
 //アスキーフォントをロード
 int InitFontAscii(const char *path)
@@ -315,7 +315,7 @@ int InitFontAscii(const char *path)
 
 	if(init_ascii==1) FreeFontAscii();
 
-	if(strcmp(path,"rom0:KROM")==0 || strcmp(path,"systemfont")==0){
+	if(strcmp(path, "rom0:KROM")==0 || strcmp(path, "systemfont")==0){
 		//BIOSFont
 		//フォントファイルオープン
 		fd = fioOpen("rom0:KROM", O_RDONLY);
@@ -324,12 +324,12 @@ int InitFontAscii(const char *path)
 		//メモリを確保 仮想FONTX2 KROM
 		size=17 + 15*256;	//ヘッダサイズ + 1文字のサイズ*256文字
 		font_ascii = (char*)malloc(size);
-		memset(font_ascii,0,size);
+		memset(font_ascii, 0, size);
 		if(font_ascii==NULL){
 			fioClose(fd);
 			return -1;
 		}
-		
+
 		//メモリに読み込む
 		fioLseek(fd, 0x198DF, SEEK_SET);
 		fioRead(fd, font_ascii + 18 + 15*33, 15*95);//ヘッダサイズ + 1文字のサイズ*33文字, 1文字のサイズ*95文字
@@ -374,8 +374,8 @@ int InitFontAscii(const char *path)
 		if(fd<0) return -1;
 	
 		//サイズを調べる
-		size = fioLseek(fd,0,SEEK_END);
-		fioLseek(fd,0,SEEK_SET);	//シークを0に戻す
+		size = fioLseek(fd, 0, SEEK_END);
+		fioLseek(fd, 0, SEEK_SET);	//シークを0に戻す
 
 		//メモリを確保
 		font_ascii = (char*)malloc(size);
@@ -429,22 +429,22 @@ int InitFontKnaji(const char *path)
 	char fullpath[MAX_PATH];
 
 	if(init_kanji==1) FreeFontKnaji();
-	
+
 	if(strcmp(path,"rom0:KROM")==0 || strcmp(path,"systemfont")==0){
 		//BIOSFont
 		//フォントファイルオープン
 		fd = fioOpen("rom0:KROM", O_RDONLY);
 		if(fd<0) return -1;
-	
+
 		//メモリを確保 仮想FONTX2 KROM
 		size=18 + 51*4 + 30*3489;	//ヘッダサイズ + テーブルの数*4 + 1文字のサイズ*3489文字
 		font_kanji = (char*)malloc(size);
-		memset(font_kanji,0,size);
+		memset(font_kanji, 0, size);
 		if(font_kanji==NULL){
 			fioClose(fd);
 			return -1;
 		}
-		
+
 		//メモリに読み込む
 		fioRead(fd, font_kanji + 18 + 51*4, 30*3489);//ヘッダサイズ + テーブルの数*4 ,1文字のサイズ*3489文字
 
@@ -455,8 +455,8 @@ int InitFontKnaji(const char *path)
 		fontx_header_kanji = (FONTX_HEADER*)font_kanji;
 
 		//ヘッダ作成
-		strncpy(fontx_header_kanji->Identifier,"FONTX2", 6);
-		strncpy(fontx_header_kanji->FontName,"KROM_k", 8);
+		strncpy(fontx_header_kanji->Identifier, "FONTX2", 6);
+		strncpy(fontx_header_kanji->FontName, "KROM_k", 8);
 		fontx_header_kanji->XSize = 16;
 		fontx_header_kanji->YSize = 15;
 		fontx_header_kanji->CodeType = 1;
@@ -492,8 +492,8 @@ int InitFontKnaji(const char *path)
 		if(fd<0) return -1;
 
 		//サイズを調べる
-		size = fioLseek(fd,0,SEEK_END);
-		fioLseek(fd,0,SEEK_SET);	//シークを0に戻す
+		size = fioLseek(fd, 0, SEEK_END);
+		fioLseek(fd, 0, SEEK_SET);	//シークを0に戻す
 
 		//メモリを確保
 		font_kanji = (char*)malloc(size);
@@ -562,22 +562,29 @@ int SetFontMargin(int type, int Margin)
 {
 	if(type<CHAR_MARGIN || type>KANJI_FONT_MARGIN_LEFT) return -1;
 
-	if(type==CHAR_MARGIN){
-		char_Margin=Margin;
-		SetHeight();
+	switch(type)
+	{
+		case CHAR_MARGIN:
+			char_Margin = Margin;
+			SetHeight();
+			break;
+		case LINE_MARGIN:
+			line_Margin=Margin;
+			SetHeight();
+			break;
+		case ASCII_FONT_MARGIN_TOP:
+			ascii_MarginTop=Margin;
+			break;
+		case ASCII_FONT_MARGIN_LEFT:
+			ascii_MarginLeft=Margin;
+			break;
+		case KANJI_FONT_MARGIN_TOP:
+			kanji_MarginTop=Margin;
+			break;
+		case KANJI_FONT_MARGIN_LEFT:
+			kanji_MarginLeft=Margin;
+			break;
 	}
-	if(type==LINE_MARGIN){
-		line_Margin=Margin;
-		SetHeight();
-	}
-	if(type==ASCII_FONT_MARGIN_TOP) 
-		ascii_MarginTop=Margin;
-	if(type==ASCII_FONT_MARGIN_LEFT) 
-		ascii_MarginLeft=Margin;
-	if(type==KANJI_FONT_MARGIN_TOP) 
-		kanji_MarginTop=Margin;
-	if(type==KANJI_FONT_MARGIN_LEFT) 
-		kanji_MarginLeft=Margin;
 
 	return 0;
 }
@@ -587,18 +594,21 @@ int GetFontMargin(int type)
 {
 	if(type<CHAR_MARGIN || type>KANJI_FONT_MARGIN_LEFT) return -1;
 
-	if(type==CHAR_MARGIN) 
-		return char_Margin;
-	if(type==LINE_MARGIN)
-		return line_Margin;
-	if(type==ASCII_FONT_MARGIN_TOP) 
-		return ascii_MarginTop;
-	if(type==ASCII_FONT_MARGIN_LEFT) 
-		return ascii_MarginLeft;
-	if(type==KANJI_FONT_MARGIN_TOP) 
-		return kanji_MarginTop;
-	if(type==KANJI_FONT_MARGIN_LEFT) 
-		return kanji_MarginLeft;
+	switch(type)
+	{
+		case CHAR_MARGIN:
+			return char_Margin;
+		case LINE_MARGIN:
+			return line_Margin;
+		case ASCII_FONT_MARGIN_TOP:
+			return ascii_MarginTop;
+		case ASCII_FONT_MARGIN_LEFT:
+			return ascii_MarginLeft;
+		case KANJI_FONT_MARGIN_TOP:
+			return kanji_MarginTop;
+		case KANJI_FONT_MARGIN_LEFT:
+			return kanji_MarginLeft;
+	}
 
 	return 0;
 }
@@ -607,14 +617,17 @@ int GetFontMargin(int type)
 //フォントサイズの取得
 int GetFontSize(int type)
 {
-	if(type==ASCII_FONT_WIDTH)
-		return ascii_data.width;
-	if(type==ASCII_FONT_HEIGHT)
-		return ascii_data.height;
-	if(type==KANJI_FONT_WIDTH)
-		return kanji_data.width;
-	if(type==KANJI_FONT_HEIGHT)
-		return kanji_data.height;
+	switch(type)
+	{
+		case ASCII_FONT_WIDTH:
+			return ascii_data.width;
+		case ASCII_FONT_HEIGHT:
+			return ascii_data.height;
+		case KANJI_FONT_WIDTH:
+			return kanji_data.width;
+		case KANJI_FONT_HEIGHT:
+			return kanji_data.height;
+	}
 	return 0;
 }
 

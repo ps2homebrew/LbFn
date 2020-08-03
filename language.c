@@ -72,8 +72,8 @@ void SetLanguage(const int langID)
 		strcpy(lang->filer_importfailed, "Import psu Failed");
 		strcpy(lang->filer_importto, "Import to");
 		strcpy(lang->filer_keyboard_hint, "○:OK ×:Back L1:Left R1:Right START:Enter");
-		strcpy(lang->filer_anyfile_hint1, "○:OK △:Up ×:Mark □:RevMark L1:TitleOFF R1:Menu R2:Config");
-		strcpy(lang->filer_anyfile_hint2, "○:OK △:Up ×:Mark □:RevMark L1:TitleON  R1:Menu R2:Config");
+		strcpy(lang->filer_anyfile_hint1, "○:OK △:Up ×:Mark □:RevMark L1:TitleOFF R1:Menu R2:GetSize");
+		strcpy(lang->filer_anyfile_hint2, "○:OK △:Up ×:Mark □:RevMark L1:TitleON  R1:Menu R2:GetSize");
 		strcpy(lang->filer_elffile_hint1, "○:OK ×:Cancel △:Up □:*->ELF");
 		strcpy(lang->filer_elffile_hint2, "○:OK ×:Cancel △:Up □:ELF->*");
 		strcpy(lang->filer_fntfile_hint1, "○:OK ×:Cancel △:Up □:*->FNT");
@@ -96,6 +96,9 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_setting_network, "NETWORK SETTING");
 		strcpy(lang->conf_setting_font,    "FONT SETTING");
 		strcpy(lang->conf_setting_misc,    "MISC SETTING");
+		strcpy(lang->conf_ok, "OK");
+		strcpy(lang->conf_cancel, "CANCEL");
+
 		//button
 		strcpy(lang->conf_buttonsettinginit, "BUTTON SETTING INIT");
 		//screen
@@ -145,10 +148,9 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_disc_ps2save_check, "DISC PS2SAVE CHECK");
 		strcpy(lang->conf_disc_elf_check, "DISC ELF CHECK");
 		strcpy(lang->conf_export_dir, "EXPORT DIR");
+		strcpy(lang->conf_mass_filesize_check, "MASS FILESIZE CHECK");
 		strcpy(lang->conf_miscsettinginit, "MISC SETTING INIT");
 
-		strcpy(lang->conf_ok, "OK");
-		strcpy(lang->conf_cancel, "CANCEL");
 		strcpy(lang->conf_on, "ON");
 		strcpy(lang->conf_off, "OFF");
 		strcpy(lang->conf_edit, "Edit");
@@ -230,6 +232,9 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_setting_network, "IP設定");
 		strcpy(lang->conf_setting_font,    "フォント設定");
 		strcpy(lang->conf_setting_misc,    "その他");
+		strcpy(lang->conf_ok, "保存して戻る");
+		strcpy(lang->conf_cancel, "キャンセル");
+
 		//button
 		strcpy(lang->conf_buttonsettinginit, "「ランチャー設定」を初期化する");
 		//screen
@@ -279,10 +284,9 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_disc_ps2save_check, "CD/DVDのときセーブデータか調べる");
 		strcpy(lang->conf_disc_elf_check, "CD/DVDのときELFか調べる");
 		strcpy(lang->conf_export_dir, "エクスポートフォルダ");
+		strcpy(lang->conf_mass_filesize_check, "massのときファイルサイズを調べる");
 		strcpy(lang->conf_miscsettinginit, "「その他設定」を初期化する");
 
-		strcpy(lang->conf_ok, "保存して戻る");
-		strcpy(lang->conf_cancel, "キャンセル");
 		strcpy(lang->conf_on, "ON");
 		strcpy(lang->conf_off, "OFF");
 		strcpy(lang->conf_edit, "編集");
