@@ -522,6 +522,7 @@ int cnf_session(const char *name)
 			cnf[line].keylen = keylen;
 			strncpy(tmp +1, name, keylen);
 			tmp[0] = 0x5B; tmp[keylen +1] = 0x5D;
+			sesrw = line;
 			return 1;
 		}
 		return -3;

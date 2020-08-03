@@ -26,6 +26,8 @@ EE_LDFLAGS := -L$(LIBITO)/lib -L$(PS2DEV)/libcdvd/lib -s
 
 EE_LIBS = -lpad -lito -lmc -lhdd -lcdvd -lcdvdfs -lfileXio -lpatches -lpoweroff -lkbd -lmouse -ldebug\
 
+# EE_CFLAGS := -O3
+
 ifeq ($(PSB), yes)
 EE_CFLAGS += -DENABLE_PSB
 EE_CXXFLAGS += -DENABLE_PSB
@@ -85,7 +87,6 @@ icon.s:image/icon.iif
 	bin2s image/icon.iif icon.s icon_iif
 
 cd.o config.o draw.o elf.o filer.o main.o pad.o viewer.o language.o cnf.o misc.o fmcb_cfg.o:launchelf.h language.h
-
 
 #------------------------------------
 include $(PS2SDK)/samples/Makefile.pref

@@ -335,6 +335,7 @@ int txtedit(int mode, char *file, unsigned char *c, unsigned int size)
 					redraw = fieldbuffers;
 				} else if (new_pad & PAD_CROSS) {
 					flickerfilter = !flickerfilter;
+					mkfontcacheset();
 					redraw = fieldbuffers;
 				} else if (new_pad & PAD_SQUARE) {
 					if (tabmode >= 12) tabmode=2; else tabmode+=2;
@@ -1011,13 +1012,14 @@ void seti32(unsigned char *p, int i) {
 int viewer(int mode, char *file, unsigned char *c, unsigned int size)
 {
 	int type=FT_TXT,i,info[8],bpp,tvmode;
-	int dsize=size,ret=-11;
+	int dsize=size,ret=-11,dither;
 	int *env=NULL;
 	unsigned char *buffer=NULL, *decoded=NULL;
 	tvmode = setting->tvmode;
 	if (gsregs[tvmode].loaded != 1) tvmode = ITO_VMODE_AUTO-1;
 	bpp = setting->screen_depth[tvmode] > 0 ? (setting->screen_depth[tvmode]-1):4-gsregs[tvmode].psm;
-	if (setting->screen_dither) bpp = 4;
+	dither = setting->screen_dither[tvmode] > 0 ? (setting->screen_dither[tvmode]-1):gsregs[tvmode].dither;
+	if ((bpp == 2) && dither) bpp = 4;
 	if (setting->txt_autodecode && ((dsize = tek_getsize(c)) >= 0)) {
 		decoded = (unsigned char*)malloc(dsize);
 		if (decoded != NULL) {
@@ -1046,150 +1048,194 @@ int viewer(int mode, char *file, unsigned char *c, unsigned int size)
 			break;
 		}
 	}
-	alphablend = FALSE;
-	switch(type){
-		case FT_JPG:
-		{
-			env = malloc(16384*sizeof(int));
-			if (env == NULL) {
-				ret=-2;
-				break;
-			}
-			env[0] = 0; env[1] = 0;
-			i = info_JPEG(env, info, dsize, decoded);
-			printf("viewer: info_JPEG returned: %d (env: %d,%d)\n", i, env[0], env[1]);
-			printf("viewer: info data: %d,%d,%dx%d\n", info[0], info[1], info[2], info[3]);
-			if ((info[0] != 0x0002) || (info[2] * info[3] == 0)) {
-				//free(env);
-				break;
-			}
-			buffer = malloc(info[2] * info[3] * bpp);
-			if (buffer == NULL) {
-				if ((bpp <= 2) || ((bpp>2) && ((bpp=2)==2) && ((buffer = malloc(info[2] * info[3] * bpp))==NULL))) {
-					//free(env);
+	
+	if (!(mode & 2) && (paddata & PAD_R2)) {
+		// テキストビューアで開く
+		ret = txtedit(mode | 0x0010, file, decoded, dsize);
+	} else if (!(mode & 2) && (paddata & PAD_R1)) {
+		// バイナリビューアで開く
+		ret = txtedit(mode | 0x0020, file, decoded, dsize);
+	} else {
+		// 普通に開く
+		alphablend = FALSE;
+		switch(type){
+			case FT_JPG:
+			{
+				env = malloc(16384*sizeof(int));
+				if (env == NULL) {
 					ret=-2;
 					break;
 				}
-			}
-			i = decode0_JPEG(env, dsize, decoded, bpp, buffer, 0);
-			printf("viewer: decode0_JPEG(%dbpp) returned: %d (env: %d,%d)\n", bpp*8, i, env[0], env[1]);
-/*	デコード結果を表示できるようにヘッダをつけてPCにダンプ
-			// 32bppのヘッダ
-			static unsigned char header[66] = "BM____\x00\x00\x00\x00\x42\x00\x00\x00\x28\x00" "\x00\x00________\x01\x00\x20\x00\x03\x00" "\x00\x00\x00\x00\x00\x00\xA0\x05\x00\x00\xA0\x05\x00\x00\x00\x00" "\x00\x00\x00\x00\x00\x00\x00\x00\xFF\x00\x00\xFF\x00\x00\xFF\x00" "\x00\x00";
-			int fd;
-			fd = fioOpen("host:JPEGDEC.BMP", O_WRONLY | O_CREAT);
-			if (fd == NULL) {
-				printf("viewer: host open error!\n");
-			} else {
-				seti32(header+2, info[2]*info[3]*4+66);
-				seti32(header+18, info[2]);
-				seti32(header+22, -info[3]);
-				fioWrite(fd, header, 66);
-				fioWrite(fd, buffer, info[2] * info[3] * 4);
-				fioClose(fd);
-			}
-*/			ret = imgview(mode, file, buffer, info[2], info[3], bpp);
-			//free(buffer);
-			//free(env);
-			//if ((decoded != NULL) && (decoded != c)) free(decoded);
-			//return i;
-			break;
-		}
-		case FT_BMP:
-		{
-			i = info_BMP(info, decoded, dsize);
-			if (bpp > ((info[1] +7)>>3))
-				bpp = (info[1] +7)>>3;
-			if (bpp == 0) bpp++;
-			printf("viewer: info_BMP returned: %d\n", i);
-			printf("viewer: info_data: %d, %dx%d (%dbpp)\n", info[0], info[2], info[3], info[1]);
-			if ((info[0] != 0x0001) || (info[2] * info[3] == 0))
+				env[0] = 0; env[1] = 0;
+				i = info_JPEG(env, info, dsize, decoded);
+				printf("viewer: info_JPEG returned: %d (env: %d,%d)\n", i, env[0], env[1]);
+				printf("viewer: info data: %d,%d,%dx%d\n", info[0], info[1], info[2], info[3]);
+				if ((info[0] != 0x0002) || (info[2] * info[3] == 0)) {
+					//free(env);
+					break;
+				}
+				buffer = malloc(info[2] * info[3] * bpp);
+				if (buffer == NULL) {
+					if ((bpp <= 2) || ((bpp>2) && ((bpp=2)==2) && ((buffer = malloc(info[2] * info[3] * bpp))==NULL))) {
+						//free(env);
+						ret=-2;
+						break;
+					}
+				}
+				i = decode0_JPEG(env, dsize, decoded, bpp, buffer, 0);
+				printf("viewer: decode0_JPEG(%dbpp) returned: %d (env: %d,%d)\n", bpp*8, i, env[0], env[1]);
+	/*	デコード結果を表示できるようにヘッダをつけてPCにダンプ
+				// 32bppのヘッダ
+				static unsigned char header[66] = "BM____\x00\x00\x00\x00\x42\x00\x00\x00\x28\x00" "\x00\x00________\x01\x00\x20\x00\x03\x00" "\x00\x00\x00\x00\x00\x00\xA0\x05\x00\x00\xA0\x05\x00\x00\x00\x00" "\x00\x00\x00\x00\x00\x00\x00\x00\xFF\x00\x00\xFF\x00\x00\xFF\x00" "\x00\x00";
+				int fd;
+				fd = fioOpen("host:JPEGDEC.BMP", O_WRONLY | O_CREAT);
+				if (fd == NULL) {
+					printf("viewer: host open error!\n");
+				} else {
+					seti32(header+2, info[2]*info[3]*4+66);
+					seti32(header+18, info[2]);
+					seti32(header+22, -info[3]);
+					fioWrite(fd, header, 66);
+					fioWrite(fd, buffer, info[2] * info[3] * 4);
+					fioClose(fd);
+				}
+	*/			ret = imgview(mode, file, buffer, info[2], info[3], bpp);
+				//free(buffer);
+				//free(env);
+				//if ((decoded != NULL) && (decoded != c)) free(decoded);
+				//return i;
 				break;
-			if (bpp == 3) bpp++;
-			buffer = malloc(info[2] * info[3] * bpp);
-			if (buffer == NULL) {
-				if ((bpp <= 2) || ((bpp>2) && ((bpp=2)==2) && ((buffer = malloc(info[2] * info[3] * bpp))==NULL))) {
+			}
+			case FT_BMP:
+			{
+				i = info_BMP(info, decoded, dsize);
+				if (bpp > ((info[1] +7)>>3))
+					bpp = (info[1] +7)>>3;
+				if (bpp == 0) bpp++;
+				printf("viewer: info_BMP returned: %d\n", i);
+				printf("viewer: info_data: %d, %dx%d (%dbpp)\n", info[0], info[2], info[3], info[1]);
+				if ((info[0] != 0x0001) || (info[2] * info[3] == 0))
+					break;
+				if (bpp == 3) bpp++;
+				buffer = malloc(info[2] * info[3] * bpp);
+				if (buffer == NULL) {
+					if ((bpp <= 2) || ((bpp>2) && ((bpp=2)==2) && ((buffer = malloc(info[2] * info[3] * bpp))==NULL))) {
+						//if ((decoded != NULL) && (decoded != c)) free(decoded);
+						//return -2;
+						ret = -2;
+						break;
+					}
+				}
+				i = decode_BMP(buffer, decoded, dsize, bpp);
+				printf("viewer: decode_BMP(%dbpp) returned: %d\n", bpp*8, i);
+				ret = imgview(mode, file, buffer, info[2], info[3], bpp);
+				//free(buffer);
+				//if ((decoded != NULL) && (decoded != c)) free(decoded);
+				//return i;
+				break;
+			}
+			case FT_GIF:
+			{
+				int bpp0;
+				alphablend = TRUE;
+				i = info_GIF(info, decoded, dsize);
+				//bpp = bpp0 = 1;
+				bpp0 = bpp;
+				printf("viewer: info_GIF returned: %d\n", i);
+				printf("viewer: info data: %d,%dx%d(%dbpp),%d image(s)\n", info[0], info[2], info[3], info[1], info[4]);
+				//i = 24576 +16 + info[2] * info[3] +16;
+				i = info[2] * info[3] +16;
+				if ((info[0] != 0x0008) || (info[2] * info[3] == 0))
+					break;
+				if ((info[5] == dsize) && (info[4] > 1)) {
+					buffer = malloc(info[2] * info[3] * info[4] * bpp +i);
+					if (!buffer && (bpp > 2)) {
+						bpp = bpp0 = 2;
+						buffer = malloc(info[2] * info[3] * info[4] * bpp +i);
+					}
+					if (!buffer && (bpp > 1)) {
+						bpp = bpp0 = 1;
+						buffer = malloc(info[2] * info[3] * info[4] * bpp +i);
+					}
+					if (buffer) {
+						unsigned char *ttttemp;
+						bpp0 = bpp | (0x0100 * info[4]);
+						ttttemp = realloc(buffer, info[2] * info[3] * info[4] * bpp);
+						if (ttttemp) buffer = ttttemp;
+					} else {
+						unsigned char tmps[64];
+						sprintf(tmps, " [%d/%d]", info[4], info[4]);
+						strcat(file, tmps);
+					}
+				}// else buffer = NULL;
+				if (buffer == NULL)
+					buffer = malloc(info[2] * info[3] * bpp);
+				if (buffer == NULL) {
 					//if ((decoded != NULL) && (decoded != c)) free(decoded);
 					//return -2;
 					ret = -2;
 					break;
 				}
-			}
-			i = decode_BMP(buffer, decoded, dsize, bpp);
-			printf("viewer: decode_BMP(%dbpp) returned: %d\n", bpp*8, i);
-			ret = imgview(mode, file, buffer, info[2], info[3], bpp);
-			//free(buffer);
-			//if ((decoded != NULL) && (decoded != c)) free(decoded);
-			//return i;
-			break;
-		}
-		case FT_GIF:
-		{
-			alphablend = TRUE;
-			i = info_GIF(info, decoded, dsize);
-			bpp = 1;
-			printf("viewer: info_GIF returned: %d\n", i);
-			printf("viewer: info data: %d,%dx%d(%dbpp)\n", info[0], info[2], info[3], info[1]);
-			if ((info[0] != 0x0008) || (info[2] * info[3] == 0))
-				break;
-			buffer = malloc(info[2] * info[3] * bpp);
-			if (buffer == NULL) {
+				i = decode_GIF(buffer, decoded, dsize, bpp0);
+				printf("viewer: decode_GIF(%dbpp) returned: %d\n", bpp*8, i);
+			//	if (info[5] != dsize) info_GIF(info, decoded, dsize);
+			//	if ((info[5] == dsize) && (info[4] > 1)) {
+			//		unsigned char tmps[64];
+			//		sprintf(tmps, " [%d/%d]", info[4], info[4]);
+			//		strcat(file, tmps);
+			//	}
+				ret = imgview(mode, file, buffer, info[2], info[3], bpp0);
+				//free(buffer);
 				//if ((decoded != NULL) && (decoded != c)) free(decoded);
-				//return -2;
-				ret = -2;
+				//return i;
 				break;
 			}
-			i = decode_GIF(buffer, decoded, dsize, bpp);
-			printf("viewer: decode_GIF(%dbpp) returned: %d\n", bpp*8, i);
-			ret = imgview(mode, file, buffer, info[2], info[3], bpp);
-			//free(buffer);
-			//if ((decoded != NULL) && (decoded != c)) free(decoded);
-			//return i;
-			break;
-		}
-		case FT_P2T:
-		{
-			i = info_PS2ICO(info, decoded, dsize);
-			printf("viewer: info_PS2ICO returned: %d\n", i);
-			printf("viewer: info data: %d,%dx%d(%dbpp)\n", info[0], info[2], info[3], info[1]);
-			if ((info[0] != 0x7009) || (info[2] * info[3] == 0))
-				break;
-			buffer = malloc(info[2] * info[3] * 2);
-			if (buffer == NULL) {
-				ret = -2;
+			case FT_P2T:
+			{
+				i = info_PS2ICO(info, decoded, dsize);
+				printf("viewer: info_PS2ICO returned: %d\n", i);
+				printf("viewer: info data: %d,%dx%d(%dbpp)\n", info[0], info[2], info[3], info[1]);
+				if ((info[0] != 0x7009) || (info[2] * info[3] == 0))
+					break;
+				buffer = malloc(info[2] * info[3] * 2);
+				if (buffer == NULL) {
+					ret = -2;
+					break;
+				}
+				i = decode_PS2ICO(buffer, decoded, dsize, 2);
+				printf("viewer: decode_PS2ICO(%dbpp) returned: %d\n", 16, i);
+				ret = imgview(mode, file, buffer, info[2], info[3], 2);
 				break;
 			}
-			i = decode_PS2ICO(buffer, decoded, dsize, 2);
-			printf("viewer: decode_PS2ICO(%dbpp) returned: %d\n", 16, i);
-			ret = imgview(mode, file, buffer, info[2], info[3], 2);
-			break;
-		}
-		case FT_PS1:
-		{
-			i = info_PS1ICO(info, decoded, dsize);
-			printf("viewer: info_PS1ICO returned: %d\n", i);
-			printf("viewer: info data: %d,%dx%d(%dbpp)\n", info[0], info[2], info[3], info[1]);
-			if ((info[0] != 0x700A) || (info[2] * info[3] == 0))
-				break;
-			buffer = (char*)malloc(info[2] * info[3]);
-			if (buffer == NULL) {
-				ret = -2;
+			case FT_PS1:
+			{
+				i = info_PS1ICO(info, decoded, dsize);
+				bpp = 1;
+				printf("viewer: info_PS1ICO returned: %d\n", i);
+				printf("viewer: info data: %d,%dx%d(%dbpp),%d images\n", info[0], info[2], info[3], info[1], info[4]);
+				if ((info[0] != 0x700A) || (info[2] * info[3] * info[4] == 0))
+					break;
+				buffer = (char*)malloc(info[2] * info[3] * info[4]);
+				if (buffer == NULL) {
+					ret = -2;
+					break;
+				}
+				if (info[4] > 1) bpp |= info[4] << 8;
+				i = decode_PS1ICO(buffer, decoded, dsize, bpp);
+				printf("viewer: decode_PS1ICO(%dbpp) returned: %d\n", 8, i);
+				ret = imgview(mode, file, buffer, info[2], info[3], bpp);
 				break;
 			}
-			i = decode_PS1ICO(buffer, decoded, dsize, 1);
-			printf("viewer: decode_PS1ICO(%dbpp) returned: %d\n", 8, i);
-			ret = imgview(mode, file, buffer, info[2], info[3], 1);
-			break;
-		}
-		case FT_FNT:
-		{	// フォントビューアを起動
-			//ret = fntview(mode, file, buffer, dsize);
-			break;
-		}
-		case FT_MP3:
-		case FT_PCM:
-		{
-			break;
+			case FT_FNT:
+			{	// フォントビューアを起動
+				//ret = fntview(mode, file, buffer, dsize);
+				break;
+			}
+			case FT_MP3:
+			case FT_PCM:
+			{
+				break;
+			}
 		}
 	}
 	if (env != NULL) free(env);
@@ -1212,9 +1258,10 @@ uint64 pget(unsigned char *buffer, int x, int y, int w, int h, int bpp)
 		// 16色
 		
 	} else {
-		c = buffer + (y*w+x)*bpp;
+		c = buffer + (y*w+x)*(bpp & 15);
 		switch(bpp) {
 			case 1: // 256色
+			case 17:
 			{
 			//	return ((uint64) (c[0] & 0x30) << 22)|((uint64) (c[0] & 0x0C) << 14)|((uint64) (c[0] & 0x03) << 6);
 				return activeclut[*c];
@@ -1225,6 +1272,7 @@ uint64 pget(unsigned char *buffer, int x, int y, int w, int h, int bpp)
 				return ((uint64) (i[0] & 0x7C00) << 9)|((uint64) (i[0] & 0x03E0) << 6)|((uint64) (i[0] & 0x001F) << 3);
 			}
 			case 3:
+			case 19:
 			case 4: // TrueColor
 			{
 			/*	if (c[3] != 0) {
@@ -1234,13 +1282,28 @@ uint64 pget(unsigned char *buffer, int x, int y, int w, int h, int bpp)
 				}
 			*/	return ((uint64) c[0] << 16)|((uint64) c[1] << 8)|(uint64) c[2];
 			}
+			case 18: // HighColor
+			{
+				i = (short *) c;
+				return ((uint64) (i[0] & 0x7C00) << 9)|((uint64) (i[0] & 0x03E0) << 6)|((uint64) (i[0] & 0x001F) << 3)|((uint64) (i[0] & 0x8000) << 16);
+			}
+			case 20: // TrueColor
+			{
+			/*	if (c[3] != 0) {
+					//printf("viewer: memory error at %08X\n", (int) &c[0]);
+					if (!memoryerror) memoryerror = (int) &c[0];
+					return 0;
+				}
+			*/	return ((uint64) c[2] << 16)|((uint64) c[1] << 8)|(uint64) c[0] | ((uint64) c[3] << 24);
+			}
 		}
 	}
 	return 0;
 }
-int imgview(int mode, char *file, unsigned char *buffer, int w, int h, int bpp)
+void itoPoint2c(uint64 color0, uint16 x0, uint16 y0, uint64 color1, uint16 x1, uint16 y1);
+int imgview(int mode, char *file, unsigned char *buffer0, int w, int h, int bppf)
 {
-	int redraw=fieldbuffers;
+	int redraw=fieldbuffers,redi=0,bpp,bppb,ani,q,cls=0;
 	//int sl=0,st=0,sw=1,sh=1; // カーソル位置
 	int tl,tt,tw,th,x,y,ff;
 	int vl,vt,vw,vh; // ビューポート(描画可能範囲)
@@ -1251,8 +1314,23 @@ int imgview(int mode, char *file, unsigned char *buffer, int w, int h, int bpp)
 	//uint64 color;
 	//unsigned char *d;
 	char msg0[MAX_PATH], msg1[MAX_PATH];
+	unsigned char *buffer=buffer0;
 	double mx,my,dx,dy,gw,gh;	// 倍率
 	strcpy(msg0, file);
+	ani = bppf >> 8;
+	bpp = bppf & 0x00ff;
+	bppb = bpp | (alphablend << 4);
+	q = ani -1;
+	if (ani) {
+		buffer = buffer0 + w * h * bpp * q;
+		if (alphablend) {
+			if (!(pget(buffer, 0, 0, w, h, bppb) & 0xFF000000ull)
+			 || !(pget(buffer, w-1, 0, w, h, bppb) & 0xFF000000ull)
+			 || !(pget(buffer, 0, h-1, w, h, bppb) & 0xFF000000ull)
+			 || !(pget(buffer, w-1, h-1, w, h, bppb) & 0xFF000000ull)
+			) cls = 1; else cls = 0;
+		}
+	}
 	// イメージ全体をアスペクト比を保ったままビューポート全体に表示するように初期値を調整
 	// イメージ1ドット進むごとに画面はbx,byピクセル進む(=拡大率)
 	//mx = (double) vw / w;
@@ -1301,15 +1379,27 @@ int imgview(int mode, char *file, unsigned char *buffer, int w, int h, int bpp)
 			if (mode & 2) {
 				if (new_pad & PAD_L1) return 1;
 				if (new_pad & PAD_R1) return 2;
-				if (new_pad & PAD_LEFT) return 1;
-				if (new_pad & PAD_RIGHT) return 2;
 				if (new_pad & PAD_UP) return 1;
 				if (new_pad & PAD_DOWN) return 2;
+			}
+			if (ani) {
+				if (new_pad & PAD_LEFT) {
+					if (q > 0) q--; else q = ani -1;
+					buffer = buffer0 + w * h * bpp * q;
+					redraw = fieldbuffers;
+					if (!cls && ((framebuffers == 1) || (fieldbuffers == 2))) redi = fieldbuffers;
+				}
+				if (new_pad & PAD_RIGHT) {
+					if (q < ani -1) q++; else q = 0;
+					buffer = buffer0 + w * h * bpp * q;
+					redraw = fieldbuffers;
+					if (!cls && ((framebuffers == 1) || (fieldbuffers == 2))) redi = fieldbuffers;
+				}
 			}
 		}
 	
 		if (redraw) {
-			clrScr(setting->color[COLOR_BACKGROUND]);
+			if (!redi)	clrScr(setting->color[COLOR_BACKGROUND]);
 			// ビューポートの設定
 			if (fullscreen) {
 				vl = 0;
@@ -1358,10 +1448,18 @@ int imgview(int mode, char *file, unsigned char *buffer, int w, int h, int bpp)
 			if (tw > vw) tw = vw;
 			if (th > vh) th = vh;
 			if (!fullscreen) {
-				if (mode & 2) 
-					sprintf(msg1, lang->editor_image_help2, w, h, tw, th);
-				else
-					sprintf(msg1, lang->editor_image_help, w, h, tw, th);
+				if (mode & 2) {
+					if (ani) 
+						sprintf(msg1, lang->editor_image_help4, w, h, tw, th);
+					else
+						sprintf(msg1, lang->editor_image_help2, w, h, tw, th);
+				} else {
+					if (ani)
+						sprintf(msg1, lang->editor_image_help3, w, h, tw, th);
+					else
+						sprintf(msg1, lang->editor_image_help, w, h, tw, th);
+				}
+				if (ani) sprintf(msg0, "%s [%d/%d]", file, q+1, ani);
 				setScrTmp(msg0, msg1);
 			}
 			
@@ -1370,78 +1468,79 @@ int imgview(int mode, char *file, unsigned char *buffer, int w, int h, int bpp)
 			if (alphablend)	{itoPrimAlphaBlending(TRUE);}
 			if (ffmode) {
 				k=itoGetActiveFrameBuffer();
-				if (gw > 1.5) {
+				if (gw > 1.2) {
 					k^=1;
 					// 座標のキャッシュ - 高速化を期待してみる
-					gw = mx/gx;
-					gh = my/gy;
-					for (x=0;x<=w;x++)
-						tmpx[x] = x*gw+dl;
-					for (y=0;y<=h;y++)
-						tmpy[y] = (y*gh+k)/2+dt;
+					gw = mx/gx;	gh = my/gy;
+					for (x=0;x<=w;x++)	tmpx[x] = x*gw+dl;
+					for (y=0;y<=h;y++)	tmpy[y] = (y*gh+k)/2+dt;
 					// 描画
 					for (y=0;y<h;y++)
 						for (x=0;x<w;)
-							itoSprite(pget(buffer,x,y,w,h,bpp), tmpx[x++], tmpy[y], tmpx[x], tmpy[y+1], 0);
+							itoSprite(pget(buffer,x,y,w,h,bppb), tmpx[x++], tmpy[y], tmpx[x], tmpy[y+1], 0);
+				} else if (gw == 1) {
+					for (y=0;y<dh;y++)
+						for (x=0;x<dw;x+=2)
+							itoPoint2c(pget(buffer,x,y*2+k,w,h,bppb), x+dl, y+dt, pget(buffer,x+1,y*2+k,w,h,bppb), x+dl+1, y+dt);
 				} else {
 					// 座標のキャッシュ - 高速化を期待してみる
-					for (x=0;x<dw;x++)
-						tmpx[x] = x*dx;
-					for (y=0;y<dh;y++)
-						tmpy[y] = (y*2+k)*dy;
+					for (x=0;x<dw;x++)	tmpx[x] = x*dx;
+					for (y=0;y<dh;y++)	tmpy[y] = (y*2+k)*dy;
 					// 描画
 					for (y=0;y<dh;y++)
 						for (x=0;x<dw;x++)
-							itoPoint(pget(buffer,tmpx[x],tmpy[y],w,h,bpp), x+dl, y+dt, 0);
+							itoPoint(pget(buffer,tmpx[x],tmpy[y],w,h,bppb), x+dl, y+dt, 0);
 					//	itoPoint(pget(buffer,x*dx,(y*2+k)*dy,w,h,bpp), x+dl, y+dt, 0);
 				}
 			} else {
 				//printf("window: (%d,%d)-(%d,%d) %dx%d\n", dl, dt, dl+dw-1, dt+dh-1, dw, dh);
 				//printf("floats: m=%6.3lf,%6.3lf d=%6.3lf,%6.3lf g=%6.3lf,%6.3lf mg=%d,%d\n", mx, my, dx, dy, gw, gh, gx, gy);
-				if (gw > 1.5) {
+				if (gw > 1.2) {
 					// 座標のキャッシュ - 高速化を期待してみる
-					gw = mx/gx;
-					gh = my/gy;
-					for (x=0;x<=w;x++)
-						tmpx[x] = x*gw+dl;
-					for (y=0;y<=h;y++)
-						tmpy[y] = y*gh+dt;
+					gw = mx/gx;	gh = my/gy;
+					for (x=0;x<=w;x++)	tmpx[x] = x*gw+dl;
+					for (y=0;y<=h;y++)	tmpy[y] = y*gh+dt;
 					// 描画
 					if (!bilinear) {
 						for (y=0;y<h;y++)
 							for (x=0;x<w;)
-								itoSprite(pget(buffer,x,y,w,h,bpp), tmpx[x], tmpy[y], tmpx[++x], tmpy[y+1], 0);
+								itoSprite(pget(buffer,x,y,w,h,bppb), tmpx[x], tmpy[y], tmpx[++x], tmpy[y+1], 0);
 						//	itoSprite(pget(buffer,x,y,w,h,bpp), x*gw+dl, y*gh+dt, (x+1)*gw+dl, (y+1)*gh+dt, 0);
 					} else {
 						// バイリニアテスト
-							itoPrimShade( ITO_PRIM_SHADE_GOURAUD );
+						itoPrimShade( ITO_PRIM_SHADE_GOURAUD );
 						for (y=0;y<h-1;y++) {
-							itoTriangleStrip(	pget(buffer,0,y  ,w,h,bpp), tmpx[0], tmpy[y]  , 0,
-												pget(buffer,0,y+1,w,h,bpp), tmpx[0], tmpy[y+1], 0,
-												pget(buffer,1,y  ,w,h,bpp), tmpx[1], tmpy[y]  , 0);
-							itoAddVertex(		pget(buffer,1,y+1,w,h,bpp), tmpx[1], tmpy[y+1], 0);
-							for (x=2;x<w;x++) {
-								itoAddVertex(	pget(buffer,x,y  ,w,h,bpp), tmpx[x], tmpy[y  ], 0);
-								itoAddVertex(	pget(buffer,x,y+1,w,h,bpp), tmpx[x], tmpy[y+1], 0);
-							}
+							itoTriangleStrip(	pget(buffer,0,y  ,w,h,bppb), tmpx[0], tmpy[y]  , 0,
+												pget(buffer,0,y+1,w,h,bppb), tmpx[0], tmpy[y+1], 0,
+												pget(buffer,1,y  ,w,h,bppb), tmpx[1], tmpy[y]  , 0);
+							itoAddVertex(		pget(buffer,1,y+1,w,h,bppb), tmpx[1], tmpy[y+1], 0);
+							//void itoAddVertex2(uint64 color1, uint16 x1, uint16 y1, uint64 color2, uint16 x2, uint16 y2);
+							for (x=2;x<w;x++) //{
+								itoAddVertex2(	pget(buffer,x,y  ,w,h,bppb), tmpx[x], tmpy[y  ],
+												pget(buffer,x,y+1,w,h,bppb), tmpx[x], tmpy[y+1]);
+							//	itoAddVertex(	pget(buffer,x,y  ,w,h,bpp), tmpx[x], tmpy[y  ], 0);
+							//	itoAddVertex(	pget(buffer,x,y+1,w,h,bpp), tmpx[x], tmpy[y+1], 0);
+							//}
 							itoEndVertex();
 							itoGsFinish();
 						}
 						// 結果: ピクセルが ↓ のようにスムージングされてしまう
 						//                 ／￣|
 						//                |＿／
-							itoPrimShade( ITO_PRIM_SHADE_FLAT );
+						itoPrimShade( ITO_PRIM_SHADE_FLAT );
 					}
+				} else if (gw == 1) {
+					for (y=0;y<dh;y++)
+						for (x=0;x<dw;x+=2)
+							itoPoint2c(pget(buffer,x,y,w,h,bppb), x+dl, y+dt, pget(buffer,x+1,y,w,h,bppb), x+dl+1, y+dt);
 				} else {
 					// 座標のキャッシュ - 高速化を期待してみる
-					for (x=0;x<dw;x++)
-						tmpx[x] = x*dx;
-					for (y=0;y<dh;y++)
-						tmpy[y] = y*dy;
+					for (x=0;x<dw;x++)	tmpx[x] = x*dx;
+					for (y=0;y<dh;y++)	tmpy[y] = y*dy;
 					// 描画
 					for (y=0;y<dh;y++)
 						for (x=0;x<dw;x++)
-							itoPoint(pget(buffer,tmpx[x],tmpy[y],w,h,bpp), x+dl, y+dt, 0);
+							itoPoint(pget(buffer,tmpx[x],tmpy[y],w,h,bppb), x+dl, y+dt, 0);
 				}
 			}
 			if (alphablend)	itoPrimAlphaBlending(FALSE);
@@ -1464,6 +1563,7 @@ int imgview(int mode, char *file, unsigned char *buffer, int w, int h, int bpp)
 */				memoryerror = 0;
 			}
 			drawScr();
+			if (redi) redi--;
 			redraw--;
 		} else {
 			itoVSync();

@@ -102,8 +102,10 @@ typedef struct
 	char editor_l2popup_linenum[MAX_LANGUAGE_STR];
 	char editor_l2popup_flicker[MAX_LANGUAGE_STR];
 	char editor_l2popup_wordwrap[MAX_LANGUAGE_STR];
-	char editor_image_help[MAX_LANGUAGE_STR];
-	char editor_image_help2[MAX_LANGUAGE_STR];
+	char editor_image_help[MAX_MESSAGE_STR];
+	char editor_image_help2[MAX_MESSAGE_STR];
+	char editor_image_help3[MAX_MESSAGE_STR];
+	char editor_image_help4[MAX_MESSAGE_STR];
 
 	//config
 	char conf_savefailed[MAX_LANGUAGE_STR];
@@ -182,6 +184,8 @@ typedef struct
 	//font
 	char conf_AsciiFont[MAX_LANGUAGE_STR];
 	char conf_KanjiFont[MAX_LANGUAGE_STR];
+	char conf_DisableCtrl[MAX_LANGUAGE_STR];
+	char conf_UseFontCache[MAX_LANGUAGE_STR];
 	char conf_CharMargin[MAX_LANGUAGE_STR];
 	char conf_LineMargin[MAX_LANGUAGE_STR];
 	char conf_FontBold[MAX_LANGUAGE_STR];
@@ -318,7 +322,14 @@ typedef struct
 	char kbd_abort[MAX_LANGUAGE_STR];
 	char kbd_helpl[MAX_LANGUAGE_STR];
 	char kbd_helpr[MAX_LANGUAGE_STR];
-	char kbd[MAX_SKBD_LANGS][MAX_LANGUAGE_STR];
+	char kbd_helpc[MAX_LANGUAGE_STR];
+//	char kbd[MAX_SKBD_LANGS][MAX_LANGUAGE_STR];
+	char kbd_registok[MAX_LANGUAGE_STR];
+	char kbd_registfail[MAX_LANGUAGE_STR];
+	char kbd_deleteok[MAX_LANGUAGE_STR];
+	char kbd_loaded[MAX_LANGUAGE_STR];
+	char kbd_saving[MAX_LANGUAGE_STR];
+	char kbd_update[MAX_LANGUAGE_STR];
 } LANGUAGE;
 
 #endif

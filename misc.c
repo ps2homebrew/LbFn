@@ -84,21 +84,23 @@ enum{
 	PG_ENTER=0x080000,
 	PG_ABORT=0x080001,
 	MAX_PAGES=16,
-	MAX_CHARS=8000,
+	MAX_CHARS=9000,
+	MAX_HISTORY=256,
+	MAX_CUSTOM=1024,
 	MAX_PAGENUM=0x200,
 	CUR_NORMAL=0,
 	CUR_ENGLISH,
 	CUR_LINE,
 };
 // ページ数
-//	訓読み漢字	44+1	3D	40
-//	音読み漢字	44+1	3D	40
+//	訓読み漢字	44+1	2D	30
+//	音読み漢字	44+1	2D	30
 //	文字コード	94+1	5F	60
 //	平片数記英   5      05	05
 //	履歴         1      01	01
 //	ユーザー     1      01	01
 //	───────────
-//  合計       192      E0	E7
+//  合計       192      C0	C7
 //	残り        64      40	39
 
 /* [C:\osask\nask\oscspeed\speed.org] 00003B30-00003BDF */
@@ -304,6 +306,13 @@ static unsigned short nummap[230] = {
 	0x01C5,0x01C6,0x01C7,0x01C8,0x01C9,0x01CA,
 
 };
+static unsigned short historydbcs[MAX_HISTORY], historydbcss=0;
+static unsigned short custommap[MAX_CUSTOM], custommaps=0;
+/*
+static unsigned short *customsbcs=NULL;
+static unsigned short *customdbcsindex=NULL;
+static unsigned short *customdbcsmap;
+*/
 #define	_lang(member)	offsetof(LANGUAGE,member)
 static ptrdiff_t plist[MAX_PAGES] = {
 	_lang(kbd_page[0]), 
@@ -312,9 +321,9 @@ static ptrdiff_t plist[MAX_PAGES] = {
 	_lang(kbd_page[3]), 
 	_lang(kbd_page[4]), 
 	_lang(kbd_page[5]),
-//	_lang(kbd_page[6]),
+	_lang(kbd_page[6]),
 	_lang(kbd_page[7]),
-//	_lang(kbd_page[8]), 
+	_lang(kbd_page[8]), 
 //	_lang(kbd_page[9]), 
 	
 	_lang(kbd_enter),
@@ -327,15 +336,15 @@ static int pindex[MAX_PAGES] = {
 	PG_NUMBER,
 	PG_INDEXKANJI,
 	PG_INDEXKANJI2,
-//	PG_HISTORYKANJI,
+	PG_HISTORYKANJI,
 	PG_RAW,
-//	PG_CUSTOM,
+	PG_CUSTOM,
 //	PG_EXTEND,
 	
 	PG_ENTER,
 	PG_ABORT,
 };
-static int pages=10-3;
+static int pages=10-1;
 static int pageisindex=0;
 unsigned char ctrlchar[32] = "@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_";
 //	static unsigned char ctrlchar[32] = "@ABCDEFGH>vKL<NOPQRSTYVWXYZ[\\]^_";
@@ -413,14 +422,18 @@ int pagemake(short *dist, int limit, int page)
 			dist[i] = kanjitable[kanjioffset[page-PG_KANJI2]+i]+256;
 		}
 	} else if (page == PG_CUSTOM) {
-		for (i=1; i<127; i++) {
-			dist[i] = i;
+		for (i=0; i<custommaps; i++) {
+			dist[i] = custommap[i];
 		}
-		max = 126;
-		curm = CUR_LINE;
+		max = custommaps;
+		//curm = CUR_LINE;
 	} else if (page == PG_INDEXDBCS) {
 		pageisindex=1;
 	} else if (page == PG_HISTORYKANJI) {
+		for (i=0; i<historydbcss; i++) {
+			dist[i] = historydbcs[historydbcss-i-1];
+		}
+		max = i;
 	} else if (page == PG_RAW) {
 		max = 0;
 ///*
@@ -475,6 +488,285 @@ int pagemakefromindex(short *dist, int limit, int ofs)
 	}
 	return 0;
 }
+int historyadd(short c)
+{	// 漢字入力履歴に追加
+	int i,m;
+	if ((c < 256) || (c > 11535)) return -1;
+	// 同じ文字が無いかチェック
+	for (i=0; i<historydbcss; i++) {
+		if (historydbcs[i] == c) {
+			// 履歴に既にある場合は削除して詰める
+			historydbcss--;
+			for (m=i; m<historydbcss; m++) {
+				historydbcs[m] = historydbcs[m+1];
+			}
+			break;
+		}
+	}
+	if (historydbcss >= MAX_HISTORY) {
+		// 履歴の古いほうから削除して詰める
+		historydbcss--;
+		for (m=0; m<historydbcss; m++) {
+			historydbcs[m] = historydbcs[m+1];
+		}
+	}
+	// 履歴に追加する
+	historydbcs[historydbcss++] = c;
+	return historydbcss;
+}
+int customadd(short c)
+{	// カスタム文字入力配列に追加
+	int i,m;
+	if ((c == 0) || (c > 11535)) return -1;
+	// 同じ文字が無いかチェック
+	for (i=0; i<custommaps; i++) {
+		if (custommap[i] == c) {
+			// 文字入力配列に既にある場合は削除して詰める
+			custommaps--;
+			for (m=i; m<custommaps; m++) {
+				custommap[m] = custommap[m+1];
+			}
+			break;
+		}
+	}
+	if (custommaps < MAX_CUSTOM) {
+		// 後方に追加する
+		custommap[custommaps++] = c;
+		return custommaps;
+	}
+	return -2;
+}
+int GetMcType(int port, int slot);
+int softkbd_save(void)
+{	// 漢字入力履歴やカスタム文字入力配列などの更新
+	int fd, mcport, ret, i, err=0;
+	char path[MAX_PATH], tmps[(MAX_CUSTOM+MAX_HISTORY)*2];
+	unsigned char a,b;
+	
+	//cdから起動しているときは、設定ファイルを保存しない
+	if(boot==CD_BOOT){
+		return -1;
+	}
+	//cnfファイルのパス
+	//LaunchELFが実行されたパスから設定ファイルを開く
+	if((boot!=HOST_BOOT)&&(boot!=PCSX_BOOT)&&(boot!=CD_BOOT)){
+		sprintf(path, "%sLBFN.INI", LaunchElfDir);
+		fd = fioOpen(path, O_RDONLY);
+		if(fd >= 0)
+			fioClose(fd);
+		else
+			path[0]=0;
+	}
+	//開けなかったら、SYS-CONFの設定ファイルを開く
+	if(path[0]==0){
+		if(boot==MC_BOOT)
+			mcport = LaunchElfDir[2]-'0';
+		else
+			mcport = CheckMC();
+		if(mcport==0||mcport==1){
+			sprintf(path, "mc%d:/SYS-CONF/LBFN.INI", mcport);
+			fd = fioOpen(path, O_RDONLY);
+			if(fd >= 0)
+				fioClose(fd);
+			else
+				path[0]=0;
+		}
+	}
+
+	cnf_init();
+
+	//cnfファイルオープン
+	if(cnf_load(path)==FALSE)
+		path[0]=0;
+
+	// セッション変更
+	cnf_session("SoftwareKeyboard");
+	
+	// 漢字入力履歴の更新
+	sprintf(tmps, "%d", historydbcss);
+	if (cnf_setstr("histories", tmps)<0) err++;
+	for (i=0; i<historydbcss; i++) {
+		if (historydbcs[i] >= 256) {
+			// 全角文字
+			a = ((historydbcs[i] - 256) / 188) + 0x81;
+			b = ((historydbcs[i] - 256) % 188) + 0x40;
+			if (a > 0x9F) a+=0x40;
+			if (b > 0x7E) b++;
+			tmps[i*2+0] = a;
+			tmps[i*2+1] = b;
+		} else if (historydbcs[i] > 0) {
+			// 半角文字
+			tmps[i*2+0] = historydbcs[i];
+			tmps[i*2+1] = 32;
+		} else {
+			// たぶん間違い
+			tmps[i*2+0] = 32;
+			tmps[i*2+1] = 33;
+			break;
+		}
+		tmps[i*2+2] = 0;
+	}
+	if (cnf_setstr("history", tmps)<0) err++;
+	// カスタム配列の更新
+	sprintf(tmps, "%d", custommaps);
+	if (cnf_setstr("customs", tmps)<0) err++;
+	for (i=0; i<custommaps; i++) {
+		if (custommap[i] >= 256) {
+			// 全角文字
+			a = ((custommap[i] - 256) / 188) + 0x81;
+			b = ((custommap[i] - 256) % 188) + 0x40;
+			if (a > 0x9F) a+=0x40;
+			if (b > 0x7E) b++;
+			tmps[i*2+0] = a;
+			tmps[i*2+1] = b;
+		} else if (custommap[i] > 0) {
+			// 半角文字
+			tmps[i*2+0] = custommap[i];
+			tmps[i*2+1] = 32;
+		} else {
+			// たぶん間違い
+			tmps[i*2+0] = 32;
+			tmps[i*2+1] = 33;
+			break;
+		}
+		tmps[i*2+2] = 0;
+	}
+	if (cnf_setstr("custom", tmps)<0) err++;
+	
+	printf("skbd_save: err=%d\n", err);
+	if (!err) {
+		//cnfファイルのパス
+		//LaunchELFのディレクトリにCNFがあったらLaunchELFのディレクトリにセーブ
+		if(path[0] && boot!=HOST_BOOT){
+			sprintf(path, "%sLBFN.INI", LaunchElfDir);
+			fd = fioOpen(path, O_RDONLY);
+			if(fd >= 0)
+				fioClose(fd);
+			else
+				path[0]=0;
+		}
+		//なかったら、SYS-CONFにセーブ
+		if(path[0]==0){
+			//SYS-CONFフォルダがあったらSYS-CONFにセーブ
+			if(boot==MC_BOOT)
+				mcport = LaunchElfDir[2]-'0';
+			else
+				mcport = CheckMC();
+			sprintf(path, "mc%d:/SYS-CONF", mcport);
+			fd = fioDopen(path);	//フォルダをオープンしてみる
+			if(fd >= 0){
+				//SYS-CONFフォルダがある
+				fioDclose(fd);
+				strcat(path, "/LBFN.INI");
+			}
+			else{
+				//SYS-CONFがなかったらLaunchELFのディレクトリにセーブ
+				sprintf(path, "%sLBFN.INI", LaunchElfDir);
+			}
+		}
+	
+		//cnf保存
+		if(!strncmp(path, "mc", 2)){
+			if(GetMcType(path[2]-'0', 0)==MC_TYPE_PS2)
+				ret = cnf_save(path);
+			else
+				ret=-1;
+		}
+		else{
+			ret = cnf_save(path);
+		}
+	}
+
+	cnf_free();
+	return 0;
+}
+int softkbd_load(void)
+{	// 漢字入力履歴やカスタム文字入力配列、外部文字配列などの読み込み
+	int fd, mcport, ret, i;
+	char path[MAX_PATH], tmps[(MAX_CUSTOM+MAX_HISTORY)*2];
+	unsigned char a,b;
+	
+	path[0]=0;
+
+	//cnfファイルのパス
+	//LaunchELFが実行されたパスから設定ファイルを開く
+	if(boot!=HOST_BOOT){
+		sprintf(path, "%sLBFN.INI", LaunchElfDir);
+		if(!strncmp(path, "cdrom", 5)) strcat(path, ";1");
+		fd = fioOpen(path, O_RDONLY);
+		if(fd >= 0)
+			fioClose(fd);
+		else
+			path[0]=0;
+	}
+	//開けなかったら、SYS-CONFの設定ファイルを開く
+	if(path[0]==0){
+		if(boot==MC_BOOT)
+			mcport = LaunchElfDir[2]-'0';
+		else
+			mcport = CheckMC();
+		if(mcport==0||mcport==1){
+			sprintf(path, "mc%d:/SYS-CONF/LBFN.INI", mcport);
+			fd = fioOpen(path, O_RDONLY);
+			if(fd >= 0)
+				fioClose(fd);
+			else
+				path[0]=0;
+		}
+	}
+
+	//設定を初期化する
+	historydbcss = custommaps = 0;
+
+	cnf_init();
+
+	//cnfファイルオープン
+	if(cnf_load(path)<0){
+		//設定ファイル開けなかった
+		ret = 0;
+	} else {
+		// セッション変更
+		cnf_session("SoftwareKeyboard");
+		
+		// 漢字入力履歴の読み込み
+		if(cnf_getstr("histories", tmps, "")>=0)
+			historydbcss = atoi(tmps);
+		if(cnf_getstr("history", tmps, "")>=0)
+		for (i=0; tmps[i*2]!=0; i++) {
+			a = tmps[i*2+0]; b = tmps[i*2+1];
+			if (b == 32) {
+				// 半角
+				historydbcs[i] = a;
+			} else if (b >= 64) {
+				// 全角
+				historydbcs[i] = (a - 0x81 - (a > 0x9F) * 0x40) * 188 + (b - 0x40 - (b > 0x7F)) + 256;
+			} else {
+				// たぶん間違い
+				historydbcs[i] = 0x3F;
+			}
+		}
+		// カスタム配列の読み込み
+		if(cnf_getstr("customs", tmps, "")>=0)
+			custommaps = atoi(tmps);
+		if(cnf_getstr("custom", tmps, "")>=0)
+		for (i=0; tmps[i*2]!=0; i++) {
+			a = tmps[i*2+0]; b = tmps[i*2+1];
+			if (b == 32) {
+				// 半角
+				custommap[i] = a;
+			} else if (b >= 64) {
+				// 全角
+				custommap[i] = (a - 0x81 - (a > 0x9F) * 0x40) * 188 + (b - 0x40 - (b > 0x7F)) + 256;
+			} else {
+				// たぶん間違い
+				custommap[i] = 0x3F;
+			}
+		}
+		ret = 1;
+	}
+	cnf_free();
+	return ret;
+}
 
 int softkbd2(int type, char *c, int max)
 {	// 	文字列の入力(SJIS専用)
@@ -482,11 +774,11 @@ int softkbd2(int type, char *c, int max)
 	//		max		制限文字数
 	//	out:(ret)	=0:正常終了(更新済),=1:キャンセル(未更新)
 	
-	int i=0,j=0,ret=0,c0,c1,c2;
+	int i=0,j=0,ret=0,c0,c1,c2,kbdchange=0;
 	int cur,cl=0,redraw=fieldbuffers;
 	//int tx[8], ty[8];
 	int lx=0,ly=0,lz=0,ld=1,lr=1,cx=0,cy=0,cz=0,cd;
-	unsigned char edit[3][max+4],a,b,t=0;
+	unsigned char edit[3][max+4],a,b,t=0,msg2[16];
 	//unsigned char temp[32];
 	uint64 lc,rc;
 	//PS2KbdRawKey k;
@@ -540,6 +832,10 @@ int softkbd2(int type, char *c, int max)
 	height = FONT_HEIGHT * SKBD_HEIGHT;
 	left = (SCREEN_WIDTH - width) >> 1;
 	top = (SCREEN_HEIGHT - height) >> 1;
+	msg2[0] = 0;
+	
+	// 漢字入力履歴などの読み込み
+	if (softkbd_load()) strcpy(msg2, lang->kbd_loaded);
 	
 	// ボタン入力ループ
 	while(1){
@@ -560,13 +856,6 @@ int softkbd2(int type, char *c, int max)
 			} if (new_pad & PAD_R1) {
 				// 右へ
 				if ((cur < max) && edit[0][cur]) cur+=(edit[1][cur]>0)+1;
-			} if (new_pad & PAD_L2) {
-				// 左枠へ
-				lr = 0;
-			} if (new_pad & PAD_R2) {
-				// 右枠へ
-				lr = 1;
-				ly = lx;
 			} if (new_pad & PAD_CROSS) {
 					if (cur > 0) cur-=(edit[1][cur-1]>0)+1;
 					if (edit[1][cur]>0) {c0=2;} else {c0=1;}
@@ -577,6 +866,9 @@ int softkbd2(int type, char *c, int max)
 					}
 			}
 			if (!lr) {
+				if (new_pad & (PAD_CIRCLE | PAD_R2)) {
+					msg2[0] = 0;
+				}
 				if (new_pad & PAD_UP) {
 					if (ly > 0) ly--;
 				} if (new_pad & PAD_DOWN) {
@@ -601,8 +893,15 @@ int softkbd2(int type, char *c, int max)
 					ly -= SKBD_ITEMS/2;
 				} if (new_pad & PAD_RIGHT) {
 					ly += SKBD_ITEMS/2;
-				}
+				} if (new_pad & PAD_R2) {
+					// 右枠へ
+					lr = 1;
+					ly = lx;
+				} 
 			} else {
+				if (new_pad & (PAD_UP | PAD_DOWN | PAD_LEFT | PAD_RIGHT | PAD_CIRCLE)) {
+					msg2[0] = 0;
+				}
 				if (new_pad & PAD_UP) {
 					if (cy > 0) cy--;
 				} if (new_pad & PAD_DOWN) {
@@ -621,6 +920,13 @@ int softkbd2(int type, char *c, int max)
 						if (i) cd = i;
 					} else if (kbdbuff[cy*10+cx]) {
 						if (kbdbuff[cy*10+cx] < 256) {c0=1;} else {c0=2;}
+						if (kbdbuff[cy*10+cx] >= 256 + 94 * (16 * 0 + 14 -1)) {
+							historyadd(kbdbuff[cy*10+cx]);
+							kbdchange = 1;
+							if (nowpage == PG_HISTORYKANJI) {
+								cd = (pagemake(kbdbuff, MAX_CHARS, pindex[ly])+9)/10;
+							}
+						}
 						edit[2][max-1] = edit[0][max-1] = 0;
 						if (edit[1][max-1] == 2) {
 							edit[2][max-2] = edit[1][max-2] = edit[0][max-2] =0;
@@ -663,6 +969,30 @@ int softkbd2(int type, char *c, int max)
 						cy = cursor[nowpage];
 					} else {
 						lr = 0;
+					}
+				} if (new_pad & PAD_L2) {
+					// 左枠へ
+					lr = 0;
+				} if (new_pad & PAD_R2) {
+					i = customadd(kbdbuff[cy*10+cx]);
+					if (nowpage != PG_CUSTOM) {
+						// 文字登録
+						if (i < 0) {
+							// 失敗
+							strcpy(msg2, lang->kbd_registfail);
+						} else {
+							// 成功
+							strcpy(msg2, lang->kbd_registok);
+							kbdchange = 1;
+						}
+					} else {
+						// 文字消去
+						if (i >= 0) {
+							custommaps--;
+							cd = (pagemake(kbdbuff, MAX_CHARS, pindex[ly])+9)/10;
+							strcpy(msg2, lang->kbd_deleteok);
+							kbdchange = 1;
+						}
 					}
 				}
 			}
@@ -726,7 +1056,7 @@ int softkbd2(int type, char *c, int max)
 				} else if ((k == 10)||(k == 13)) {	// Enter
 					ret = 0;
 					break;
-				} else if (k == 27) {
+				} else if (k == 27) {	// ESC
 					ret = -1;
 					break;
 				} else {
@@ -759,8 +1089,8 @@ int softkbd2(int type, char *c, int max)
 		if (cl+SKBD_LENGTH < cur) cl = cur-SKBD_LENGTH;
 		if (edit[1][cl] == 2) cl++;
 		if (cl < 0) cl = 0;
-		if (cy < 0) cy = 0;
 		if (cy >= cd) cy = cd-1;
+		if (cy < 0) cy = 0;
 		if (cz > cy) cz = cy;
 		if (cz+SKBD_ITEMS <= cy) cz = cy - SKBD_ITEMS +1;
 		if (ly >= ld) ly = ld-1;
@@ -843,6 +1173,7 @@ int softkbd2(int type, char *c, int max)
 				char temp[1024];
 				// 下部(お知らせなど)の再描画
 				i = kbdbuff[cy*10+cx];
+				//itoSprite(setting->color[COLOR_BACKGROUND], left, top+FONT_HEIGHT*(0.5+SKBD_ITEMS+2), SCREEN_WIDTH, i+FONT_HEIGHT, 0);
 				if (i < 256) {
 					if (i == 0)
 						strcpy(temp,  "[ ]  0x0000, -----, U+0000");
@@ -865,14 +1196,17 @@ int softkbd2(int type, char *c, int max)
 					//drawString(info, TXT_SJIS, tl+((defw+3)-strlen(info))*FONT_WIDTH, tt+th - FONT_HEIGHT*5/4, setting->color[COLOR_TEXT], setting->color[COLOR_HIGHLIGHTTEXT], ctrlchar);
 				}
 				printXY(temp, left+FONT_WIDTH*16, top+FONT_HEIGHT*(0.5+SKBD_ITEMS+2), setting->color[COLOR_TEXT], TRUE);
+				if (msg2[0]) printXY(msg2, left+FONT_WIDTH*2, top+FONT_HEIGHT*(0.5+SKBD_ITEMS+2), setting->color[COLOR_TEXT], TRUE);
 			}
 			// 操作説明
 			i = SCREEN_MARGIN+(MAX_ROWS+4)*FONT_HEIGHT;
 			itoSprite(setting->color[COLOR_BACKGROUND], 0, i, SCREEN_WIDTH, i+FONT_HEIGHT, 0);
-			if (lr)
-				printXY(lang->kbd_helpr, FONT_WIDTH, i, setting->color[COLOR_TEXT], TRUE);
-			else
+			if (!lr)
 				printXY(lang->kbd_helpl, FONT_WIDTH, i, setting->color[COLOR_TEXT], TRUE);
+			else if (nowpage == PG_CUSTOM) 
+				printXY(lang->kbd_helpc, FONT_WIDTH, i, setting->color[COLOR_TEXT], TRUE);
+			else
+				printXY(lang->kbd_helpr, FONT_WIDTH, i, setting->color[COLOR_TEXT], TRUE);
 			
 			drawScr();
 			redraw--;
@@ -884,7 +1218,15 @@ int softkbd2(int type, char *c, int max)
 	//PS2KbdSetReadmode(PS2KBD_READMODE_NORMAL);
 	free(kbdbuff);
 	kbdbuff = NULL;
+	
+	// 履歴などの保存
+	if (kbdchange && setting->kbd_update) {
+		printXY(lang->kbd_saving, left+FONT_WIDTH*2, top+FONT_HEIGHT*(0.5+SKBD_ITEMS+2), setting->color[COLOR_TEXT], TRUE);
+		softkbd_save();
+	}
+	
 	if (ret >= 0) {
+		// 入力値の反映
 		for (i=0; i<=strlen(edit[0]); i++) {
 			if ((edit[0][i] == 32) && (edit[2][i] != 32)) {
 				for (j=0; j<32; j++) {
@@ -1499,9 +1841,11 @@ unsigned int CRC32file(char *file)
 	char *p;
 	unsigned char buffer[32768];
 	unsigned int size, i, crc, siz;
+	uint64 oldcount;
 	char fullpath[MAX_PATH], tmp[MAX_PATH];
 	
 	crc = ~0xFFFFFFFF;
+	oldcount = totalcount;
 	if (!strncmp(file, "hdd0", 4)) {
 		sprintf(tmp, "hdd0:%s", &file[6]);
 		p = strchr(tmp, '/');
@@ -1522,6 +1866,12 @@ unsigned int CRC32file(char *file)
 			if (i+siz > size) siz = size - i;
 			fileXioRead(fd, buffer, siz);
 			crc = CRC32check(buffer, siz, ~crc);
+			if (totalcount -oldcount >= 30) {
+				if (readpad()) {
+					if (new_pad & PAD_CROSS) break;
+				}
+				oldcount = totalcount;
+			}
 		}
 		fileXioClose(fd);
 		//fileXioUmount("pfs0:");
@@ -1540,9 +1890,16 @@ unsigned int CRC32file(char *file)
 			if (i+siz > size) siz = size - i;
 			fioRead(fd, buffer, siz);
 			crc = CRC32check(buffer, siz, ~crc);
+			if (totalcount -oldcount >= 30) {
+				if (readpad()) {
+					if (new_pad & PAD_CROSS) break;
+				}
+				oldcount = totalcount;
+			}
 		}
 		fioClose(fd);
 	}
+	readpad();
 	return crc;
 }
 

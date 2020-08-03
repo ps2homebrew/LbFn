@@ -1,5 +1,4 @@
 #include "launchelf.h"
-#define	FULLHD_WIDTH	setting->fullhd_width
 #define tmpbuffersize	256*256
 //----------------------------------------------------------
 #if 1
@@ -115,6 +114,7 @@ int line_Margin;	//行の間隔
 int font_bold;
 int font_half, font_vhalf;
 int fonthalfmode=0;
+int fontchange=0;
 
 int ffmode;
 int interlace;
@@ -146,12 +146,23 @@ int kanji_MarginLeft;
 //font
 //ptrdiff_t fontoffset[11536]={0};
 typedef struct {
+		unsigned char type;		// 0:point,1:line
+		unsigned char alpha;	
+		unsigned char left;		// point:(left,top),(right,bottom) (2points)
+		unsigned char top;		// line:(left,top)-(right,bottom) (1line)
+		unsigned char right;
+		unsigned char bottom;
+		unsigned char dummy[2];
+} cachestruct;
+typedef struct {
 	ptrdiff_t offset;
-	int status;
-	int width;
-	int height;
+	short status;
+	short width;
+	short height;
+	short caches;
 //	int left;
 //	int top;
+	cachestruct *cache;
 } fontcache;
 fontcache *font=NULL;
 
@@ -217,7 +228,9 @@ void drawChar_resize(void *dist, void *src, int dw, int dh, int sw, int sh);
 void drawChar_unpack(void *dist, void *src, int w, int h);
 void drawChar_resize2(void *dist, void *src, int w, int h, int x, int y);
 void drawChar_normalize(void *src, int dw, int dh, int alpha);
+void drawChar_cache(cachestruct *src, int prims, int x, int y, uint64 color);
 static unsigned char bmpsrc[tmpbuffersize], bmpdst[tmpbuffersize];
+//unsigned char tmpbuffer[tmpbuffersize*2];
 
 void texDestroy(int fd);
 int texGetFontSize(int fw, int fh, int fs, int *tw, int *th);
@@ -324,6 +337,7 @@ void setupito(int tvmode)
 	screen_env.matrix			= ( 0x5D7F91B36E4CA280
 								  & 0xEEEEEEEEEEEEEEEE
 								  ) >> 1;
+//	screen_env.matrix			= 0x5D7F91B36E4CA280;
 	screen_env.interlace		= interlace;
 	screen_env.ffmode			= ffmode;
 	screen_env.vmode			= gsregs[vmode].vmode;
@@ -451,6 +465,7 @@ void drawDialogTmp(int x1, int y1, int x2, int y2, uint64 color1, uint64 color2)
 
 //-------------------------------------------------
 // 画面表示のテンプレート
+int drawStringLimit(const unsigned char *s, int charset, int sx, int sy, uint64 fcol, uint64 scol, unsigned char *ctrlchars, int right);
 void setScrTmp(const char *msg0, const char *msg1)
 {
 	uint64 color1,color;
@@ -460,15 +475,15 @@ void setScrTmp(const char *msg0, const char *msg1)
 	color1 = color|0x80000000;	//不透明
 	color2 = color|(setting->flicker_alpha << 24);	//半透明
 	//color2 = half(color, setting->color[COLOR_BACKGROUND], 0x80);
-	itoSprite(setting->color[COLOR_BACKGROUND], 0, SCREEN_MARGIN+FONT_HEIGHT,
-		SCREEN_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*2 -line_Margin, 0);
+	itoSprite(setting->color[COLOR_BACKGROUND], 0, SCREEN_MARGIN,
+		SCREEN_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*2 -line_Margin +flickerfilter, 0);
 	itoSprite(setting->color[COLOR_BACKGROUND], 0, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3.5), SCREEN_WIDTH, SCREEN_HEIGHT, 0);
 
 	// バージョン表記
 	drawString(LBF_VER, TXT_ASCII, FONT_WIDTH*2, SCREEN_MARGIN, setting->color[COLOR_TEXT], setting->color[COLOR_HIGHLIGHTTEXT], 0);
 
 	// メッセージ
-	drawString(msg0, TXT_SJIS, FONT_WIDTH*2, SCREEN_MARGIN+FONT_HEIGHT, setting->color[COLOR_TEXT], setting->color[COLOR_HIGHLIGHTTEXT], 0);
+	drawStringLimit(msg0, TXT_SJIS, FONT_WIDTH*2, SCREEN_MARGIN+FONT_HEIGHT, setting->color[COLOR_TEXT], setting->color[COLOR_HIGHLIGHTTEXT], 0, SCREEN_WIDTH - FONT_WIDTH*2);
 
 	//上の横線
 	itoLine(color1, 0, SCREEN_MARGIN+FONT_HEIGHT*2.5, 0,
@@ -492,7 +507,7 @@ void setScrTmp(const char *msg0, const char *msg1)
 	}
 
 	// 操作説明
-	drawString(msg1, TXT_SJIS, FONT_WIDTH*1, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+4), setting->color[COLOR_TEXT], setting->color[COLOR_HIGHLIGHTTEXT], 0);
+	drawStringLimit(msg1, TXT_SJIS, FONT_WIDTH*1, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+4), setting->color[COLOR_TEXT], setting->color[COLOR_HIGHLIGHTTEXT], 0, SCREEN_WIDTH);
 }
 
 //-------------------------------------------------
@@ -500,16 +515,16 @@ void setScrTmp(const char *msg0, const char *msg1)
 void drawMsg(const char *msg)
 {
 	itoSprite(setting->color[COLOR_BACKGROUND], 0, SCREEN_MARGIN+FONT_HEIGHT,
-		SCREEN_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*2 -line_Margin, 0);
+		SCREEN_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*2 -line_Margin +flickerfilter, 0);
 	//メッセージ
-	drawString(msg, TXT_SJIS, FONT_WIDTH*2, SCREEN_MARGIN+FONT_HEIGHT, setting->color[COLOR_TEXT], setting->color[COLOR_TEXT], 0);
+	drawStringLimit(msg, TXT_SJIS, FONT_WIDTH*2, SCREEN_MARGIN+FONT_HEIGHT, setting->color[COLOR_TEXT], setting->color[COLOR_TEXT], 0, SCREEN_WIDTH - FONT_WIDTH*2);
 	itoGsFinish();
 	if (framebuffers == 2) {
 		itoSetActiveFrameBuffer(itoGetActiveFrameBuffer()^1);
 		itoSprite(setting->color[COLOR_BACKGROUND], 0, SCREEN_MARGIN+FONT_HEIGHT,
-			SCREEN_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*2 -line_Margin, 0);
+			SCREEN_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*2 -line_Margin +flickerfilter, 0);
 		//メッセージ
-		drawString(msg, TXT_SJIS, FONT_WIDTH*2, SCREEN_MARGIN+FONT_HEIGHT, setting->color[COLOR_TEXT], setting->color[COLOR_TEXT], 0);
+		drawStringLimit(msg, TXT_SJIS, FONT_WIDTH*2, SCREEN_MARGIN+FONT_HEIGHT, setting->color[COLOR_TEXT], setting->color[COLOR_TEXT], 0, SCREEN_WIDTH - FONT_WIDTH*2);
 		itoGsFinish();
 		itoSetActiveFrameBuffer(itoGetActiveFrameBuffer()^1);
 	}
@@ -640,23 +655,235 @@ void SetHeight(void)
 
 //------------------------------------------------------------
 // キャッシュ用の最適化
-int fontcache_0(int c, char *dist, unsigned int size)
+int mkfontcache(int c, void *dist, int ofs, int limit) 
 {
-	return -1;
+	unsigned int x, y, z, w, h, wb, hf, i, pa, pb, pc, pd, pe, pf, pg, ph, pi;
+//	unsigned int avx, avy, avxp, avyp, avl, ahx, ahy, ahxp, ahyp, ahl;
+	unsigned char av, ac, ax, ay, axp, ayp, axl, ayl, *s, *d, ovr;
+	uint64 msks, msk, cc;
+	//if (c > 255) return ofs;
+	if ((c == 0) || ((font[c].status & 1) == 0) || font[c].cache) return ofs;
+	
+	w = font[c].width;
+	h = font[c].height;
+	wb = font[c].width + font_bold;
+	hf = font[c].height + flickerfilter;
+	// フォントパターンの展開
+	if (c < 256)
+		s = font_ascii + font[c].offset;
+	else
+		s = font_kanji + font[c].offset;
+	d = bmpsrc;
+	msks = msk = (uint64)1 << (((w+7)&-8)-1);
+	memset(d, 0, wb*hf);
+	for (y=0; y<h; y++) {
+		for (x=cc=0; x<((w+7)&-8); x+=8) {
+			cc <<= 8;
+			cc |= (uint64)*s++;
+		}
+		msk = msks;
+		for (x=0; x<w; x++,msk>>=1) {
+			if (cc & msk) {
+				d[y*wb+x] = 0x81;
+				if (font_bold) d[y*wb+x+1] = 0x81;
+				if (flickerfilter) {
+					d[y*wb+x+wb] = 0x82;
+					if (font_bold) d[y*wb+x+wb+1] = 0x82;
+				}
+			}
+		}
+	}
+
+	// キャッシュ設定
+	s = (unsigned char *)bmpsrc;
+	font[c].cache = (cachestruct*)(dist + ofs);
+	font[c].caches = 0;
+	// 最適化
+	for (i=y=pa=pb=pc=pd=pe=pf=pg=ph=pi=ovr=0; y<hf; y++) {
+		if (ofs + i * sizeof(cachestruct) >= limit) break;
+		for (x=0; x<wb; x++) {
+			if (ofs + i * sizeof(cachestruct) >= limit) break;
+			if ((av=s[y*wb+x]) & 0x80) {
+				av &= 3;
+				// 水平方向の直線の長さ
+				for (ax=axp=axl=z=0; z<wb-x; z++) {
+					if ((s[y*wb+x+z] & 3) == av) {
+						ax++;
+						if (s[y*wb+x+z] & 0x80) {
+							axp++;
+							axl = ax;
+						}
+					} else break;
+				}
+				// 垂直方向の直線の長さ
+				for (ay=ayp=ayl=z=0; z<hf-y; z++) {
+					if ((s[(y+z)*wb+x] & 3) == av) {
+						ay++;
+						if (s[(y+z)*wb+x] & 0x80) {
+							ayp++;
+							ayl = ay;
+						}
+					} else break;
+				}
+				// 横長の長方形の大きさ
+				// 縦長の長方形の大きさ
+				if (av == 1) av = 0x80; else av = setting->flicker_alpha;
+				if (axp < ayp) {
+					for (z=0; z<ay; z++) s[(y+z)*wb+x] &= 3;
+					ax = 0; ac = ay; ay = ayl;
+				} else if (axp > 1) {
+					for (z=0; z<ax; z++) s[y*wb+x+z] &= 3;
+					ay = 0; ac = ax; ax = axl;
+				} else {
+					ac = 1;
+				}
+				if (ac > 1) {
+					// line
+					font[c].cache[i].type = 2;
+					font[c].cache[i].alpha = av;
+					font[c].cache[i].left = x;
+					font[c].cache[i].top = y;
+					font[c].cache[i].right = x+ax;
+					font[c].cache[i].bottom = y+ay;
+					pi = 1;
+				} else {
+					// point
+					if (pa && (av & 0x80)) {
+						font[c].cache[pb].type = 3;
+						font[c].cache[pb].right = x;
+						font[c].cache[pb].bottom = y;
+						pa = 0;
+						pi = 0;
+					} else if (pc && (av < 0x80)) {
+						font[c].cache[pd].type = 3;
+						font[c].cache[pd].right = x;
+						font[c].cache[pd].bottom = y;
+						pc = 0;
+						pi = 0;
+					} else {
+						font[c].cache[i].type = 1;
+						font[c].cache[i].alpha = av;
+						font[c].cache[i].left = x;
+						font[c].cache[i].top = y;
+						font[c].cache[i].right = 0;
+						font[c].cache[i].bottom = 0;
+						if (av & 0x80) {
+							pa = 1; pb = i;
+						} else {
+							pc = 1; pd = i;
+						}
+						pi = 1;
+					}
+				}
+				if (pi) {
+					font[c].cache[i].dummy[0] = c >> 8;
+					font[c].cache[i].dummy[1] = c & 255;
+					font[c].caches++;
+					if (ofs + (i+1) * sizeof(cachestruct) >= limit) {
+						ovr = 1;
+						break;
+					}
+					//else font[c].cache[++i].alpha = 0;
+					i++;
+				}
+			}
+		}
+	}
+	if (ovr) {
+		i = 0;
+		font[c].cache = NULL;
+		font[c].caches = 0;
+	}
+	//if (ofs + i * sizeof(cachestruct) < limit) i++;
+	return ofs + i * sizeof(cachestruct);
+}
+
+int mkfontcaches(int start, int chars, void *dist, int ofs, int limit)
+{
+	int i,k,m;
+	// フォントキャッシュ作成
+	for(i=start,k=m=ofs; i<start+chars; i++) {
+		if (font[i].status & 1) {
+			m = mkfontcache(i, dist, k, limit);
+		//	if (i < 256)
+		//		printf("mkfontcache: 0x%2X [%c] = %04X-%04X (%4d bytes)\n", i, i, k, m, m-k);
+		//	else if (k != m)
+		//		printf("mkfontcache: %02d-%02d = %04X-%04X (%4d bytes)\n", ((i-256)/94)+1, ((i-256)%94)+1, k, m, m-k);
+			k = m;
+			if (k+8 >= limit) break;
+		}
+	}
+	
+	return m;
+}
+#define	cjk(ku, ten)	((ku-1)*94+(ten-1))
+int mkfontcacheset(void)
+{
+	if (!setting->fontcache)  fontchange = 0;
+	else if (fonthalfmode == 0) fontchange = 1; 
+	else fontchange = 0;
+	return fontchange;
+}
+
+int mkfontcachereset(void)
+{
+	int i;
+	if (!font) return 0;
+	mkfontcacheclear();
+	fontchange = 0;
+	if (fonthalfmode) return 0;
+	if (!setting->fontcache) {
+		printf("mkfontcache: fontcache disabled\n");
+		return 0;
+	}
+	i = mkfontcaches(33, 94, bmpdst, 0, sizeof(bmpdst));	// ASCII
+	i = mkfontcache(256 + cjk( 1,91), bmpdst, i, sizeof(bmpdst));	// ○
+	i = mkfontcache(256 + cjk( 1,63), bmpdst, i, sizeof(bmpdst));	// ×
+	i = mkfontcache(256 + cjk( 2, 4), bmpdst, i, sizeof(bmpdst));	// △
+	i = mkfontcache(256 + cjk( 2, 2), bmpdst, i, sizeof(bmpdst));	// □
+	i = mkfontcache(256 + cjk( 1,28), bmpdst, i, sizeof(bmpdst));	// ー
+	i = mkfontcaches(256 + cjk( 2,10),   4, bmpdst, i, sizeof(bmpdst));	// 矢印
+	i = mkfontcaches(256 + cjk( 8, 1),  32, bmpdst, i, sizeof(bmpdst));	// 罫線
+	i = mkfontcaches(256 + cjk( 5, 1),  86, bmpdst, i, sizeof(bmpdst));	// カタカナ
+	i = mkfontcaches(256 + cjk( 4, 1),  86, bmpdst, i, sizeof(bmpdst));	// ひらがな
+//	i =	mkfontcaches(128, 128, bmpdst, i, sizeof(bmpdst));	// ANK/SBCS
+	i = mkfontcaches(256 + cjk( 1, 2), 281, bmpdst, i, sizeof(bmpdst));	// 記号類+全角数字+全角英字
+	printf("mkfontcache: used %d bytes, remain %d bytes\n", i, sizeof(bmpdst)-i-8);
+	/*//
+	int fd;
+	fd=fioOpen("host:mkfcache.bin",O_WRONLY | O_TRUNC | O_CREAT);
+	if (fd>=0) {
+		fioWrite(fd, bmpdst, sizeof(bmpdst));
+		fioClose(fd);
+	}
+	//*/
+	return i;
+}
+#undef	cjk
+void mkfontcacheclear(void)
+{
+	int i;
+	memset(&bmpdst, 0, sizeof(bmpdst));
+	if (font) {
+		for (i=0; i<11536; i++) {
+			font[i].cache = NULL;
+			font[i].caches = 0;
+		}
+	}
 }
 
 //------------------------------------------------------------
-// 任意のサイズのフォントグリフを返す
+// 任意のサイズのフォントグリフを返す(GIF用)
 
 //------------------------------------------------------------
-// ユーザーパターンの描画
+// ユーザーパターンの描画(GIF用?)
 
 
 //------------------------------------------------------------
 //アスキーフォントをロード
 int InitFontAscii(const char *path)
 {
-	int fd=0, dsize;
+	int fd=0, dsize, i, k;
 	size_t size;
 	FONTX_HEADER *fontx_header_ascii;
 	CPE_FONT_HEADER *font_header;
@@ -810,7 +1037,7 @@ int InitFontAscii(const char *path)
 
 		// フォントキャッシュ用
 		if (font) {
-			int i,k,m,x,y;
+			int m,x,y;
 			char temp[2048];
 			memset(font, 0, 256*sizeof(fontcache)); // 半角部分の初期化
 			for(i=font_header->dfFirstChar; i<=font_header->dfLastChar; i++) {
@@ -819,6 +1046,7 @@ int InitFontAscii(const char *path)
 				font[i].width = font_header->dfCharTable[i-font_header->dfFirstChar].charWidth; /* 可変幅フォントに対応可 */
 				font[i].height = ascii_data.height;
 				font[i].status = 0;
+				font[i].cache = NULL;
 				for (k=0; k<((font[i].width+7)/8)*ascii_data.height; k++) {
 					// フォントグリフが有効である場合はフラグを立てる
 					if (font_ascii[font[i].offset+k]) {
@@ -857,13 +1085,14 @@ int InitFontAscii(const char *path)
 
 		// フォントキャッシュ用
 		if (font) {
-			int i,k;
+			memset(font, 0, 256*sizeof(fontcache)); // 半角部分の初期化
 			for(i=0; i<256; i++) {
 				// フォント描画用のポインタなどをあらかじめ準備しておく
 				font[i].offset = ascii_data.offset + i*ascii_data.size;
 				font[i].width = ascii_data.width;
 				font[i].height = ascii_data.height;
 				font[i].status = 0;
+				font[i].cache = NULL;
 				for (k=0; k<ascii_data.size; k++) {
 					if (font_ascii[font[i].offset+k]) {
 						font[i].status |= 1;
@@ -873,6 +1102,9 @@ int InitFontAscii(const char *path)
 			}
 		}
 	}
+
+	// フォントキャッシュ作成
+	mkfontcacheset();
 
 	SetHeight();
 
@@ -1083,6 +1315,10 @@ int InitFontKnaji(const char *path)
 			}
 		}
 	}
+	
+	// フォントキャッシュ作成
+	mkfontcacheset();
+	
 	return 0;
 }
 
@@ -1206,7 +1442,10 @@ int GetFontSize(int type)
 //フォントボールドを設定
 void SetFontBold(int flag)
 {
-	font_bold = flag;
+	if (font_bold != flag) {
+		font_bold = flag;
+		mkfontcacheset();
+	}
 	return;
 }
 
@@ -1222,6 +1461,7 @@ int GetFontBold(void)
 void SetFontHalf(int flag)
 {
 	font_half = flag;
+	//mkfontcacheset();
 	if (flag > 0)
 		FONT_WIDTH = (ascii_data.width+flag) / (flag+1) + char_Margin;
 	else if (flag == 0)
@@ -1243,6 +1483,7 @@ int GetFontHalf(void)
 void SetFontVHalf(int flag)
 {
 	font_vhalf = flag;
+	//mkfontcacheset();
 	if (flag > 0)
 		FONT_HEIGHT = (ascii_data.height+flag) / (flag+1) + line_Margin;
 	else if (flag == 0)
@@ -1407,23 +1648,31 @@ void drawChar_JIS(unsigned int c, int x, int y, uint64 fcol, uint64 scol, unsign
 	uint64 color = fcol;
 	if (!font) return;
 	if (c > 11535) return;
+	if (fontchange) mkfontcachereset();
 	if (c > 255) {
 		if (!init_kanji) return;
 		if (!font[c].offset) return;
 		pc = font_kanji;
 	} else {
 		if (!init_ascii) return;
-		if ((c < 32) && ((font[c].status & 1)==0) && ((font[c+32].status & 1)!=0) && ((scol != fcol) || ((scol == fcol) && (scol == ((setting->color[COLOR_HIGHLIGHTTEXT]&0x00FFFFFF)|0x80000000))))) {
-			c = k[c];
-			color = scol;
+		if (c < 32) {
+			// if (setting->disablectrl) return;
+			if (c == 0) return;
+			if (setting->disablectrl || (((font[c].status & 1)==0) && ((font[c+32].status & 1)!=0) && ((scol != fcol) || ((scol == fcol) && (scol == ((setting->color[COLOR_HIGHLIGHTTEXT]&0x00FFFFFF)|0x80000000)))))) {
+				c = k[c];
+				color = scol;
+			}
 		}
 		pc = font_ascii;
 	}
 	if (font[c].status & 1) {
 		pc += font[c].offset;
-		if (fonthalfmode == 0) 
-			drawChar_1bpp(pc, x, y, color, font[c].width, font[c].height);
-		else if (fonthalfmode == 1)
+		if (fonthalfmode == 0) {
+			if (font[c].cache)
+				drawChar_cache(font[c].cache, font[c].caches, x, y, color);
+			else
+				drawChar_1bpp(pc, x, y, color, font[c].width, font[c].height);
+		} else if (fonthalfmode == 1)
 			drawChar_bilinear(pc, x, y, color, font[c].width, font[c].height);
 		else if (fonthalfmode == 2)
 			drawChar_filter(pc, x, y, color, font[c].width, font[c].height);
@@ -1831,16 +2080,95 @@ void drawChar_unpack(void *dist, void *src, int w, int h)
 		
 	return;
 }
+//-------------------------------------------------
+// フォントキャッシュ描画用
+void drawChar_cache(cachestruct *src, int prims, int x, int y, uint64 color)
+{
+	int i;
+	if (!prims) return;
+	color &= 0x00FFFFFF;
+	if (font_half || font_vhalf || ffmode) {
+		// GetFontHalf() < 0: 拡大 (-n 倍)
+		//				 = 0: 標準 (等倍)
+		//				 > 0: 縮小 (1/(n+1)倍)
+		int xp, yp;
+		if (font_half < 0) xp = (-font_half +1) << 4;
+		else if (font_half == 0) xp = 16;
+		else xp = 16 / (font_half + 1);
+		if (font_vhalf < 0) yp = (-font_vhalf +1) << 4;
+		else if (font_vhalf == 0) yp = 16;
+		else yp = 16 / (font_vhalf + 1);
+		x <<= 4; y <<= 4;
+		if (ffmode) {
+			yp >>= 1;
+			if (itoGetActiveFrameBuffer()) y -= 8;
+		}
+		itoPrimAlphaBlending( TRUE );
+		for (i=0; i<prims; i++) {
+			switch(src[i].type) {
+				case 1:	// Point
+					//itoPointX(color | ((uint64)src[i].alpha << 24), x+src[i].left*xp, y+src[i].top*yp);
+					itoSpriteX(color | ((uint64)src[i].alpha << 24), x+src[i].left*xp, y+src[i].top*yp, x+src[i].left*xp+xp, y+src[i].top*yp+yp);
+					break;
+				case 2:	// Line
+					//itoLineX(color | ((uint64)src[i].alpha << 24), x+src[i].left*xp, y+src[i].top*yp, x+src[i].right*xp, y+src[i].bottom*yp);
+					if (src[i].left == src[i].right)
+						itoSpriteX(color | ((uint64)src[i].alpha << 24), x+src[i].left*xp, y+src[i].top*yp, x+src[i].right*xp+xp, y+src[i].bottom*yp);
+					else
+						itoSpriteX(color | ((uint64)src[i].alpha << 24), x+src[i].left*xp, y+src[i].top*yp, x+src[i].right*xp, y+src[i].bottom*yp+yp);
+					break;
+				case 3:	// Point x2
+					//itoPoint2X(color | ((uint64)src[i].alpha << 24), x+src[i].left*xp, y+src[i].top*yp, x+src[i].right*xp, y+src[i].bottom*yp);
+					itoSpriteX(color | ((uint64)src[i].alpha << 24), x+src[i].left*xp, y+src[i].top*yp, x+src[i].left*xp+xp, y+src[i].top*yp+yp);
+					itoSpriteX(color | ((uint64)src[i].alpha << 24), x+src[i].right*xp, y+src[i].bottom*yp, x+src[i].right*xp+xp, y+src[i].bottom*yp+yp);
+					break;
+			}
+		}
+		itoPrimAlphaBlending( FALSE );
+	} else if (flickerfilter) {
+		itoPrimAlphaBlending( TRUE );
+		for (i=0; i<prims; i++) {
+			switch(src[i].type) {
+				case 1:	// Point
+					itoPoint(color | ((uint64)src[i].alpha << 24), x+src[i].left, y+src[i].top, 0);
+					break;
+				case 2:	// Line
+					itoLine(color | ((uint64)src[i].alpha << 24), x+src[i].left, y+src[i].top, 0,
+							0, x+src[i].right, y+src[i].bottom, 0);
+					break;
+				case 3:	// Point x2
+					itoPoint2(color | ((uint64)src[i].alpha << 24), x+src[i].left, y+src[i].top, x+src[i].right, y+src[i].bottom);
+					break;
+			}
+		}
+		itoPrimAlphaBlending( FALSE );
+	} else {
+		for (i=0; i<prims; i++) {
+			switch(src[i].type) {
+				case 1:	// Point
+					itoPoint(color, x+src[i].left, y+src[i].top, 0);
+					break;
+				case 2:	// Line
+					itoLine(color, x+src[i].left, y+src[i].top, 0,
+							0, x+src[i].right, y+src[i].bottom, 0);
+					break;
+				case 3:	// Point x2
+					itoPoint2(color, x+src[i].left, y+src[i].top, x+src[i].right, y+src[i].bottom);
+					break;
+			}
+		}
+	}
+}
 
 //-------------------------------------------------
 // メッセージ表示用
-int drawString(const unsigned char *s, int charset, int sx, int sy, uint64 fcol, uint64 scol, unsigned char *ctrlchars)
+int drawStringLimit(const unsigned char *s, int charset, int sx, int sy, uint64 fcol, uint64 scol, unsigned char *ctrlchars, int right)
 {
 	unsigned char *k;
 	uint64 fclr = (fcol & 0x00FFFFFF) | 0x80000000;
 	uint64 sclr = (scol & 0x00FFFFFF) | 0x80000000;
 	int cs = charset;
-	int i=0,x=sx,y=sy;
+	int i=0,x=sx,y=sy,width=right-sx;
 	extern unsigned char ctrlchar[32];
 	if (ctrlchars == NULL) k=&ctrlchar[0]; else k=ctrlchars;
 	if (charset == TXT_AUTO) {
@@ -1878,6 +2206,12 @@ int drawString(const unsigned char *s, int charset, int sx, int sy, uint64 fcol,
 			xa = ascii_data.width * (-font_half+1) + char_Margin;
 			xk = kanji_data.width * (-font_half+1) + char_Margin * 2;
 		}
+		if (right && *s) {
+			if ((width / strlen(s)) < xa) {
+				xa = width / strlen(s);
+				xk = xa * 2;
+			}
+		}
 		while(s[i]){
 			if ((( s[i]>=0x81 && s[i]<=0x9f ) || ( s[i]>=0xe0 && s[i]<=0xfc )) &&
 				s[i+1]>=0x40 && s[i+1]!=0x7f && s[i+1]<=0xfc ) {	//SJIS
@@ -1898,6 +2232,8 @@ int drawString(const unsigned char *s, int charset, int sx, int sy, uint64 fcol,
 	}
 	return x;
 }
+int drawString(const unsigned char *s, int charset, int sx, int sy, uint64 fcol, uint64 scol, unsigned char *ctrlchars)
+{	return drawStringLimit(s, charset, sx, sy, fcol, scol, ctrlchars, 0);	}
 
 //-------------------------------------------------
 // 従来互換用

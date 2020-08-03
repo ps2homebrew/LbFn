@@ -132,6 +132,14 @@ void SetLanguage(const int langID)
 		strcpy(lang->kbd_abort,    "Abort");
 		strcpy(lang->kbd_helpl, "›:Change ~:BS L1:Left R1:Right R2:Chars");
 		strcpy(lang->kbd_helpr, "›:Insert ~:BS ¢:Return L1:Left R1:Right L2:Type R2:Regist");
+		strcpy(lang->kbd_helpc, "›:Insert ~:BS ¢:Return L1:Left R1:Right L2:Type R2:Delete");
+		
+		strcpy(lang->kbd_registok, "Registed");
+		strcpy(lang->kbd_registfail, "Failed");
+		strcpy(lang->kbd_deleteok, "Deleted");
+		strcpy(lang->kbd_saving, "Saving...");
+		strcpy(lang->kbd_loaded, "Loaded");
+		strcpy(lang->kbd_update, "VIRTUAL KEYBOARD DATA WRITE");
 		}
 		//editor
 		{
@@ -145,6 +153,8 @@ void SetLanguage(const int langID)
 		strcpy(lang->editor_l2popup_wordwrap, "Auto New Line Mode");
 		strcpy(lang->editor_image_help, "›:Frame  :Zoom ¢/~:Exit  SIZE:%d~%d (%dx%d)");
 		strcpy(lang->editor_image_help2, "›:Frame  :Zoom L1:Prev R1:Next ¢/~:Exit SIZE:%d~%d (%dx%d)");
+		strcpy(lang->editor_image_help3, "›:Frame  :Zoom ©:Back ¨:Next ¢/~:Exit  SIZE:%d~%d (%dx%d)");
+		strcpy(lang->editor_image_help4, "›:Frame  :Zoom ©:Back ¨:Next L1:Prev R1:Next ¢/~:Exit SIZE:%d~%d (%dx%d)");
 		//								  1234567890123456789012345678901234567890123456789012345678901234
 		//									       1         2         3         4         5         6    
 		}
@@ -223,6 +233,8 @@ void SetLanguage(const int langID)
 		//font
 		strcpy(lang->conf_AsciiFont, "SBCS FONT");
 		strcpy(lang->conf_KanjiFont, "DBCS FONT");
+		strcpy(lang->conf_DisableCtrl, "DISABLE CONTROL CHARS");	// disable the part of control characters
+		strcpy(lang->conf_UseFontCache, "ENABLE FONT CACHE");
 		strcpy(lang->conf_CharMargin, "CHAR MARGIN");
 		strcpy(lang->conf_LineMargin, "LINE MARGIN");
 		strcpy(lang->conf_FontBold, "FONT BOLD");
@@ -558,6 +570,14 @@ void SetLanguage(const int langID)
 		strcpy(lang->kbd_abort,    "’†Ž~");
 		strcpy(lang->kbd_helpl, "›:Œˆ’è ~:íœ L1:¶‚Ö R1:‰E‚Ö R2:“ü—Í‚Ö");
 		strcpy(lang->kbd_helpr, "›:“ü—Í ~:íœ ¢:–ß‚é L1:¶‚Ö R1:‰E‚Ö L2:Ží—Þ‚Ö R2:“o˜^");
+		strcpy(lang->kbd_helpc, "›:“ü—Í ~:íœ ¢:–ß‚é L1:¶‚Ö R1:‰E‚Ö L2:Ží—Þ‚Ö R2:–•Á");
+		
+		strcpy(lang->kbd_registok, "“o˜^Š®—¹");
+		strcpy(lang->kbd_registfail, "“o˜^Ž¸”s");
+		strcpy(lang->kbd_deleteok, "–•ÁŠ®—¹");
+		strcpy(lang->kbd_saving, "‘‚«ž‚Ý’†..");
+		strcpy(lang->kbd_loaded, "“Ç‚Ýž‚ÝŠ®—¹");
+		strcpy(lang->kbd_update, "ƒ\\ƒtƒgƒL[ƒ{[ƒh‚Ìƒf[ƒ^‘‚«–ß‚µ");
 		}
 		//editor
 		{
@@ -571,6 +591,8 @@ void SetLanguage(const int langID)
 		strcpy(lang->editor_l2popup_wordwrap, "‰E’[‚ÅÜ‚è•Ô‚µ•ÏX");
 		strcpy(lang->editor_image_help, "›:ƒtƒ‹  :ƒY[ƒ€ ¢/~:–ß‚é ‰æ‘œ:%d~%d •\\Ž¦:%d~%d");
 		strcpy(lang->editor_image_help2, "›:ƒtƒ‹  :ƒY[ƒ€ L1/R1:‘O/ŽŸ ¢/~:–ß‚é ƒTƒCƒY:%d~%d (%d~%d)");
+		strcpy(lang->editor_image_help3, "›:ƒtƒ‹  :ƒY[ƒ€ ©/¨:–ß/i ¢/~:–ß‚é ‰æ‘œ:%d~%d •\\Ž¦:%d~%d");
+		strcpy(lang->editor_image_help4, "›:ƒtƒ‹  :ƒY[ƒ€ ©/¨:–ß/i L1/R1:‘O/ŽŸ ¢/~:–ß‚é ƒTƒCƒY:%d~%d (%d~%d)");
 		//								  1234567890123456789012345678901234567890123456789012345678901234
 		//									       1         2         3         4         5         6    
 		}
@@ -649,6 +671,8 @@ void SetLanguage(const int langID)
 		//font
 		strcpy(lang->conf_AsciiFont, "”¼ŠpƒtƒHƒ“ƒg");
 		strcpy(lang->conf_KanjiFont, "‘SŠpƒtƒHƒ“ƒg");
+		strcpy(lang->conf_DisableCtrl, "“ÁŽê§Œä•¶Žš‚ð–³Œø‚É‚·‚é");
+		strcpy(lang->conf_UseFontCache, "ƒtƒHƒ“ƒgƒLƒƒƒbƒVƒ…‚ð—LŒø‚É‚·‚é");
 		strcpy(lang->conf_CharMargin, "•¶Žš‚ÌŠÔŠu");
 		strcpy(lang->conf_LineMargin, "s‚ÌŠÔŠu  ");
 		strcpy(lang->conf_FontBold, "‘¾Žš‚É‚·‚é");

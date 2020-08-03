@@ -20,6 +20,8 @@ enum
 	DEF_CHAR_MARGIN = 2,
 	DEF_LINE_MARGIN = 4,
 	DEF_FONTBOLD = TRUE,
+	DEF_DISABLECTRL = TRUE,
+	DEF_USEFONTCACHE = TRUE,
 	DEF_ASCII_MARGINTOP = 0,
 	DEF_ASCII_MARGINLEFT = 0,
 	DEF_KANJI_MARGINTOP = 0,
@@ -38,6 +40,7 @@ enum
 	DEF_USBM_DEVICES = 4,
 	DEF_USBKBD_FLAG = FALSE,
 	DEF_USBMOUSE_FLAG = FALSE,
+	DEF_SKBD_UPDATE = TRUE,
 
 	DEF_TXT_LINENUM    = FALSE,
 	DEF_TXT_TABMODE    = 8,
@@ -216,6 +219,8 @@ enum
 {
 	ASCIIFONT=1,
 	KANJIFONT,
+	DISABLECTRL,
+	USEFONTCACHE,
 	CHARMARGIN,
 	LINEMARGIN,
 	FONTBOLD,
@@ -260,6 +265,7 @@ enum
 	LANG=1,
 	DISCCONTROL,
 	DOWNLOADPATH,
+	SKBDUPDATE,
 	MISCINIT,
 };
 
@@ -342,7 +348,10 @@ void SetScreenPosVM()
 	font_vhalf = setting->font_vhalf[vmode];
 	//font_bold = setting->font_bold[vmode];
 	fonthalfmode = setting->font_scaler[vmode];
-	flickerfilter = setting->flickerfilter[vmode];
+	if (flickerfilter != setting->flickerfilter[vmode]) {
+		flickerfilter = setting->flickerfilter[vmode];
+		mkfontcacheset();
+	}
 	if (setting->font_bold[setting->tvmode] > 0)
 		SetFontBold(setting->font_bold[setting->tvmode]-1);
 	else
@@ -564,6 +573,8 @@ void InitFontSetting(void)
 	setting->LineMargin = DEF_LINE_MARGIN;
 	setting->FontBold = DEF_FONTBOLD;
 	//setting->font_half = DEF_FONTHALF;
+	setting->disablectrl = DEF_DISABLECTRL;
+	setting->fontcache = DEF_USEFONTCACHE;
 	setting->AsciiMarginTop = DEF_ASCII_MARGINTOP;
 	setting->AsciiMarginLeft = DEF_ASCII_MARGINLEFT;
 	setting->KanjiMarginTop = DEF_KANJI_MARGINTOP;
@@ -606,6 +617,7 @@ void InitMiscSetting(void)
 	setting->discControl = DEF_DISCCONTROL;
 	setting->language = DEF_LANGUAGE;
 	strcpy(setting->downloadpath, "mc:/BOOT/");
+	setting->kbd_update = DEF_SKBD_UPDATE;
 }
 
 //-------------------------------------------------
@@ -975,6 +987,10 @@ void saveConfig(char *mainMsg)
 	if(cnf_setstr("ascii_font", tmp)<0) goto error;
 	strcpy(tmp, setting->KanjiFont);
 	if(cnf_setstr("kanji_font", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->disablectrl);
+	if(cnf_setstr("disable_ctrl_chars", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->fontcache);
+	if(cnf_setstr("fontcache", tmp)<0) goto error;
 	sprintf(tmp, "%d", setting->CharMargin);
 	if(cnf_setstr("char_margin", tmp)<0) goto error;
 	sprintf(tmp, "%d", setting->LineMargin);
@@ -1059,6 +1075,8 @@ void saveConfig(char *mainMsg)
 	sprintf(tmp, "%d", setting->txt_autodecode);
 	if(cnf_setstr("autodecode", tmp)<0) goto error;
 	if(cnf_setstr("downloadpath", setting->downloadpath)<0) goto error;
+	sprintf(tmp, "%d", setting->kbd_update);
+	if(cnf_setstr("kbd_update", tmp)<0) goto error;
 	
 	ret = 0;
 	for(i=6;i<MAX_GSREG;i++){
@@ -1254,6 +1272,10 @@ void loadConfig(char *mainMsg)
 				strcpy(setting->AsciiFont, tmp);
 			if(cnf_getstr("kanji_font", tmp, "")>=0)
 				strcpy(setting->KanjiFont, tmp);
+			if(cnf_getstr("disable_ctrl_chars", tmp, "")>=0)
+				setting->disablectrl = atoi(tmp);
+			if(cnf_getstr("fontcache", tmp, "")>=0)
+				setting->fontcache = atoi(tmp);
 			if(cnf_getstr("char_margin", tmp, "")>=0)
 				setting->CharMargin = atoi(tmp);
 			if(cnf_getstr("line_margin", tmp, "")>=0)
@@ -1342,6 +1364,9 @@ void loadConfig(char *mainMsg)
 			if(cnf_getstr("downloadpath", tmp, "")>=0)
 				strcpy(setting->downloadpath, tmp);
 			set_viewerconfig(setting->txt_linenumber, setting->txt_tabmode, setting->txt_chardisp, setting->img_fullscreen, setting->txt_wordwrap, setting->img_resize);
+			if(cnf_getstr("kbd_update", tmp, "")>=0)
+				settingcheck(&setting->kbd_update, tmp, 0, 1, DEF_SKBD_UPDATE);
+			
 
 			for (i=1; i<MAX_GSREG; i++) {
 				sprintf(gsregstr, "gsreg%d", i);
@@ -2961,6 +2986,7 @@ void config_screen(SETTING *setting)
 				}
 				else if(sel==FONTSCALEMODE){	// fonthalfmode
 					fonthalfmode = (fonthalfmode +1) % 2;
+					mkfontcacheset();
 					SetScreenPosXY();
 				}
 				else if(sel==FONTBOLDS){
@@ -2989,6 +3015,7 @@ void config_screen(SETTING *setting)
 				else if(sel==FLICKERCONTROL){	//フリッカーコントロール
 					//setting->flickerControl = !setting->flickerControl;
 					flickerfilter = !flickerfilter;
+					mkfontcacheset();
 					SetScreenPosXY();
 				}
 				else if(sel==SCREENINIT){	//SCREEN SETTING INIT
@@ -3270,6 +3297,13 @@ void config_font(SETTING *setting)
 						}
 					}
 				}
+				else if(sel==DISABLECTRL){
+					setting->disablectrl = !setting->disablectrl;
+				}
+				else if(sel==USEFONTCACHE){
+					setting->fontcache = !setting->fontcache;
+					mkfontcachereset();
+				}
 				else if(sel==CHARMARGIN){
 					setting->CharMargin++;
 					SetFontMargin(CHAR_MARGIN, setting->CharMargin);
@@ -3390,6 +3424,20 @@ void config_font(SETTING *setting)
 				else if(i==KANJIFONT){	//KANJIFONT
 					sprintf(config[i], "%s: %s", lang->conf_KanjiFont, setting->KanjiFont);
 				}
+				else if(i==DISABLECTRL){
+					sprintf(config[i], "%s: ", lang->conf_DisableCtrl);
+					if(setting->disablectrl)
+						strcat(config[i], lang->conf_on);
+					else
+						strcat(config[i], lang->conf_off);
+				}
+				else if(i==USEFONTCACHE){
+					sprintf(config[i], "%s: ", lang->conf_UseFontCache);
+					if(setting->fontcache)
+						strcat(config[i], lang->conf_on);
+					else
+						strcat(config[i], lang->conf_off);
+				}
 				else if(i==CHARMARGIN){	//CHARMARGIN
 					sprintf(config[i], "%s: %d", lang->conf_CharMargin, setting->CharMargin);
 				}
@@ -3472,6 +3520,10 @@ void config_font(SETTING *setting)
 				sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_edit, lang->conf_clear, lang->conf_up);
 			else if(sel==KANJIFONT)
 				sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_edit, lang->conf_clear, lang->conf_up);
+			else if(sel==DISABLECTRL)
+				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
+			else if(sel==USEFONTCACHE)
+				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
 			else if(sel==FONTBOLD)
 				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
 			else if(sel==FONTINIT)
@@ -3697,6 +3749,8 @@ void config_misc(SETTING *setting)
 					if(!strncmp(setting->downloadpath, "cdfs", 2))
 						setting->downloadpath[0]='\0';
 				}
+				else if(sel==SKBDUPDATE)
+					setting->kbd_update = !setting->kbd_update;
 				else if(sel==MISCINIT){
 					//init
 					InitMiscSetting();
@@ -3729,6 +3783,9 @@ void config_misc(SETTING *setting)
 			}
 			else if(i==DOWNLOADPATH) {	//DOWNLOAD PATH
 				sprintf(config[i], "%s: %s", lang->conf_downloadpath, setting->downloadpath);
+			}
+			else if(i==SKBDUPDATE) {	//
+				sprintf(config[i], "%s: %s", lang->kbd_update, onoff[setting->kbd_update & 1]);
 			}
 			else if(i==MISCINIT){	//INIT
 				strcpy(config[i], lang->conf_miscsettinginit);
@@ -3790,6 +3847,8 @@ void config_misc(SETTING *setting)
 				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
 			else if(sel==DOWNLOADPATH)
 				sprintf(msg1, "○:%s □:%s △:%s", lang->conf_change, lang->conf_default, lang->conf_up);
+			else if(sel==SKBDUPDATE)
+				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
 			else if(sel==MISCINIT)
 				sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
 			setScrTmp(msg0, msg1);
@@ -4235,9 +4294,10 @@ void config(char *mainMsg)
 	int i;
 	char config[32][MAX_PATH];
 
-	tmpsetting = setting;
-	setting = (SETTING*)malloc(sizeof(SETTING));
-	*setting = *tmpsetting;
+	tmpsetting = (SETTING*)malloc(sizeof(SETTING));
+//	*setting = *tmpsetting;
+	// memcpy(dist, src, size)
+	memcpy(tmpsetting, setting, sizeof(SETTING));
 
 	while(1){
 		waitPadReady(0, 0);
@@ -4272,8 +4332,8 @@ void config(char *mainMsg)
 					break;
 				}
 				if(sel==CANCEL){	//cansel
-					free(setting);
-					setting = tmpsetting;
+					memcpy(setting, tmpsetting, sizeof(SETTING));
+					free(tmpsetting);
 					SetLanguage(setting->language);
 					if(InitFontAscii(setting->AsciiFont)<0){
 						strcpy(setting->AsciiFont, "systemfont");

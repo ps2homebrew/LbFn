@@ -31,7 +31,7 @@
 #include <libmouse.h>
 
 // バージョン
-#define LBFN_VER "LbFn v0.70.15"
+#define LBFN_VER "LbFn v0.70.16"
 
 // 垂直スキャンレート
 //#define SCANRATE (ITO_VMODE_AUTO==ITO_VMODE_PAL ? 50:60)
@@ -183,6 +183,7 @@ typedef struct
 	char KanjiFont[MAX_PATH];
 	char LangFont[MAX_PATH];
 	int fontcache;
+	int disablectrl;
 	int CharMargin;
 	int LineMargin;
 	int FontBold;
@@ -208,9 +209,8 @@ typedef struct
 	char mcstore_path[MAX_PATH];
 	char kbd_sbcspath[MAX_PATH];
 	char kbd_dbcspath[MAX_PATH];
-	char kbd_extpath[MAX_PATH];
-	char kbd_histpath[MAX_PATH];
 	char kbd_dicpath[MAX_PATH];
+	int kbd_update;
 	char downloadpath[MAX_PATH];
 	char sav_db_path[MAX_PATH];
 	int sav_ps1save;
@@ -243,8 +243,6 @@ typedef struct
 	char flickerfilter[MAX_GSREG];
 	char skin_image[MAX_PATH];
 	SKINDATA skin[MAX_SKIN];
-	unsigned short *skbd_history;
-	unsigned char *skbd_dictionary;
 } SETTING;
 
 /* main.c */
@@ -400,6 +398,11 @@ int checkFONTX2header(const char *path);
 void drawChar_JIS(unsigned int c, int x, int y, uint64 fcol, uint64 scol, unsigned char *ctrlchars);
 int printXY(const unsigned char *s, int x, int y, uint64 color, int draw);
 int drawString(const unsigned char *s, int charset, int x, int y, uint64 fcol, uint64 scol, unsigned char *ctrlchars);
+int mkfontcache(int c, void *dist, int ofs, int limit);
+int mkfontcaches(int start, int chars, void *dist, int ofs, int limit);
+int mkfontcacheset(void);
+void mkfontcacheclear(void);
+int mkfontcachereset(void);
 
 #ifdef ENABLE_ICON
 void loadIcon(void);
@@ -538,4 +541,13 @@ int keyboard(int type, char *buff, int limit);
 int NetworkDownload(char* msg0);
 unsigned int CRC32Check(unsigned char *buff, unsigned int size);
 unsigned int CRC32file(char *file);
+
+/* Libito0.2.1modify/itogsprims.c */
+void itoPoint2c(uint64 color0, uint16 x0, uint16 y0, uint64 color1, uint16 x1, uint16 y1);
+void itoAddVertex2(uint64 color1, uint16 x1, uint16 y1, uint64 color2, uint16 x2, uint16 y2);
+void itoPoint2(uint64 color, uint16 x0, uint16 y0, uint16 x1, uint16 y1);
+void itoLineX(uint64 color, uint16 x1, uint16 y1, uint16 x2, uint16 y2);
+void itoPointX(uint64 color, uint16 x, uint16 y);
+void itoPoint2X(uint64 color, uint16 x0, uint16 y0, uint16 x1, uint16 y1);
+void itoSpriteX(uint64 color, uint16 x1, uint16 y1, uint16 x2, uint16 y2);
 #endif

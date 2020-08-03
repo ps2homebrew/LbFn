@@ -120,6 +120,7 @@ char parties[MAX_PARTITIONS][MAX_NAME];
 char clipPath[MAX_PATH], LastDir[MAX_NAME], marks[MAX_ENTRY];
 FILEINFO clipFiles[MAX_ENTRY];
 int fileMode = FIO_S_IRUSR | FIO_S_IWUSR | FIO_S_IXUSR | FIO_S_IRGRP | FIO_S_IWGRP | FIO_S_IXGRP | FIO_S_IROTH | FIO_S_IWOTH | FIO_S_IXOTH;
+unsigned int volumeserialnumber;
 
 #ifdef ENABLE_PSB
 #define MAX_ARGC 3
@@ -337,6 +338,10 @@ int readMC(const char *path, FILEINFO *info, int max)
 
 	for(i=j=0; i<ret; i++)
 	{
+		//printf("%s: create=%08X, modify=%08X\n", mcDir[i].name, ps2timetostamp((PS2TIME*)&mcDir[i]._create), ps2timetostamp((PS2TIME*)&mcDir[i]._modify));
+		if(!strcmp(mcDir[i].name, "..")) {
+			volumeserialnumber = ps2timetostamp((PS2TIME*)&mcDir[i]._create);
+		}
 		if(mcDir[i].attrFile & MC_ATTR_SUBDIR && (!strcmp(mcDir[i].name, ".") || !strcmp(mcDir[i].name, "..")))
 			continue;
 
@@ -2860,6 +2865,7 @@ void getFilePath(char *out, int cnfmode)
 				}
 				else if(new_pad & PAD_CROSS){
 					flickerfilter = !flickerfilter;
+					mkfontcacheset();
 				}
 				else if(new_pad & PAD_SQUARE){
 					if(!strncmp(path, "mc", 2)){
@@ -3866,6 +3872,11 @@ void getFilePath(char *out, int cnfmode)
 				}
 			}
 			setScrTmp(msg0, msg1);
+			// ボリュームシリアル番号の表示
+			//if ((path[0] == 0x6d) && (path[1] == 0x63)) {
+			//	sprintf(tmp, "%04X-%04X", volumeserialnumber & 0xFFFFu, volumeserialnumber >> 16);
+			//	printXY(tmp, (MAX_ROWS_X+10-strlen(tmp))*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT, setting->color[COLOR_TEXT], TRUE);
+			//}
 
 			// フリースペース表示
 			if(vfreeSpace){

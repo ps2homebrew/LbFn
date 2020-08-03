@@ -1875,7 +1875,32 @@ int main(int argc, char *argv[])
 	struct padButtonStatus buttons;
 	u32 paddata;
 	int ret;
-
+	
+	{	// 先頭から31MB以降のメモリに書き込むとエラーになるので対策してみる
+		char *dummy0, *dummy1;
+		int sz;
+		dummy0 = (char*)malloc(10485760);	// 大容量mallocで位置を知る
+		//printf("main: 10,485,760 bytes at %08x\n", (int)dummy0);
+		if (dummy0 == NULL) return -2;
+		dummy1 = (char*)realloc(dummy0, 32505840 - (int)dummy0);	// 31MBギリギリまで延長してみる
+		//printf("main: 32505840 bytes at %08x\n", (int)dummy1);
+		if (dummy1 == NULL) return -3;
+		if (dummy1 != dummy0) dummy0 = dummy1;
+		sz = 1048576;
+		do {
+			sz -= 16;
+			dummy1 = (char*)malloc(sz);
+		} while(!dummy1);
+		printf("main: %d bytes at %08x\n", sz, (int)dummy1);
+		printf("main: free memory %08x-%08x ( %d bytes )\n", (int)dummy0, (int)dummy1 -16, (int)dummy1 - (int)dummy0 -16);
+		printf("main: reserved area at %08x\n", (int)dummy1 + sz);
+		if (dummy0) free(dummy0);
+	}
+	
+	//設定ファイルを読み込む前に初期化
+	setting = (SETTING*)malloc(sizeof(SETTING));
+	memset(setting, 0, sizeof(SETTING));
+	
 	//ブートフォルダ名	original source altimit
 	if (argc == 0){
 		strcpy(LaunchElfDir,"host:"); // Naplink
@@ -1940,9 +1965,6 @@ int main(int argc, char *argv[])
 	mcInit(MC_TYPE_MC);
 	setupPad();
 
-	//CNFファイルを読み込む前に初期化
-	setting = (SETTING*)malloc(sizeof(SETTING));
-	memset(setting, 0, sizeof(SETTING));
 	InitLanguage();
 	//if ((boot!=CD_BOOT)&&(boot!=MASS_BOOT))
 	//if (boot!=CD_BOOT)

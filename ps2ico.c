@@ -133,8 +133,9 @@ int info_PS1ICO(int *info, char *buff, int size)
 	
 	info[0] = 0x700A;
 	info[1] = 4;
-	info[2] = 16 * (c[2] & 15);
+	info[2] = 16;
 	info[3] = 16;
+	info[4] = c[2] & 15;
 	return 1;
 }
 ////////////////////////////////
@@ -153,12 +154,20 @@ int decode_PS1ICO(char *dist, char *src, int size, int bpp)
 		iconclut[i] = ((uint64) r) | ((uint64) g << 8) | ((uint64) b << 16);
 	}
 	activeclut = iconclut;
-	w = 16 * (src[2] & 15);
+/*	w = 16 * (src[2] & 15);
 	for (z=0,i=128; z<(src[2]&15); z++) {
 		for (y=0; y<16; y++) {
 			for (x=0; x<16; x+=2,i++) {
 				dist[y*w+z*16+x+0] = src[i] & 15;
 				dist[y*w+z*16+x+1] = (src[i] >> 4) & 15;
+			}
+		}
+	}//*/
+	for (z=0,i=128; z<(src[2]&15); z++) {
+		for (y=0; y<16; y++) {
+			for (x=0; x<16; x+=2,i++) {
+				dist[y*16+z*256+x+0] = src[i] & 15;
+				dist[y*16+z*256+x+1] = (src[i] >> 4) & 15;
 			}
 		}
 	}
