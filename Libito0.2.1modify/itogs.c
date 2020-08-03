@@ -41,7 +41,8 @@ uint8	itoVisibleFrameBuffer;
 
 void itoGsEnvSubmit(itoGsEnv* env)
 {
-		uint16 width;
+		uint32 buffersize;
+		uint16 width, height, bufferwidth;
 		uint8 i;
 
 		//------------------------------------------------------------
@@ -50,171 +51,21 @@ void itoGsEnvSubmit(itoGsEnv* env)
 		// tutorials.
 		//------------------------------------------------------------
 
-		width = env->screen.width;
-
-		if(env->vmode==ITO_VMODE_NTSC || env->vmode==ITO_VMODE_PAL)
-		{
-			switch(width)
-			{
-				case 192:
-				{
-					ito.screen.mag_x = 13;
-					break;
-				}
-				case 256:
-				{
-					ito.screen.mag_x = 9; 
-					break;
-				}
-				case 320:
-				{
-					ito.screen.mag_x = 7; 
-					break;
-				}
-				case 384:
-				{
-					ito.screen.mag_x = 6; 
-					break;
-				}
-				case 448:
-				{
-					ito.screen.mag_x = 5; 
-					break;
-				}
-				case 512:
-				{
-					ito.screen.mag_x = 4; 
-					break;
-				}
-				case 640:
-				case 704:
-				case 720:
-				case 768:
-				{
-					ito.screen.mag_x = 3; 
-					break;
-				}
-				case 960:
-				case 1024:
-				{
-					ito.screen.mag_x = 2;
-					break;
-				}
-				case 1280:
-				case 1408:
-				case 1440:
-				case 1536:
-				{
-					ito.screen.mag_x = 1;
-					break;
-				}
-				//-----------------------------------------------------------------
-				// default width to 640 
-				//-----------------------------------------------------------------
-				default:
-				{
-					//width = 640;
-					ito.screen.mag_x = 3;
-					break;
-				}
-			}
-		}
-		else if((env->vmode==0x50)||(env->vmode==0x40))	//480p
-		{
-			//env->interlace = ITO_NON_INTERLACE;
-			//env->ffmode = ITO_FIELD;
-			if (width <= 192) {
-				ito.screen.mag_x = 5;
-			} else if (width <= 256) {
-				ito.screen.mag_x = 4;
-			} else if (width <= 360) {
-				ito.screen.mag_x = 3;
-			} else if (width <= 512) {
-				ito.screen.mag_x = 2;
-			} else if (width <= 1024) {
-				ito.screen.mag_x = 1;
-			} else {
-				ito.screen.mag_x = 0; 
-			}
-		}
-		else if((env->vmode==0x51)||(env->vmode==0x41))	//1080i
-		{
-			//env->screen.psm = ITO_RGBA16;
-			//env->interlace = ITO_INTERLACE;
-			//env->ffmode = ITO_FIELD;
-			
-			if (width <= 240) {
-				ito.screen.mag_x = 7;
-			} else if (width <= 320) {
-				ito.screen.mag_x = 5;
-			} else if (width <= 384) {
-				ito.screen.mag_x = 4;
-			} else if (width <= 512) {
-				ito.screen.mag_x = 3;
-			} else if (width <= 640) {
-				ito.screen.mag_x = 2;
-			} else if (width <= 960) {
-				ito.screen.mag_x = 1;
-			} else {
-				ito.screen.mag_x = 0;
-			}
-		}
-		else if((env->vmode==0x52)||(env->vmode==0x42))	//720p
-		{
-			//env->screen.psm = ITO_RGBA16;
-			//env->interlace = ITO_NON_INTERLACE;
-			//env->ffmode = ITO_FIELD;
-			if (width <= 256) {
-				ito.screen.mag_x = 4;
-			} else if (width <= 320) {
-				ito.screen.mag_x = 3;
-			} else if (width <= 512) {
-				ito.screen.mag_x = 2;
-			} else if (width <= 640) {
-				ito.screen.mag_x = 1;
-			} else {
-				ito.screen.mag_x = 0;
-			}
-		}
-		else if((env->vmode==0x53)||(env->vmode==0x43))	//1080pH
-		{
-			//env->screen.psm = ITO_RGBA16;
-			//env->interlace = ITO_NON_INTERLACE;
-			//env->ffmode = ITO_FIELD;
-			//env->vmode=0x52;
-			env->vmode-= 2;
-			if (width <= 240) {
-				ito.screen.mag_x = 7;
-			} else if (width <= 320) {
-				ito.screen.mag_x = 5;
-			} else if (width <= 384) {
-				ito.screen.mag_x = 4;
-			} else if (width <= 512) {
-				ito.screen.mag_x = 3;
-			} else if (width <= 640) {
-				ito.screen.mag_x = 2;
-			} else if (width <= 960) {
-				ito.screen.mag_x = 1;
-			} else {
-				ito.screen.mag_x = 0;
-			}
-		}
-		else {
-		}
-
-		width = (width - 1) * (ito.screen.mag_x + 1);
-
+		ito.screen.mag_x = env->screen.mag_x;
+		ito.screen.mag_y = env->screen.mag_y;//0; // Do not magnify in vertical direction.
+		bufferwidth = (env->screen.width +63) & -64;
+		width = env->screen.width * (ito.screen.mag_x + 1) -1;
+		height = env->screen.height * (ito.screen.mag_y + 1) -1;
+	//	printf("bufferwidth: %d\n", bufferwidth);
 		//------------------------------------------------------------
 		// GLOBAL VARS
 		//------------------------------------------------------------
-		
-		ito.screen.mag_y = 0; // Do not magnify in vertical direction.
 
 		ito.screen.psm = env->screen.psm;
 		ito.screen.x = env->screen.x;//  * (ito.screen.mag_x+1);
 		ito.screen.y = env->screen.y;
 		ito.screen.height = env->screen.height;
-		ito.screen.width = env->screen.width;
+		ito.screen.width = bufferwidth;
 
 		//-----------------------------------------------------------------
 		// offset_x, offset_y calculations taken from duke's lib.
@@ -224,17 +75,23 @@ void itoGsEnvSubmit(itoGsEnv* env)
 		//-----------------------------------------------------------------
 		// Setup for clipping
 		//-----------------------------------------------------------------
-		ito.prim.offset_x = ito.screen.offset_x = (4096-env->screen.width)/2;
+		ito.prim.offset_x = ito.screen.offset_x = (4096-bufferwidth)/2;
 		ito.prim.offset_y = ito.screen.offset_y = (4096-env->screen.height)/2;
 		
 		//-----------------------------------------------------------------
 		// save buffer 1/2 fbp
 		//-----------------------------------------------------------------
-		ito.fbp[ITO_FRAMEBUFFER1] = ((env->framebuffer1.y*env->screen.width) + env->framebuffer1.x)*itoGetPixelSize(env->screen.psm);
-		ito.fbp[ITO_FRAMEBUFFER2] = ((env->framebuffer2.y*env->screen.width) + env->framebuffer2.x)*itoGetPixelSize(env->screen.psm);
+		buffersize = ((uint32) bufferwidth * env->screen.height * itoGetPixelSize(env->screen.psm) +8191) & -8192;
+
+		if (((env->vmode == 2)||(env->vmode == 3)||(env->vmode == 81)||(env->vmode == 130)||(env->vmode == 131))&&(!env->interlace || env->ffmode))
+			buffersize /= 2;
+
+		//printf("bufferwidth: %d\nheight: %d\n psm: %d\npixelsize: %d\n buffersize: %d (%08X)\n", bufferwidth, env->screen.height, env->screen.psm, itoGetPixelSize(env->screen.psm), buffersize, buffersize);
+		ito.fbp[ITO_FRAMEBUFFER1] = 0;//env->framebuffer1;//((env->framebuffer1.y*bufferwidth) + env->framebuffer1.x)*itoGetPixelSize(env->screen.psm);
+		ito.fbp[ITO_FRAMEBUFFER2] = buffersize * env->doublebuffer;//env->framebuffer2;//((env->framebuffer2.y*bufferwidth) + env->framebuffer2.x)*itoGetPixelSize(env->screen.psm);
 		
-		ito.zbuffer.base		= ((env->zbuffer.y*env->screen.width) + env->zbuffer.x)*itoGetPixelSize(env->screen.psm);
-		ito.texturebuffer.base	= ito.zbuffer.base + (env->screen.width*env->screen.height*itoGetZPixelSize(env->zbuffer.psm));
+		ito.zbuffer.base		= buffersize * (env->doublebuffer+1);;//((env->zbuffer.y*bufferwidth) + env->zbuffer.x)*itoGetPixelSize(env->screen.psm);
+		ito.texturebuffer.base	= ito.zbuffer.base + ((bufferwidth * env->screen.height * itoGetZPixelSize(env->zpsm) +8191) & (-8192));
 
 
 		//------------------------------------------------------------
@@ -242,10 +99,10 @@ void itoGsEnvSubmit(itoGsEnv* env)
 		
 			itoiPutIMR(0xFF00); // // Mask everything, itoGsReset() also does this.
 			itoSetGsCrt(env->interlace, env->vmode ,env->ffmode); // Setup interlace, frame and video mode.
-			itoSMODE2(env->interlace, env->ffmode, 0);
-			itoPMODE(FALSE, TRUE, ALPHA_REG, ITO_FRAME_1, BLEND_RC2, 0xFF); // Use output circuit 2.
-			itoDISPFB2(ito.fbp[ITO_FRAMEBUFFER1], env->screen.width, env->screen.psm, 0, 0);
-			itoDISPLAY2(ito.screen.x, ito.screen.y, ito.screen.mag_x, ito.screen.mag_y, width, ito.screen.height-1);
+			itoSMODE2(env->interlace, env->ffmode, env->vesa);
+			itoPMODE(FALSE, TRUE, ALPHA_REG, ITO_FRAME_1, BLEND_RC2, 0x80); // Use output circuit 2.
+			itoDISPFB2(ito.fbp[ITO_FRAMEBUFFER1], ito.screen.width, env->screen.psm, 0, 0);
+			itoDISPLAY2(ito.screen.x, ito.screen.y, ito.screen.mag_x, ito.screen.mag_y, width, height);
 		
 		// -------------------------------------------------
 		// Settings for Buffer 1 & 2
@@ -260,8 +117,8 @@ void itoGsEnvSubmit(itoGsEnv* env)
 		for(i=ITO_FRAMEBUFFER1; i < (ITO_FRAMEBUFFER2+1); i++)
 		{
 			itoSetActiveFrameBuffer( i );
-			itoFRAME(ito.fbp[i], env->screen.width, env->screen.psm, ITO_FRAMEBUFFER_UPDATE);
-			itoZBUF(ito.zbuffer.base, env->zbuffer.psm, ITO_ZBUFFER_UPDATE);
+			itoFRAME(ito.fbp[i], ito.screen.width, env->screen.psm, ITO_FRAMEBUFFER_UPDATE);
+			itoZBUF(ito.zbuffer.base, env->zpsm, ITO_ZBUFFER_UPDATE);
 			itoXYOFFSET(ito.screen.offset_x << 4, ito.screen.offset_y << 4);
 			itoSCISSOR(env->scissor_x1, env->scissor_y1, env->scissor_x2-1, env->scissor_y2-1);
 			// no tests, pass everything
@@ -1163,11 +1020,11 @@ void itoSetPrimXY(uint16 x, uint16 y)
 
 void itoSetScreenPos(uint16 x, uint16 y)
 {
-	x = x;// * (ito.screen.mag_x+1);
+	//x = x;// * (ito.screen.mag_x+1);
 	//-----------------------------------------------------------------
 	// using global vars
 	//-----------------------------------------------------------------
-	itoDISPLAY2(x, y, ito.screen.mag_x, ito.screen.mag_y, (ito.screen.width-1)*(ito.screen.mag_x+1), ito.screen.height -1 );
+	itoDISPLAY2(x, y, ito.screen.mag_x, ito.screen.mag_y, (ito.screen.width-1)*(ito.screen.mag_x+1), (ito.screen.height-1)*(ito.screen.mag_y+1) );
 }
 
 void itoSetAlphaBlending(uint8 a, uint8 b, uint8 c, uint8 d, uint8 fix)

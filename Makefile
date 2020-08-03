@@ -14,7 +14,8 @@ PS2_IP=192.168.0.10
 #------------------------------------
 EE_BIN = LbFn.ELF
 
-EE_OBJS = main.o pad.o config.o elf.o draw.o loader.o  filer.o cd.o language.o cnf.o tek.o viewer.o shiftjis.o jpeg.o\
+EE_OBJS = main.o pad.o config.o elf.o draw.o loader.o  filer.o cd.o language.o\
+	cnf.o tek.o viewer.o shiftjis.o bmp.o jpeg.o gif.o\
 	poweroff.o iomanx.o filexio.o ps2atad.o ps2dev9.o ps2hdd.o ps2fs.o\
 	usbd.o usbhdfsd.o cdvd.o ps2ip.o ps2smap.o ps2ftpd.o fakehost.o
 
@@ -22,7 +23,7 @@ EE_INCS := -I$(LIBITO)/include -I$(PS2DEV)/libcdvd/ee
 
 EE_LDFLAGS := -L$(LIBITO)/lib -L$(PS2DEV)/libcdvd/lib -s
 
-EE_LIBS = -lpad -lito -lmc -lhdd -lcdvd -lcdvdfs -lfileXio -lpatches -lpoweroff -ldebug\
+EE_LIBS = -lpad -lito -lmc -lhdd -lcdvd -lcdvdfs -lfileXio -lpatches -lpoweroff -lkbd -lmouse -ldebug\
 
 
 ifeq ($(PSB), yes)
@@ -112,10 +113,18 @@ ps2ftpd.s:
 loader.s:
 	bin2s loader/loader.elf loader.s loader_elf
 
+ps2kbd.s:
+	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:irx/ps2kbd.irx out:irx/ps2kbd.ir5
+	bin2s irx/ps2kbd.ir5 ps2kbd.s ps2kbd_irx
+
+ps2mouse.s:
+	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:irx/ps2mouse.irx out:irx/ps2mouse.ir5
+	bin2s irx/ps2mouse.ir5 ps2mouse.s ps2mouse_irx
+
 icon.s:image/icon.iif
 	bin2s image/icon.iif icon.s icon_iif
 
-cd.o config.o draw.o elf.o filer.o main.o pad.o language.o cnf.o:launchelf.h language.h cnf.h
+cd.o config.o draw.o elf.o filer.o main.o pad.o viewer.o language.o cnf.o:launchelf.h language.h
 
 
 #------------------------------------

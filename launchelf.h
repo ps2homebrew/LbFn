@@ -27,13 +27,15 @@
 
 #include "cd.h"
 #include "language.h"
-#include "cnf.h"
+#include "libkbd.h"
+#include "libmouse.h"
 
 // バージョン
-#define LBF_VER "LbFn v0.70.10"
+#define LBF_VER "LbFn v0.70.11"
 
 // 垂直スキャンレート
-#define SCANRATE (ITO_VMODE_AUTO==ITO_VMODE_NTSC ? 60:50)
+//#define SCANRATE (ITO_VMODE_AUTO==ITO_VMODE_PAL ? 50:60)
+//#define	SCANRATE	(gsregs[setting->tvmode].vmode == ITO_VMODE_PAL ? 50:60)
 
 #define UNK_BOOT 0
 #define CD_BOOT 1
@@ -47,9 +49,13 @@
 enum
 {
 	MAX_NAME = 256,
-	MAX_PATH = 1025,
+	MAX_TITLE = 64,
+	MAX_PATH = 512,
 	MAX_ENTRY = 2048,
-	MAX_PARTITIONS=100
+	MAX_PARTITIONS=100,
+	MAX_BUTTON = 32,
+	MAX_ELF = 5,
+	MAX_GSREG = 32
 };
 
 enum
@@ -66,35 +72,27 @@ enum
 	COLOR_ELF,
 	COLOR_PSU,
 	COLOR_TXT,
+	COLOR_OUTSIDE,
 	NUM_COLOR
 };
 
 typedef struct
 {
-	char dirElf[13][MAX_PATH];
+    char name[MAX_TITLE];
+	char path[MAX_ELF][MAX_PATH];
+	int padmsk;
+} DIRELF;
+
+typedef struct
+{
+	DIRELF dirElf[MAX_BUTTON];
 	int timeout;
 	int filename;
+	int fileall;
 	uint64 color[NUM_COLOR];
 	int flicker_alpha;
-	int screen_x_480i;
-	int screen_y_480i;
-	int screen_x_480p;
-	int screen_y_480p;
-	int screen_x_1080i;
-	int screen_y_1080i;
-	int screen_x_720p;
-	int screen_y_720p;
 	int discControl;
-	int flickerControl;
 	int tvmode;
-	int interlace;
-	int ffmode_480i;
-	int ffmode_1080i;
-	int screen_scan_480i;
-	int screen_scan_480p;
-	int screen_scan_1080i;
-	int screen_scan_720p;
-	int fullhd_width;
 	int fileicon;
 	int discPs2saveCheck;
 	int discELFCheck;
@@ -103,28 +101,23 @@ typedef struct
 	char Exportdir[MAX_PATH];
 	int defaulttitle;
 	int defaultdetail;
+	int sort;
+	int sortdir;
+	int sortext;
 	int language;
+	char lang_path[MAX_PATH];
 	char AsciiFont[MAX_PATH];
 	char KanjiFont[MAX_PATH];
+	char LangFont[MAX_PATH];
 	int CharMargin;
 	int LineMargin;
 	int FontBold;
-	int FontHalf_480i;
-	int FontHalf_480p;
-	int FontHalf_720p;
-	int FontHalf_1080i;
-	int FontVHalf_480i;
-	int FontVHalf_480p;
-	int FontVHalf_720p;
-	int FontVHalf_1080i;
-	int FontScaler_480i;
-	int FontScaler_480p;
-	int FontScaler_720p;
-	int FontScaler_1080i;
 	int AsciiMarginTop;
 	int AsciiMarginLeft;
 	int KanjiMarginTop;
 	int KanjiMarginLeft;
+	int	LangMarginTop;
+	int	LangMarginLeft;
 	int usbd_flag;
 	char usbd_path[MAX_PATH];
 	int usbmass_flag;
@@ -133,15 +126,37 @@ typedef struct
 	char usbkbd_path[MAX_PATH];
 	int usbmouse_flag;
 	char usbmouse_path[MAX_PATH];
+	int usbmdevs;
+	int txt_linenumber;
+	int txt_tabmode;
+	int txt_chardisp;
+	int img_fullscreen;
+	short screen_left[MAX_GSREG];
+	short screen_top[MAX_GSREG];
+	short screen_width[MAX_GSREG];
+	short screen_height[MAX_GSREG];
+	char screen_depth[MAX_GSREG];
+	char screen_dither[MAX_GSREG];
+	char screen_interlace[MAX_GSREG];
+	char screen_ffmode[MAX_GSREG];
+	char screen_scan[MAX_GSREG];
+	char font_half[MAX_GSREG];
+	char font_vhalf[MAX_GSREG];
+	char font_scaler[MAX_GSREG];
+	char font_bold[MAX_GSREG];
+	char flickerfilter[MAX_GSREG];
+	
 } SETTING;
 
 /* main.c */
 extern char LaunchElfDir[MAX_PATH], LastDir[MAX_NAME];
 extern int boot;
+extern int usbd,usbmass,usbkbd,usbmouse;
 void loadCdModules(void);
 void loadUsbModules(void);
 void loadUsbMassModules(void);
 void loadUsbKbdModules(void);
+void loadUsbMouseModules(void);
 void loadHddModules(void);
 
 /* elf.c */
@@ -174,14 +189,68 @@ enum	//GetCurrentPos
 	CURRENTPOS_Y
 };
 */
+//"NTSC",640,448,1914,35,3,0,4,0,0,0,0,0,640,448,0,1,0,2,0,2,0,0,0,448
+/*
+typedef struct
+{
+	int	loaded;
+	char name[64];
+	short width;
+	short height;
+	short left;
+	short top;
+	char magx;
+	char magy;
+	char psm;
+	short bufferwidth;
+	short x1;
+	short y1;
+	short x2;
+	short y2;
+	short zleft;
+	short ztop;
+	char zpsm;
+	char dither;
+	char interlace;
+	char ffmode;
+	char vmode;
+	char vesa;
+	char frames;
+	short f0_left;
+	short f0_top;
+	short f1_left;
+	short f1_top;
+	short defwidth;
+	short defheight;
+} GSREG;*/
+typedef struct
+{
+	char name[65];
+	char loaded;
+	char magx;
+	char magy;
+	char psm;
+	char dither;
+	char interlace;
+	char ffmode;
+	unsigned char vmode;
+	char vesa;
+	char doublebuffer;
+	char zpsm;
+	short left;
+	short top;
+	short width;
+	short height;
+	short defwidth;
+	short defheight;
+} GSREG;
 extern itoGsEnv screen_env;
+extern GSREG gsregs[];
 extern int SCREEN_LEFT;
 extern int SCREEN_TOP;
-extern int interlace;
-extern int ffmode;
-extern int screenscan;
 extern int font_half;
 extern int font_vhalf;
+extern int font_bold;
 extern int SCREEN_WIDTH;
 extern int SCREEN_HEIGHT;
 extern int SCREEN_MARGIN;
@@ -189,8 +258,15 @@ extern int FONT_WIDTH;
 extern int FONT_HEIGHT;
 extern int MAX_ROWS;
 extern int MAX_ROWS_X;
+extern int flickerfilter;
 extern int framebuffers;
+extern int fieldbuffers;
+extern int ffmode, interlace;
+extern int fieldnow;
+extern int SCANRATE;
+void setup_vsync();
 void drawDark(void);
+int drawDarks(int ret);
 void drawDialogTmp(int x1, int y1, int x2, int y2, uint64 color1, uint64 color2);
 void setScrTmp(const char *msg0, const char *msg1);
 void drawMsg(const char *msg);
@@ -233,10 +309,15 @@ void waitPadReady(int port, int slot);
 
 /* config.c */
 extern SETTING *setting;
-void SetScreenPosVM();
+void SetScreenPosVM(void);
 void InitScreenSetting(void);
 void loadConfig(char *);
+void ipconfig(char *);
+void gsconfig(char *);
+void fmcb_cfg(char *);
 void config(char *);
+void padmsktostr(char *dist, int mask, char *def);
+int CheckMC(void);
 
 /* filer.c */
 enum	//getFilePath
@@ -260,6 +341,7 @@ enum	//getFilePath
 #define MB_DEFBUTTON3   0x00000200
 #define MB_USETRIANGLE  0x00100000
 #define MB_USESQUARE    0x00200000
+#define	MB_USETIMEOUT	0x00400000
 #define IDOK         0x0001
 #define IDCANCEL     0x0002
 #define IDYES        0x0006
@@ -268,6 +350,7 @@ enum	//getFilePath
 #define IDMC1        0x0011
 #define IDTRIANGLE   0x0100
 #define IDSQUARE     0x0200
+#define	IDTIMEOUT    0x0400
 int MessageBox(const char *Text, const char *Caption, int type);
 char* getExtension(const char *path);
 int newdir(const char *path, const char *name);
@@ -283,8 +366,24 @@ void InitLanguage(void);
 void FreeLanguage(void);
 void SetLanguage(const int langID);
 
+/* cnf.c */
+int cnf_init(void);
+void cnf_free(void);
+int cnf_load(char* path);
+int cnf_save(char* path);
+size_t cnf_bsave(char *buff, int maxbytes);
+int cnf_getstr(const char* key, char *str, const char* def);
+int cnf_setstr(const char* key, char *str);
+int cnf_delkey(const char* key);
+int cnf_session(const char *name);
+int cnf_mode(int mode);
+
 /* tek.c */
 int tek_getsize(unsigned char *p);
 int tek_decomp(unsigned char *p, char *q, int size);
 
+/* viewer.c */
+int txteditfile(int mode, char *file);
+int txtedit(int mode, char *file, unsigned char *buffer, unsigned int size);
+int set_viewerconfig(int linedisp, int tabspaces, int chardisp, int screenmode);
 #endif

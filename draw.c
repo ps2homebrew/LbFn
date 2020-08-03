@@ -31,9 +31,8 @@ extern int size_icon_iif;
 
 //----------------------------------------------------------
 itoGsEnv screen_env;
-uint16 buffer_width;
-uint16 buffer_height;
-
+GSREG gsregs[MAX_GSREG];
+int SCANRATE=60;
 int initbiosfont=0;
 char *biosfont=NULL;
 int SCREEN_LEFT;
@@ -52,12 +51,14 @@ int font_bold;
 int font_half, font_vhalf;
 int fonthalfmode=0;
 
-int interlace;
 int ffmode;
-int screenscan;
+int interlace;
+int flickerfilter;
+int fieldnow;
 //ascii
 int init_ascii=0;	//初期化したかしていないかのフラグ
 int framebuffers=2;
+int fieldbuffers=2;
 char *font_ascii=NULL;	//フォントのバッファ
 FONTX_DATA ascii_data;	//フォントの情報
 int ascii_MarginTop;	//上のマージン
@@ -130,213 +131,129 @@ void drawChar_8bpp(void *src, int x, int y, uint64 color, uint64 back, int w, in
 void drawChar_resize(void *dist, void *src, int dw, int dh, int sw, int sh);
 void drawChar_unpack(void *dist, void *src, int w, int h);
 void drawChar_resize2(void *dist, void *src, int w, int h, int x, int y);
+void drawChar_normalize(void *src, int dw, int dh, int alpha);
 static unsigned char bmpsrc[tmpbuffersize], bmpdst[tmpbuffersize];
+
+//-------------------------------------------------
+// VSYNC
+void int_vsync()
+{
+	fieldnow^=1;
+	//if (fieldbuffers == 2)
+	if (ffmode == ITO_FRAME)
+		itoSetVisibleFrameBuffer(fieldnow^(screen_env.screen.y&1));
+	itoEI();
+}
+
+void setup_vsync()
+{
+	itoDI();
+	itoAddIntcHandler(ITO_INTC_VSYNC_START, int_vsync, 0);
+	itoEnableIntc(ITO_INTC_VSYNC_START);
+	fieldnow = itoGetVisibleFrameBuffer();
+	itoEI();
+}
 
 //-------------------------------------------------
 // setup ito
 void setupito(int tvmode)
 {
-	uint8 vmode;
-	uint8 psm=0;
-	int buffer_height_t, buffersize;
-
-	vmode = ITO_VMODE_AUTO;
-	switch(tvmode)
-	{
-		case 0:	{vmode = ITO_VMODE_AUTO; break;}
-		case 1:	{vmode = ITO_VMODE_NTSC; break;}
-		case 2:	{vmode = ITO_VMODE_PAL; break;}
-		case 3:	{vmode = 0x50; break;}
-		case 4:	{vmode = 0x52; break;}
-		case 5:	{vmode = 0x51; break;}
-		case 6:	{vmode = 0x53; break;}
-	}
-
-	if(screenscan){
-		switch(vmode)
-		{
-			case ITO_VMODE_NTSC:
-			{
-				buffer_width = 704;
-				buffer_height= 480;
-				psm = ITO_RGBA32;
-				break;
-			}
-			case ITO_VMODE_PAL:
-			{
-				buffer_width = 704;
-				buffer_height= 576;
-				psm = ITO_RGBA32;
-				break;
-			}
-			case 0x50://480p
-			{
-				buffer_width = 768;
-				buffer_height= 480;
-				psm = ITO_RGBA32;
-				//setting->interlace = ITO_NON_INTERLACE;
-				//setting->ffmode = ITO_FIELD;
-				break;
-			}
-			case 0x51://1080i
-			{
-				buffer_width = FULLHD_WIDTH;//-48;
-				buffer_height= 1080;//-56;
-				psm = ITO_RGBA32;
-				//setting->interlace = ITO_NON_INTERLACE;
-				//setting->ffmode = ITO_FIELD;
-				break;
-			}
-			case 0x52://720p:
-			{
-				buffer_width = 1280;//-64;
-				buffer_height= 720;//-36;
-				psm = ITO_RGBA32;
-				//setting->interlace = ITO_NON_INTERLACE;
-				//setting->ffmode = ITO_FIELD;
-				break;
-			}
-			case 0x53://1080p
-			{
-				buffer_width = FULLHD_WIDTH;//-48;
-				buffer_height= 1080;//-56;
-				psm = ITO_RGBA32;
-				//setting->interlace = ITO_NON_INTERLACE;
-				//setting->ffmode = ITO_FIELD;
-				break;
-			}
-			default:
-			{
-				break;
-				//NTSC
-				buffer_width = 704;
-				buffer_height= 480;
-				psm = ITO_RGBA32;
-				vmode = ITO_VMODE_NTSC;
-				break;
-			}
-		}
-	}
-	else{
-		switch(vmode)
-		{
-			case ITO_VMODE_NTSC:
-			{
-				buffer_width = 640;
-				buffer_height= 448;
-				psm = ITO_RGBA32;
-				break;
-			}
-			case ITO_VMODE_PAL:
-			{
-				buffer_width = 640;
-				buffer_height= 512;
-				psm = ITO_RGBA32;
-				break;
-			}
-			case 0x50://480p
-			{
-				buffer_width = 640;
-				buffer_height= 448;
-				psm = ITO_RGBA32;
-				//setting->interlace = ITO_NON_INTERLACE;
-				//setting->ffmode = ITO_FIELD;
-				break;
-			}
-			case 0x51://1080i
-			{
-				buffer_width = FULLHD_WIDTH-((int)(FULLHD_WIDTH / 20));//960-64;//-48;
-				buffer_height= 1080-56;
-				psm = ITO_RGBA32;
-				//setting->interlace = ITO_NON_INTERLACE;
-				//setting->ffmode = ITO_FIELD;
-				break;
-			}
-			case 0x52://720p:
-			{
-				buffer_width = 1280-64;
-				buffer_height= 720-36;
-				psm = ITO_RGBA32;
-				//setting->interlace = ITO_NON_INTERLACE;
-				//setting->ffmode = ITO_FIELD;
-				break;
-			}
-			case 0x53:
-			{
-				buffer_width = FULLHD_WIDTH-((int)(FULLHD_WIDTH / 20));//960-64;//-48;
-				buffer_height= 1080-56;
-				psm = ITO_RGBA32;
-				//setting->interlace = ITO_NON_INTERLACE;
-				//setting->ffmode = ITO_FIELD;
-				break;
-			}
-			default:
-			{
-				break;
-				//NTSC
-				buffer_width = 640;
-				buffer_height= 448;
-				psm = ITO_RGBA32;
-				vmode = ITO_VMODE_NTSC;
-				break;
-			}
-		}
-	}
-	
-	if (ffmode == ITO_FIELD)
-		buffer_height_t = buffer_height;
-	else
-		buffer_height_t = buffer_height >> 1;
-	
-	buffersize = buffer_height_t*buffer_width*itoGetPixelSize(psm);
-	if (buffersize >= 4*1024*1024) {
-		psm = ITO_RGBA16;
-		buffersize = buffer_height_t*buffer_width*itoGetPixelSize(psm);
-	}
-
+	int	vmode, height_t, gstop, vx, vy;
+	int width, height, dither, depth;
+	vmode = tvmode;
+	if (!gsregs[tvmode].loaded) vmode = (ITO_VMODE_AUTO)-1;
 	// screen resolution
-	screen_env.screen.width		= buffer_width;
-	screen_env.screen.height	= buffer_height;
-	screen_env.screen.psm		= psm;
-
-	// These setting work best with my tv, experiment for youself
-	screen_env.screen.x			= SCREEN_LEFT; 
-	screen_env.screen.y			= SCREEN_TOP;
+	printf("vmode: %d: (%02X:%dx%d) %d,%d,%d,%d\n", vmode, gsregs[vmode].vmode, gsregs[vmode].width, gsregs[vmode].height, gsregs[vmode].dither, gsregs[vmode].interlace, gsregs[vmode].ffmode, gsregs[vmode].vesa);
 	
-	screen_env.framebuffer1.x	= 0;
-	screen_env.framebuffer1.y	= 0;
-	
-	//if ((buffer_width >= 1536) && (buffer_height_t >= 1024)) {
-	if (buffersize >= 2*1024*1024) {
-		// single frame buffer
-		framebuffers = 1;
-		screen_env.framebuffer2.x   = 0;
-		screen_env.framebuffer2.y	= 0;
-		// zbuffer
-		screen_env.zbuffer.x		= 0;
-		screen_env.zbuffer.y		= (buffer_height_t+15)&-16;
-		screen_env.zbuffer.psm		= ITO_ZBUF16;
-	} else {
-		// double frame buffer
-		framebuffers = 2;
-		screen_env.framebuffer2.x	= 0;
-		screen_env.framebuffer2.y	= (buffer_height_t+15)&-16;
-		// zbuffer
-		screen_env.zbuffer.x		= 0;
-		screen_env.zbuffer.y		= ((buffer_height_t+15)&-16)*2;
-		screen_env.zbuffer.psm		= ITO_ZBUF16;
+	//ffmode			= gsregs[vmode].ffmode & 1;
+	//interlace		= gsregs[vmode].interlace & 1;
+	ffmode			= setting->screen_ffmode[vmode] > 0 ? (setting->screen_ffmode[vmode]-1):(gsregs[vmode].ffmode & 1);
+	interlace		= setting->screen_interlace[vmode] > 0 ? (setting->screen_interlace[vmode]-1):(gsregs[vmode].interlace & 1);
+	depth			= setting->screen_depth[vmode] > 0 ? (5-setting->screen_depth[vmode]):gsregs[vmode].psm;
+	width			= setting->screen_scan[vmode] > 0 ? gsregs[vmode].defwidth:gsregs[vmode].width;
+	height			= setting->screen_scan[vmode] > 0 ? gsregs[vmode].defheight:gsregs[vmode].height;
+	dither			= setting->screen_dither[vmode] > 0 ? (setting->screen_dither[vmode]-1):gsregs[vmode].dither;
+	height_t		= height;
+	gstop			= 1;
+	if ((gsregs[vmode].vmode == 2) || (gsregs[vmode].vmode == 3) || (gsregs[vmode].vmode == 81) || (gsregs[vmode].vmode == 130) || (gsregs[vmode].vmode == 131)) {
+		if (!interlace){
+			gstop = 2;
+			height_t *= 2;
+		} else if (ffmode)
+			height_t *= 2;
+		if (gsregs[vmode].ffmode != ffmode) {
+			if (ffmode) {
+				height /= 2;
+				height_t /= 2;
+			} else {
+				height *= 2;
+				height_t *= 2;
+			}
+		}
+		if (gsregs[vmode].interlace != interlace) {
+			if (!interlace && !ffmode) {
+				height /= 2;
+				height_t /= 2;
+			}
+		}
 	}
+	//SCREEN_LEFT		= 0;
+	//SCREEN_TOP		= 0;
+	SCREEN_WIDTH	= width;
+	SCREEN_HEIGHT	= height;
+	vx				= SCREEN_LEFT + gsregs[vmode].left - width*(gsregs[vmode].magx+1)/2;
+	vy				= SCREEN_TOP  + (gsregs[vmode].top - height_t*(gsregs[vmode].magy+1)/2)/gstop;
+	if (vx < 0) {
+		SCREEN_LEFT-= vx;
+		vx = 0;
+	}
+	if (vy < 0) {
+		SCREEN_TOP -= vy;
+		vy = 0;
+	}
+	screen_env.screen.width		= width;
+	screen_env.screen.height	= height_t/gstop;
+	screen_env.screen.psm		= depth;
+	screen_env.screen.mag_x		= gsregs[vmode].magx;
+	screen_env.screen.mag_y		= gsregs[vmode].magy;
+	screen_env.screen.x			= vx;
+	screen_env.screen.y			= vy;
+	screen_env.doublebuffer		= gsregs[vmode].doublebuffer;
+	framebuffers 				= gsregs[vmode].doublebuffer+1;
+	fieldbuffers				= 1;
+	if (ffmode) fieldbuffers = framebuffers;
+	screen_env.zpsm				= gsregs[vmode].zpsm;
 	// scissor 
 	screen_env.scissor_x1		= 0;
+	screen_env.scissor_x2		= width;
 	screen_env.scissor_y1		= 0;
-	screen_env.scissor_x2		= buffer_width;
-	screen_env.scissor_y2		= buffer_height_t;
-	
+	screen_env.scissor_y2		= height;
+	//if (setting->screen_scan[vmode] || (gsregs[vmode].ffmode != ffmode) || (gsregs[vmode].interlace != interlace))
 	// misc
-	screen_env.dither			= FALSE;//TRUE;
+	screen_env.dither			= dither;
 	screen_env.interlace		= interlace;
 	screen_env.ffmode			= ffmode;
-	screen_env.vmode			= vmode;
+	screen_env.vmode			= gsregs[vmode].vmode;
+	screen_env.vesa				= gsregs[vmode].vesa;
+	
+	vmode = gsregs[vmode].vmode;
+	if ((vmode == 2) || (vmode==130) || (vmode == 80) || (vmode == 81) || (vmode == 82)) {
+		SCANRATE = 60;
+	} else if ((vmode == 3) || (vmode == 131)) {
+		SCANRATE = 50;
+	} else {
+		int vm[32] = {26,27,28,29,42,43,44,45,46,59,60,61,62,74,75, 1};
+		int rm[32] = {60,72,75,85,56,60,72,75,85,60,70,75,85,60,75,30};
+		SCANRATE = 50;
+		for (vx=0;vm[vx]!=1;vx++) {
+			if (vmode == vm[vx]) {
+				SCANRATE = rm[vx];
+				break;
+			}
+		}
+	}
+	printf("\tRefresh Rate: %d Hz\n", SCANRATE);
+	//printf("\tscreen: (%d,%d)\n", screen_env.screen.x, screen_env.screen.y);
 #if 0
 	printf("draw: screen setup:\n");
 	printf("\tvmode: %02X\n", screen_env.vmode);
@@ -349,8 +266,8 @@ void setupito(int tvmode)
 	printf("\tscissor: (%d,%d)-(%d,%d)\n", screen_env.scissor_x1, screen_env.scissor_y1, screen_env.scissor_x2, screen_env.scissor_y2);
 	printf("\tdither,interlace,ffmode: %d,%d,%d\n",  screen_env.dither, screen_env.interlace, screen_env.ffmode);
 #endif
+	//printf("\tscissor: (%d,%d)-(%d,%d)\n", screen_env.scissor_x1, screen_env.scissor_y1, screen_env.scissor_x2, screen_env.scissor_y2);
 	itoGsEnvSubmit(&screen_env);
-
 	//アルファブレンド
 	itoSetAlphaBlending(
 		ITO_ALPHA_COLOR_SRC, // A = COLOR SOURCE
@@ -362,7 +279,13 @@ void setupito(int tvmode)
 	itoZBufferUpdate(FALSE);
 	itoZBufferTest(FALSE, 0);
 	itoSetTextureBufferBase( itoGetZBufferBase() );
+	printf("\tframebuffer0 offset: %08X\n", itoGetFrameBufferBase(0));
+	printf("\tframebuffer1 offset: %08X\n", itoGetFrameBufferBase(1));
 	printf("\tTexture buffer base: %08X\n", itoGetTextureBufferBase());
+	itoSetBgColor(setting->color[COLOR_OUTSIDE]);
+	SetHeight();
+	
+	fieldnow = itoGetVisibleFrameBuffer()^1;
 }
 
 //-------------------------------------------------
@@ -409,6 +332,14 @@ void drawDark(void)
 	itoPrimAlphaBlending(FALSE);
 }
 
+int drawDarks(int ret)
+{
+	itoSetActiveFrameBuffer(itoGetActiveFrameBuffer()^1);
+	drawDark();
+	itoSetActiveFrameBuffer(itoGetActiveFrameBuffer()^1);
+	drawDark();
+	return ret;
+}
 //-------------------------------------------------
 // ダイアログの背景
 void drawDialogTmp(int x1, int y1, int x2, int y2, uint64 color1, uint64 color2)
@@ -444,7 +375,7 @@ void setScrTmp(const char *msg0, const char *msg1)
 		color1, SCREEN_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3.5), 0);	
 
 	//FLICKER CONTROL: ON
-	if(setting->flickerControl==TRUE && setting->interlace==TRUE){
+	if(flickerfilter==TRUE){
 		//アルファブレンド有効
 		itoPrimAlphaBlending( TRUE );
 		//上の横線
@@ -470,14 +401,24 @@ void drawMsg(const char *msg)
 	//メッセージ
 	printXY(msg, FONT_WIDTH*2, SCREEN_MARGIN+FONT_HEIGHT,
 		setting->color[COLOR_TEXT], TRUE);
-	drawScr();
+	itoGsFinish();
+	if (framebuffers == 2) {
+		itoSetActiveFrameBuffer(itoGetActiveFrameBuffer()^1);
+		itoSprite(setting->color[COLOR_BACKGROUND], 0, SCREEN_MARGIN+FONT_HEIGHT,
+			SCREEN_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*2, 0);
+		//メッセージ
+		printXY(msg, FONT_WIDTH*2, SCREEN_MARGIN+FONT_HEIGHT,
+			setting->color[COLOR_TEXT], TRUE);
+		itoGsFinish();
+		itoSetActiveFrameBuffer(itoGetActiveFrameBuffer()^1);
+	}
 }
 
 //-------------------------------------------------
 // 画面のクリア
 void clrScr(uint64 color)
 {
-	itoSprite(color, 0, 0, buffer_width, buffer_height, 0);
+	itoSprite(color, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
 }
 
 //-------------------------------------------------
@@ -486,7 +427,12 @@ void drawScr(void)
 {
 	itoGsFinish();
 	itoVSync();
-	itoSwitchFrameBuffers();
+	//if (ffmode * interlace * (framebuffers-1))
+	if (ffmode)
+		itoSetActiveFrameBuffer(itoGetActiveFrameBuffer()^1);
+	else
+		itoSwitchFrameBuffers();
+	
 }
 
 //-------------------------------------------------
@@ -501,7 +447,7 @@ void drawFrame(int x1, int y1, int x2, int y2, uint64 color)
 	//color2 = half(color, setting->color[COLOR_BACKGROUND], 0x80);
 
 	//FLICKER CONTROL: ON
-	if(setting->flickerControl==TRUE && setting->interlace==TRUE){
+	if(flickerfilter==TRUE){
 		//アルファブレンド有効
 		itoPrimAlphaBlending( TRUE );
 		//上の横線
@@ -526,161 +472,6 @@ void drawFrame(int x1, int y1, int x2, int y2, uint64 color)
 //MAX_ROWSなどの設定
 void SetHeight(void)
 {
-	//SCREEN_WIDTHとSCREEN_HEIGHT
-	if(screenscan){
-		switch(setting->tvmode)
-		{
-			case 0:	//AUTO
-			{
-				SCREEN_WIDTH = 704;
-				SCREEN_LEFT = setting->screen_x_480i;
-				SCREEN_TOP = setting->screen_y_480i;
-				if(ITO_VMODE_AUTO==ITO_VMODE_NTSC){
-					//NTSC
-					if(setting->ffmode_480i==FALSE && setting->interlace==TRUE)
-						SCREEN_HEIGHT = 480;
-					else
-						SCREEN_HEIGHT = 240;
-				}
-				else{
-					//PAL
-					if(setting->ffmode_480i==FALSE && setting->interlace==TRUE)
-						SCREEN_HEIGHT = 576;
-					else
-						SCREEN_HEIGHT = 288;
-				}
-				break;
-			}
-			case 1:	//NTSC
-			{
-				SCREEN_WIDTH = 704;
-				SCREEN_LEFT = setting->screen_x_480i;
-				SCREEN_TOP = setting->screen_y_480i;
-				if(setting->ffmode_480i==FALSE && setting->interlace==TRUE)
-					SCREEN_HEIGHT = 480;
-				else
-					SCREEN_HEIGHT = 240;
-				break;
-			}
-			case 2:	//PAL
-			{
-				SCREEN_WIDTH = 704;
-				SCREEN_LEFT = setting->screen_x_480i;
-				SCREEN_TOP = setting->screen_y_480i;
-				if(setting->ffmode_480i==FALSE && setting->interlace==TRUE)
-					SCREEN_HEIGHT = 576;
-				else
-					SCREEN_HEIGHT = 288;
-				break;
-			}
-			case 3:	//480p
-			{
-				SCREEN_LEFT = setting->screen_x_480p;
-				SCREEN_TOP = setting->screen_y_480p;
-				SCREEN_WIDTH = 720;
-				SCREEN_HEIGHT = 480;
-				break;
-			}
-			case 4:	//720p
-			{
-				SCREEN_LEFT = setting->screen_x_720p;
-				SCREEN_TOP = setting->screen_y_720p;
-				SCREEN_WIDTH = 1280;
-				SCREEN_HEIGHT = 720;
-				break;
-			}
-			case 5:	//1080i
-			case 6:
-			{
-				SCREEN_WIDTH = FULLHD_WIDTH;//960;//1280;1440-72;//1920-96;
-				SCREEN_LEFT = setting->screen_x_1080i;
-				SCREEN_TOP = setting->screen_y_1080i;
-				if(setting->ffmode_1080i==FALSE)
-					SCREEN_HEIGHT = 1080;
-				else
-					SCREEN_HEIGHT = 540;
-				//SCREEN_HEIGHT = 1024;
-				break;
-			}
-		}
-	}
-	else{
-		switch(setting->tvmode)
-		{
-			case 0:	//AUTO
-			{
-				SCREEN_WIDTH = 640;
-				SCREEN_LEFT = setting->screen_x_480i;
-				SCREEN_TOP = setting->screen_y_480i;
-				if(ITO_VMODE_AUTO==ITO_VMODE_NTSC){
-					//NTSC
-					if(setting->ffmode_480i==FALSE && setting->interlace==TRUE)
-						SCREEN_HEIGHT = 448;
-					else
-						SCREEN_HEIGHT = 224;
-				}
-				else{
-					//PAL
-					if(setting->ffmode_480i==FALSE && setting->interlace==TRUE)
-						SCREEN_HEIGHT = 512;
-					else
-						SCREEN_HEIGHT = 256;
-				}
-				break;
-			}
-			case 1:	//NTSC
-			{
-				SCREEN_WIDTH = 640;
-				SCREEN_LEFT = setting->screen_x_480i;
-				SCREEN_TOP = setting->screen_y_480i;
-				if(setting->ffmode_480i==FALSE && setting->interlace==TRUE)
-					SCREEN_HEIGHT = 448;
-				else
-					SCREEN_HEIGHT = 224;
-				break;
-			}
-			case 2:	//PAL
-			{
-				SCREEN_WIDTH = 640;
-				SCREEN_LEFT = setting->screen_x_480i;
-				SCREEN_TOP = setting->screen_y_480i;
-				if(setting->ffmode_480i==FALSE && setting->interlace==TRUE)
-					SCREEN_HEIGHT = 512;
-				else
-					SCREEN_HEIGHT = 256;
-				break;
-			}
-			case 3:	//480p
-			{
-				SCREEN_LEFT = setting->screen_x_480p;
-				SCREEN_TOP = setting->screen_y_480p;
-				SCREEN_WIDTH = 640;
-				SCREEN_HEIGHT = 480-32;
-				break;
-			}
-			case 4:	//720p
-			{
-				SCREEN_LEFT = setting->screen_x_720p;
-				SCREEN_TOP = setting->screen_y_720p;
-				SCREEN_WIDTH = 1280-64;
-				SCREEN_HEIGHT = 720-32;
-				break;
-			}
-			case 5:	//1080i
-			case 6:
-			{
-				SCREEN_WIDTH = (FULLHD_WIDTH-((int)(FULLHD_WIDTH / 20))+63) & 0x7fc0;//-48;//1280;1440-72;//1920-96;
-				SCREEN_LEFT = setting->screen_x_1080i;
-				SCREEN_TOP = setting->screen_y_1080i;
-				if(setting->ffmode_1080i==FALSE)
-					SCREEN_HEIGHT = 1024;
-				else
-					SCREEN_HEIGHT = 512;
-				//SCREEN_HEIGHT = 1024;
-				break;
-			}
-		}
-	}
 	//FONT_WIDTH
 	if (font_half > 0) 
 		FONT_WIDTH = (ascii_data.width+font_half) / (font_half+1) + char_Margin;
@@ -694,6 +485,12 @@ void SetHeight(void)
 		FONT_HEIGHT = ascii_data.height;// + line_Margin;
 	else
 		FONT_HEIGHT = kanji_data.height;// + line_Margin;
+	if (ffmode == ITO_FRAME) {
+		if (font_vhalf >= 0)
+			FONT_HEIGHT = (FONT_HEIGHT+1)/2;
+		else
+			FONT_HEIGHT /= 2;
+	}
 	if (font_vhalf > 0)
 		FONT_HEIGHT = (FONT_HEIGHT+font_vhalf) / (font_vhalf+1);
 	else if (font_vhalf < 0)
@@ -1103,11 +900,11 @@ int GetFontSize(int type)
 				return ascii_data.width * (-font_half+1);
 		case ASCII_FONT_HEIGHT:
 			if (font_vhalf > 0) 
-				return (ascii_data.height+font_vhalf) / (font_vhalf+1);
+				return (ascii_data.height+font_vhalf) / (font_vhalf+1) / fieldbuffers;
 			else if (font_vhalf == 0)
-				return ascii_data.height;
+				return ascii_data.height / fieldbuffers;
 			else
-				return ascii_data.height * (-font_vhalf+1);
+				return ascii_data.height * (-font_vhalf+1) / fieldbuffers;
 		case KANJI_FONT_WIDTH:
 			if (font_half > 0) 
 				return (kanji_data.width+font_half) / (font_half+1);
@@ -1117,11 +914,11 @@ int GetFontSize(int type)
 				return kanji_data.width * (-font_half+1);
 		case KANJI_FONT_HEIGHT:
 			if (font_vhalf > 0) 
-				return (kanji_data.height+font_vhalf) / (font_vhalf+1);
+				return (kanji_data.height+font_vhalf) / (font_vhalf+1) / fieldbuffers;
 			else if (font_vhalf == 0)
-				return kanji_data.height;
+				return kanji_data.height / fieldbuffers;
 			else
-				return kanji_data.height * (-font_vhalf+1);
+				return kanji_data.height * (-font_vhalf+1) / fieldbuffers;
 	}
 	return 0;
 }
@@ -1324,6 +1121,7 @@ void drawChar_1bpp(void *src, int x, int y, uint64 color, int w, int h)
 	int	i, j;
 	//unsigned char cc;
 	unsigned char *pc, *cp;
+	int btz;
 	int bts, xl, xw, bty, xp, yp, n;
 	uint64 msks, msk, cc, color2;
 	unsigned int rpx, rpy;
@@ -1360,20 +1158,30 @@ void drawChar_1bpp(void *src, int x, int y, uint64 color, int w, int h)
 	} else {
 		rpy = -GetFontVHalf()+1; bty = 1;
 	}
+	btz = bty;
+	if (ffmode == ITO_FRAME) {
+		if (rpy == 1){
+			bty*=2;
+			if (itoGetActiveFrameBuffer())
+				pc+= wb*btz;
+		} else if (rpy > 1) {
+			rpy /= 2;
+		}
+	}
 	for(i=0,yp=0; i<h; i+=bty,yp++) {
 		// i: 標準時, yp: 拡大時の垂直位置
 		// 水平64ドット以内なら1回で読み込みを行う
-		if (bty>1) {
+		if (btz>1) {
 			cc = 0;
 			if (w > 32) {
-				for(j = 0; j < bty; j++){
+				for(j = 0; j < btz; j++){
 					if (i+j >= h) break;
 					cp = pc+j*wb;
 					cc |= ((uint64) cp[0] << 56)|((uint64) cp[1] << 48)|((uint64) cp[2] << 40)|((uint64) cp[3] << 32)|
 							((uint64) cp[4] << 24)|((uint64) cp[5] << 16)|((uint64) cp[6] << 8)|((uint64) cp[7]);
 				}
 			} else {
-				for(j = 0; j < bty; j++){
+				for(j = 0; j < btz; j++){
 					if (i+j >= h) break;
 					cp = pc+j*wb;
 					cc |= ((uint64) cp[0] << 56)|((uint64) cp[1] << 48)|((uint64) cp[2] << 40)|((uint64) cp[3] << 32);
@@ -1387,15 +1195,15 @@ void drawChar_1bpp(void *src, int x, int y, uint64 color, int w, int h)
 		}
 		// 描画開始
 		xl = -1; xw = 0;
-		if (setting->flickerControl) {
+		if (flickerfilter) {
 			// フリッカーコントロールが有効の場合
 			for(j=0,xp=0; j<w; j+=bts,xp++) {
 				if (cc & msk) {
 					if (xl < 0) xl = xp;
 					xw++;
 				} else if (xl >= 0) {
-					if ((xw > 1) || setting->FontBold || (rpx > 1)) {
-						xxl = x+xl*rpx; xxr = x+(xl+xw)*rpx+setting->FontBold;
+					if ((xw > 1) || font_bold || (rpx > 1)) {
+						xxl = x+xl*rpx; xxr = x+(xl+xw)*rpx+font_bold;
 						if (rpy > 1) {
 							yy = y+i*rpy;
 							for (n = 0; n < rpy; n++) {
@@ -1421,8 +1229,8 @@ void drawChar_1bpp(void *src, int x, int y, uint64 color, int w, int h)
 				msk = msk >> bts;
 			}
 			if (xw > 0) {
-				if ((xw > 1) || setting->FontBold || (rpx > 1)) {
-					xxl = x+xl*rpx; xxr = x+(xl+xw)*rpx+setting->FontBold;
+				if ((xw > 1) || font_bold || (rpx > 1)) {
+					xxl = x+xl*rpx; xxr = x+(xl+xw)*rpx+font_bold;
 					if (rpy > 1) {
 						yy = y+i*rpy;
 						for (n = 0; n < rpy; n++) {
@@ -1451,8 +1259,8 @@ void drawChar_1bpp(void *src, int x, int y, uint64 color, int w, int h)
 					if (xl < 0) xl = xp;
 					xw++;
 				} else if (xl >= 0) {
-					if ((xw > 1) || setting->FontBold || (rpx > 1)) {
-						xxl = x+xl*rpx; xxr = x+(xl+xw)*rpx+setting->FontBold;
+					if ((xw > 1) || font_bold || (rpx > 1)) {
+						xxl = x+xl*rpx; xxr = x+(xl+xw)*rpx+font_bold;
 						if (rpy > 1) {
 							yy = y+i*rpy;
 							for (n = 0; n < rpy; n++)
@@ -1470,8 +1278,8 @@ void drawChar_1bpp(void *src, int x, int y, uint64 color, int w, int h)
 				msk = msk >> bts;
 			}
 			if (xw > 0) {
-				if ((xw > 1) || setting->FontBold || (rpx > 1)) {
-					xxl = x+xl*rpx; xxr = x+(xl+xw)*rpx+setting->FontBold;
+				if ((xw > 1) || font_bold || (rpx > 1)) {
+					xxl = x+xl*rpx; xxr = x+(xl+xw)*rpx+font_bold;
 					if (rpy > 1) {
 						yy = y+i*rpy;
 						for (n = 0; n < rpy; n++)
@@ -1538,6 +1346,8 @@ void drawChar_bilinear(void *src, int x, int y, uint64 color, int w, int h)
 		drawChar_unpack(bmpsrc, src, w, h);
 		if ((i != 0) || (j != 0)) {
 			drawChar_resize(bmpdst, bmpsrc, dw, dh, w, h);
+			if ((i < 0) || (j < 0))
+				drawChar_normalize(bmpdst, dw, dh, 0xA0);
 			drawChar_8bpp(bmpdst, x, y, color, setting->color[COLOR_BACKGROUND], dw, dh);
 		} else 
 			drawChar_8bpp(bmpsrc, x, y, color, setting->color[COLOR_BACKGROUND], w, h);
@@ -1546,20 +1356,54 @@ void drawChar_bilinear(void *src, int x, int y, uint64 color, int w, int h)
 }
 
 //-------------------------------------------------
+// 8bppビットマップの正規化
+void drawChar_normalize(void *src, int w, int h, int alpha)
+{
+	int i,j,k,maxalpha=0;
+	double bai;
+	unsigned char *pc;
+	pc = src;
+	// 1st pass
+	for(i=0;i<h;i++)
+		for(j=0;j<w;j++)
+			if ((k=*pc++) > maxalpha) maxalpha = k;
+	if ((maxalpha == 0) || (maxalpha >= alpha)) return;
+	// 2nd pass
+	bai = (double) alpha / maxalpha;
+	//printf("bai: %.4f\n", bai);
+	pc = src;
+	for(i=0;i<h;i++)
+		for(j=0;j<w;j++)
+			*pc++ *= bai;
+	return;
+}
+
+//-------------------------------------------------
 // 8bppビットマップフォントの描画(高画質モード用)
 void drawChar_8bpp(void *src, int x, int y, uint64 color, uint64 back, int w, int h)
 {
-	int i,j;
+	int i,j,k;
 	unsigned char *pc;
 	pc = src;
-	
+	//アルファブレンド有効
+	//itoPrimAlphaBlending( TRUE );
 	// 高速化は後回し
-	for(i=0;i<h;i++)
-		for(j=0;j<w;j++)
-			if (*pc > 0)
-				itoPoint(half(back, color, *pc++*2), x+j, y+i, 0);
-			else
-				pc++;
+	if (ffmode * interlace * (framebuffers-1)) {
+		if (itoGetActiveFrameBuffer()) pc+=w;
+		for(i=0;i<h/2;i++,pc+=w)
+			for(j=0;j<w;j++)
+				if ((k=*pc++) > 0)
+				//	itoPoint(color|(k<<24), x+j, y+i, 0);
+					itoPoint(half(back, color, k<<1), x+j, y+i, 0);
+	} else {
+		for(i=0;i<h;i++)
+			for(j=0;j<w;j++)
+				if ((k=*pc++) > 0)
+				//	itoPoint(color|(k<<24), x+j, y+i, 0);
+					itoPoint(half(back, color, k<<1), x+j, y+i, 0);
+	}
+	//アルファブレンド無効
+	//itoPrimAlphaBlending(FALSE);
 }
 
 unsigned char pget8bpp(unsigned char *src, int x, int y, int w, int h)
@@ -1791,7 +1635,7 @@ int printXY2(const unsigned char *s, uint64 color, int draw)
 			code = s[i++];
 			code = (code<<8) + s[i++];
 			if(draw){
-				if(setting->flickerControl){
+				if(flickerfilter){
 					//アルファブレンド有効
 					itoPrimAlphaBlending( TRUE );
 					drawChar_SJIS(code, x+kanji_MarginLeft, y+kanji_MarginTop+1, color2);
@@ -1804,7 +1648,7 @@ int printXY2(const unsigned char *s, uint64 color, int draw)
 		}
 		else{
 			if(draw){
-				if(setting->flickerControl){
+				if(flickerfilter){
 					//アルファブレンド有効
 					itoPrimAlphaBlending( TRUE );
 					drawChar(s[i], x+ascii_MarginLeft, y+ascii_MarginTop+1, color2);

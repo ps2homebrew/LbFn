@@ -84,10 +84,7 @@ typedef struct
 }JPEG;
 
 /* for 16bit */
-#ifndef PIXEL16
-#define PIXEL16(r, g, b)	((r) << 10 | (g >> 1) << 5 | (b))
-	/* 0 <= r <= 31, 0 <= g <= 63, 0 <= b <= 31 */
-#endif
+#define PIXEL16(r, g, b)	((r) << 10 | (g) << 5 | (b))
 
 int info_JPEG(struct DLL_STRPICENV *env, int *info, int size, UCHAR *fp);
 int decode0_JPEG(struct DLL_STRPICENV *env, int size, UCHAR *fp, int b_type, UCHAR *buf, int skip);
@@ -697,11 +694,11 @@ int jpeg_decode_yuv(JPEG *jpeg, int h, int v, unsigned char *rgb, int b_type,
 	w = (jpeg->width_buf - x1) * (b_type & 0x7f);
 
 	for (y = 0; y < y1; y++) {
-	  int*dest = buf;
-	  if (b_type == 0x0004)
-	    dest = (int*)rgb;
+	  unsigned char*dest = (unsigned char *)buf;
+	  //if (b_type == 0x0004)
+	    dest = (unsigned char*)rgb;
 	  for (x = 0; x < x1; x++) {
-	    int b, g, r;
+	    unsigned int b, g, r;
 	    const int Y12 = py[0] << 12;
 	    const int U = py[1024]; /* pu */
 	    const int V = py[2048]; /* pv */
@@ -717,12 +714,24 @@ int jpeg_decode_yuv(JPEG *jpeg, int h, int v, unsigned char *rgb, int b_type,
 	    r = 128 + ((Y12 + V * 0x166E) >> 12);
 	    if (r & 0xffffff00)
 	      r = (~r) >> 24;
-	    dest[x] = b | g << 8 | r << 16;
+	    //dest[x] = b | g << 8 | r << 16;
+		if (b_type >= 0x0003) {
+			dest[x*4] = b;
+			dest[x*4+1] = g;
+			dest[x*4+2] = r;
+			if (b_type == 0x0004) 
+				dest[x*4+3] = 0;
+		} else if (b_type == 0x0002) {
+			dest[x*2] = (((g >> 3) & 0x07)<<5) | ((r >> 3) & 0x1f);
+			dest[x*2+1] = (((b >> 3) & 0x1f)<<2) | ((g >> 6) & 0x03);
+		}
 	    py++;
 	  }
 	//if (b_type == 0x0004)
-	    rgb += x1 * 4;
-	/*else {
+	    rgb += x1 * (b_type & 0x0f);
+	//else if (b_type == 0x0002) {
+	//	rgb += x1 * 2;
+		/*
 	    if (b_type == 0x0002) {
 	      gosakaku16(ltor[y], utod, x1, buf, rgb);
 	      rgb += x1 * 2;
@@ -737,8 +746,9 @@ int jpeg_decode_yuv(JPEG *jpeg, int h, int v, unsigned char *rgb, int b_type,
 	      rgb += x1;
 	    }
 	    ltor[y] = *(int*)&utod[x1-1];
-	  }
-	*/py += mw - x1;
+		*/
+	//}
+	  py += mw - x1;
 	  rgb += w;
 	}
 	return x1;
