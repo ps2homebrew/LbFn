@@ -4,17 +4,18 @@
 typedef struct
 {
 	unsigned char unknown;
-	unsigned char sec;      // date/time (second)
-	unsigned char min;      // date/time (minute)
-	unsigned char hour;     // date/time (hour)
-	unsigned char day;      // date/time (day)
-	unsigned char month;    // date/time (month)
-	unsigned short year;    // date/time (year)
+	unsigned char sec;	// date/time (second)
+	unsigned char min;	// date/time (minute)
+	unsigned char hour;	// date/time (hour)
+	unsigned char day;	// date/time (day)
+	unsigned char month;	// date/time (month)
+	unsigned short year;	// date/time (year)
 } PS2TIME __attribute__((aligned (2)));
 
 typedef struct{
-	PS2TIME modifyTime;
-    unsigned fileSizeByte;
+	PS2TIME createtime;
+	PS2TIME modifytime;
+	unsigned fileSizeByte;
 	unsigned short attr;
 	char title[16*4+1];
 	char name[256];
@@ -23,9 +24,9 @@ typedef struct{
 
 // psuファイルヘッダ構造体
 typedef struct { // 512 bytes
-	unsigned short  attr;
-	unsigned short  unknown1;
-	unsigned int  size;	//file size, 0 for directory
+	unsigned short attr;
+	unsigned short unknown1;
+	unsigned int size;	//file size, 0 for directory
 	unsigned char createtime[8];	//0x00:sec:min:hour:day:month:year
 	unsigned int unknown2;
 	unsigned int unknown3;
@@ -106,7 +107,7 @@ char mountedParty[2][MAX_NAME];
 char parties[MAX_PARTITIONS][MAX_NAME];
 char clipPath[MAX_PATH], LastDir[MAX_NAME], marks[MAX_ENTRY];
 FILEINFO clipFiles[MAX_ENTRY];
-int fileMode =  FIO_S_IRUSR | FIO_S_IWUSR | FIO_S_IXUSR | FIO_S_IRGRP | FIO_S_IWGRP | FIO_S_IXGRP | FIO_S_IROTH | FIO_S_IWOTH | FIO_S_IXOTH;
+int fileMode = FIO_S_IRUSR | FIO_S_IWUSR | FIO_S_IXUSR | FIO_S_IRGRP | FIO_S_IWGRP | FIO_S_IXGRP | FIO_S_IROTH | FIO_S_IWOTH | FIO_S_IXOTH;
 
 #ifdef ENABLE_PSB
 #define MAX_ARGC 3
@@ -133,7 +134,7 @@ int getHddParty(const char *path, const FILEINFO *file, char *party, char *dir)
 	strcpy(fullpath, path);
 	if(file!=NULL){
 		strcat(fullpath, file->name);	//
-		if(file->attr & FIO_S_IFDIR)	//フォルダのときスラッシュつける
+		if(file->attr & MC_ATTR_SUBDIR)	//フォルダのときスラッシュつける
 			strcat(fullpath,"/");
 	}
 	//パーティション名がないときはエラー
@@ -220,7 +221,7 @@ int ynDialog(const char *message, int defaultsel)
 				break;
 			}else if(new_pad & PAD_CIRCLE){
 				if(sel==0) ret=1;
-				else	   ret=-1;
+				else ret=-1;
 				break;
 			}
 			else if(new_pad & PAD_SELECT){
@@ -335,7 +336,7 @@ int cmpFile(FILEINFO *a, FILEINFO *b)
 	int i, n, ret, aElf=FALSE, bElf=FALSE, t=title;
 
 	if(a->attr==b->attr){
-		if(a->attr & FIO_S_IFREG){
+		if(!(a->attr & MC_ATTR_SUBDIR)){
 			p = strrchr(a->name, '.');
 			if(p!=NULL && !stricmp(p+1, "ELF")) aElf=TRUE;
 			p = strrchr(b->name, '.');
@@ -350,7 +351,7 @@ int cmpFile(FILEINFO *a, FILEINFO *b)
 			else if(a->title[0]==0 && b->title[0]==0) t=FALSE;
 		}
 		if(t) n=strlen(a->title);
-		else  n=strlen(a->name);
+		else n=strlen(a->name);
 		for(i=0; i<=n; i++){
 			if(t){
 				ca=a->title[i]; cb=b->title[i];
@@ -365,7 +366,7 @@ int cmpFile(FILEINFO *a, FILEINFO *b)
 		return 0;
 	}
 
-	if(a->attr & FIO_S_IFDIR)	return -1;
+	if(a->attr & MC_ATTR_SUBDIR)	return -1;
 	else						return 1;
 }
 void sort(FILEINFO *a, int left, int right)
@@ -407,22 +408,14 @@ int readMC(const char *path, FILEINFO *info, int max)
 
 	for(i=j=0; i<ret; i++)
 	{
-		if(mcDir[i].attrFile & MC_ATTR_SUBDIR &&
-		(!strcmp(mcDir[i].name, ".") || !strcmp(mcDir[i].name, "..")))
+		if(mcDir[i].attrFile & MC_ATTR_SUBDIR && (!strcmp(mcDir[i].name, ".") || !strcmp(mcDir[i].name, "..")))
 			continue;
+
 		strcpy(info[j].name, mcDir[i].name);
-		if(mcDir[i].attrFile & MC_ATTR_SUBDIR)
-			info[j].attr = FIO_S_IFDIR;
-		else
-			info[j].attr = FIO_S_IFREG;
+		info[j].attr = mcDir[i].attrFile;
 		info[j].fileSizeByte = mcDir[i].fileSizeByte;
-		info[j].modifyTime.unknown = mcDir[i]._modify.unknown2;
-		info[j].modifyTime.sec = mcDir[i]._modify.sec;
-		info[j].modifyTime.min = mcDir[i]._modify.min;
-		info[j].modifyTime.hour = mcDir[i]._modify.hour;
-		info[j].modifyTime.day = mcDir[i]._modify.day;
-		info[j].modifyTime.month = mcDir[i]._modify.month;
-		info[j].modifyTime.year = mcDir[i]._modify.year;
+		memcpy(&info[j].createtime, &mcDir[i]._create, 8);
+		memcpy(&info[j].modifytime, &mcDir[i]._modify, 8);
 		j++;
 	}
 
@@ -445,17 +438,19 @@ int readCD(const char *path, FILEINFO *info, int max)
 
 	for(i=j=0; i<n; i++)
 	{
-		if(TocEntryList[i].fileProperties & 0x02 &&
-		 (!strcmp(TocEntryList[i].filename, ".") ||
-		  !strcmp(TocEntryList[i].filename, "..")))
+		if(TocEntryList[i].fileProperties & 0x02 && (!strcmp(TocEntryList[i].filename, ".") || !strcmp(TocEntryList[i].filename, "..")))
 			continue;
+
+		if(TocEntryList[i].fileProperties & 0x02){
+			info[j].attr = MC_ATTR_SUBDIR;
+		}
+		else{
+			info[j].attr = 0;
+			info[j].fileSizeByte = TocEntryList[i].fileSize;
+		}
 		strcpy(info[j].name, TocEntryList[i].filename);
-		if(TocEntryList[i].fileProperties & 0x02)
-			info[j].attr = FIO_S_IFDIR;
-		else
-			info[j].attr = FIO_S_IFREG;
-		info[j].fileSizeByte = TocEntryList[i].fileSize;
-		memset(&info[j].modifyTime, 0, sizeof(PS2TIME)); //取得できない
+		memset(&info[j].createtime, 0, sizeof(PS2TIME)); //取得しない
+		memset(&info[j].modifytime, 0, sizeof(PS2TIME)); //取得できない
 		j++;
 	}
 
@@ -505,9 +500,10 @@ int readHDD(const char *path, FILEINFO *info, int max)
 	if(!strcmp(path, "hdd0:/")){
 		for(i=0; i<nparties; i++){
 			strcpy(info[i].name, parties[i]);
-			info[i].attr = FIO_S_IFDIR;
+			info[i].attr = MC_ATTR_SUBDIR;
 			info[i].fileSizeByte = 0;
-			memset(&info[i].modifyTime, 0, sizeof(PS2TIME));
+			memset(&info[i].createtime, 0, sizeof(PS2TIME));
+			memset(&info[i].modifytime, 0, sizeof(PS2TIME));
 		}
 		return nparties;
 	}
@@ -520,20 +516,25 @@ int readHDD(const char *path, FILEINFO *info, int max)
 	if((fd=fileXioDopen(dir)) < 0) return 0;
 
 	while(fileXioDread(fd, &dirbuf)){
-		if(dirbuf.stat.mode & FIO_S_IFDIR &&
-		(!strcmp(dirbuf.name, ".") || !strcmp(dirbuf.name, "..")))
+		if(dirbuf.stat.mode & FIO_S_IFDIR && (!strcmp(dirbuf.name, ".") || !strcmp(dirbuf.name, "..")))
 			continue;
 
-		info[i].attr = dirbuf.stat.mode;
+		if(dirbuf.stat.mode & FIO_S_IFDIR){
+			info[i].attr = MC_ATTR_SUBDIR;
+		}
+		else{
+			info[i].attr = 0;
+			info[i].fileSizeByte = dirbuf.stat.size;
+		}
 		strcpy(info[i].name, dirbuf.name);
-		info[i].fileSizeByte = dirbuf.stat.size;
-		info[i].modifyTime.unknown = dirbuf.stat.mtime[0];
-		info[i].modifyTime.sec = dirbuf.stat.mtime[1];
-		info[i].modifyTime.min = dirbuf.stat.mtime[2];
-		info[i].modifyTime.hour = dirbuf.stat.mtime[3];
-		info[i].modifyTime.day = dirbuf.stat.mtime[4];
-		info[i].modifyTime.month = dirbuf.stat.mtime[5];
-		info[i].modifyTime.year = dirbuf.stat.mtime[6]+dirbuf.stat.mtime[7]*256;
+		memset(&info[i].createtime, 0, sizeof(PS2TIME)); //取得しない
+		info[i].modifytime.unknown = dirbuf.stat.mtime[0];
+		info[i].modifytime.sec = dirbuf.stat.mtime[1];
+		info[i].modifytime.min = dirbuf.stat.mtime[2];
+		info[i].modifytime.hour = dirbuf.stat.mtime[3];
+		info[i].modifytime.day = dirbuf.stat.mtime[4];
+		info[i].modifytime.month = dirbuf.stat.mtime[5];
+		info[i].modifytime.year = dirbuf.stat.mtime[6]+dirbuf.stat.mtime[7]*256;
 		i++;
 		if(i==max) break;
 	}
@@ -555,28 +556,29 @@ int readMASS(const char *path, FILEINFO *info, int max)
 	if ((dd = fioDopen(path)) < 0) goto exit;
 
 	while(fioDread(dd, &record) > 0){
-		if((FIO_SO_ISDIR(record.stat.mode))
-			&& (!strcmp(record.name,".") || !strcmp(record.name,".."))
-		) continue;
+		if((FIO_SO_ISDIR(record.stat.mode)) && (!strcmp(record.name,".") || !strcmp(record.name,"..")))
+			continue;
 
-		strcpy(info[n].name, record.name);
 		if(FIO_SO_ISDIR(record.stat.mode)){
-			info[n].attr = FIO_S_IFDIR;
+			info[n].attr = MC_ATTR_SUBDIR;
 		}
 		else if(FIO_SO_ISREG(record.stat.mode)){
-			info[n].attr = FIO_S_IFREG;
+			info[n].attr = 0;
 			info[n].fileSizeByte = record.stat.size;
 		}
 		else
 			continue;
+
+		strcpy(info[n].name, record.name);
 		strncpy(info[n].name, info[n].name, 32);
-		info[n].modifyTime.unknown = 0;
-		info[n].modifyTime.sec = record.stat.mtime[1];
-		info[n].modifyTime.min = record.stat.mtime[2];
-		info[n].modifyTime.hour = record.stat.mtime[3];
-		info[n].modifyTime.day = record.stat.mtime[4];
-		info[n].modifyTime.month = record.stat.mtime[5];
-		info[n].modifyTime.year = record.stat.mtime[6] + record.stat.mtime[7]*256;
+		memset(&info[n].createtime, 0, sizeof(PS2TIME)); //取得しない
+		info[n].modifytime.unknown = 0;
+		info[n].modifytime.sec = record.stat.mtime[1];
+		info[n].modifytime.min = record.stat.mtime[2];
+		info[n].modifytime.hour = record.stat.mtime[3];
+		info[n].modifytime.day = record.stat.mtime[4];
+		info[n].modifytime.month = record.stat.mtime[5];
+		info[n].modifytime.year = record.stat.mtime[6] + record.stat.mtime[7]*256;
 		n++;
 		if(n==max) break;
 	}
@@ -627,11 +629,11 @@ int getGameTitle(const char *path, const FILEINFO *file, char *out)
 	}
 	else{
 		sprintf(dir, "%s%s", path, file->name);
-		if(file->attr & FIO_S_IFDIR) strcat(dir, "/");
+		if(file->attr & MC_ATTR_SUBDIR) strcat(dir, "/");
 	}
 
 	ret = -1;
-	if(file->attr & FIO_S_IFREG){
+	if(!(file->attr & MC_ATTR_SUBDIR)){
 		//ファイルのときPS1のゲームタイトル取得してみる
 		if(hddin){
 			if((fd=fileXioOpen(dir, O_RDONLY, fileMode)) < 0) goto error;
@@ -684,7 +686,7 @@ int getGameTitle(const char *path, const FILEINFO *file, char *out)
 						FILEINFO fi;
 						sprintf(dirps1, "%s%s/", path, file->name);
 						strcpy(fi.name, file->name);
-						fi.attr = FIO_S_IFREG;
+						fi.attr = 0;
 						if(getGameTitle(dirps1, &fi, out)>=0)
 							ret=1;
 						else
@@ -703,7 +705,7 @@ int getGameTitle(const char *path, const FILEINFO *file, char *out)
 				FILEINFO fi;
 				sprintf(dirps1, "%s%s/", path, file->name);
 				strcpy(fi.name, file->name);
-				fi.attr = FIO_S_IFREG;
+				fi.attr = 0;
 				if(getGameTitle(dirps1, &fi, out)>=0)
 					ret=1;
 				else
@@ -827,26 +829,30 @@ int menu(const char *path, const char *file)
 		// 描画開始
 		drawDialogTmp(menu_x, menu_y, menu_x+menu_w, menu_y+menu_h, setting->color[0], setting->color[1]);
 		for(i=0,y=74; i<NUM_MENU; i++){
-			if(i==COPY)          strcpy(tmp, lang->filer_menu_copy);
-			else if(i==CUT)     strcpy(tmp, lang->filer_menu_cut);
-			else if(i==PASTE)   strcpy(tmp, lang->filer_menu_paste);
-			else if(i==DELETE)  strcpy(tmp, lang->filer_menu_delete);
-			else if(i==RENAME)  strcpy(tmp, lang->filer_menu_rename);
-			else if(i==NEWDIR)  strcpy(tmp, lang->filer_menu_newdir);
+			if(i==COPY) strcpy(tmp, lang->filer_menu_copy);
+			else if(i==CUT) strcpy(tmp, lang->filer_menu_cut);
+			else if(i==PASTE) strcpy(tmp, lang->filer_menu_paste);
+			else if(i==DELETE) strcpy(tmp, lang->filer_menu_delete);
+			else if(i==RENAME) strcpy(tmp, lang->filer_menu_rename);
+			else if(i==NEWDIR) strcpy(tmp, lang->filer_menu_newdir);
 			else if(i==GETSIZE) strcpy(tmp, lang->filer_menu_getsize);
-			else if(i==EXPORT)  strcpy(tmp, lang->filer_menu_exportpsu);
-			else if(i==IMPORT)  strcpy(tmp, lang->filer_menu_importpsu);
+			else if(i==EXPORT) strcpy(tmp, lang->filer_menu_exportpsu);
+			else if(i==IMPORT) strcpy(tmp, lang->filer_menu_importpsu);
 
-			if(enable[i])
-				color = setting->color[2];
+			if(enable[i]){
+				if(sel==i)
+					color = setting->color[2];	//強調
+				else
+					color = setting->color[3];	//ノーマル
+			}
 			else
-				color = setting->color[3];
+				color = setting->color[9];	//無効
 
 			printXY(tmp, menu_x+FONT_WIDTH*2, menu_y+FONT_HEIGHT/2+i*FONT_HEIGHT, color, TRUE);
 			y+=FONT_HEIGHT;
 		}
 		if(sel<NUM_MENU)
-			printXY(">", menu_x+FONT_WIDTH, menu_y+FONT_HEIGHT/2+sel*FONT_HEIGHT, setting->color[2], TRUE);
+			printXY(">", menu_x+FONT_WIDTH, menu_y+FONT_HEIGHT/2+sel*FONT_HEIGHT, setting->color[2], TRUE);	//強調
 
 		// 操作説明
 		x = FONT_WIDTH*1;
@@ -871,7 +877,7 @@ size_t getFileSize(const char *path, const FILEINFO *file)
 	char dir[MAX_PATH], party[MAX_NAME];
 	int nfiles, i, ret, fd;
 
-	if(file->attr & FIO_S_IFDIR){
+	if(file->attr & MC_ATTR_SUBDIR){
 		sprintf(dir, "%s%s/", path, file->name);
 		// 対象フォルダ内の全ファイル・フォルダサイズを合計
 		nfiles = getDir(dir, files);
@@ -921,7 +927,7 @@ int delete(const char *path, const FILEINFO *file)
 	}
 	sprintf(dir, "%s%s", path, file->name);
 
-	if(file->attr & FIO_S_IFDIR){
+	if(file->attr & MC_ATTR_SUBDIR){
 		strcat(dir,"/");
 		// 対象フォルダ内の全ファイル・フォルダを削除
 		nfiles = getDir(dir, files);
@@ -1025,6 +1031,8 @@ int copy(const char *outPath, const char *inPath, FILEINFO file, int n)
 	int hddout=FALSE, hddin=FALSE, nfiles, i;
 	size_t size, outsize;
 	int ret=-1, pfsout=-1, pfsin=-1, in_fd=-1, out_fd=-1, buffSize;
+	int copyret;
+	mcTable mcDir __attribute__((aligned(64)));	//mcSetFileInfo()用
 
 	//フォルダ名またはファイル名の文字数
 	if(!strncmp(outPath, "mc", 2)){
@@ -1116,7 +1124,7 @@ int copy(const char *outPath, const char *inPath, FILEINFO file, int n)
 		sprintf(out, "%s%s", outPath, file.name);	//出力パス
 
 	// フォルダの場合
-	if(file.attr & FIO_S_IFDIR){
+	if(file.attr & MC_ATTR_SUBDIR){
 		// フォルダ作成
 		ret = newdir(outPath, file.name);
 		if(ret == -17){
@@ -1134,12 +1142,31 @@ int copy(const char *outPath, const char *inPath, FILEINFO file, int n)
 		}
 		else if(ret < 0)
 			return -1;
+
 		// フォルダの中身を全コピー
 		sprintf(out, "%s%s/", outPath, file.name);
 		sprintf(in, "%s%s/", inPath, file.name);
 		nfiles = getDir(in, files);
-		for(i=0; i<nfiles; i++)
-			if(copy(out, in, files[i], n+1) < 0) return -1;
+		for(i=0; i<nfiles; i++){
+			copyret = copy(out, in, files[i], n+1);
+			if(copyret < 0) return -1;
+		}
+		//フォルダのmcSetFileInfo
+		if(!strncmp(inPath, "mc", 2) && !strncmp(outPath, "mc", 2)){
+			memset(&mcDir, 0, sizeof(mcTable));
+			memcpy(&mcDir._create, &file.createtime, 8);
+			memcpy(&mcDir._modify, &file.modifytime, 8);
+			mcDir.fileSizeByte = file.fileSizeByte;
+			mcDir.attrFile = file.attr;
+			strcpy(mcDir.name, file.name);
+
+			//
+			sprintf(out, "%s%s", outPath, file.name);
+			mcGetInfo(out[2]-'0', 0, NULL, NULL, NULL);	//Wakeup call
+			mcSync(MC_WAIT, NULL, NULL);
+			mcSetFileInfo(out[2]-'0', 0, &out[4], (char*)&mcDir, 0xFFFF); //Fix file stats
+			mcSync(MC_WAIT, NULL, NULL);
+		}
 		return 0;
 	}
 
@@ -1180,7 +1207,7 @@ int copy(const char *outPath, const char *inPath, FILEINFO file, int n)
 	while(size>0){
 		// 入力
 		if(hddin) buffSize = fileXioRead(in_fd, buff, buffSize);
-		else	  buffSize = fioRead(in_fd, buff, buffSize);
+		else buffSize = fioRead(in_fd, buff, buffSize);
 		// 出力
 		if(hddout){
 			outsize = fileXioWrite(out_fd,buff,buffSize);
@@ -1202,16 +1229,31 @@ int copy(const char *outPath, const char *inPath, FILEINFO file, int n)
 		}
 		size -= buffSize;
 	}
+	//ファイルのmcSetFileInfo
+	if(!strncmp(inPath, "mc", 2) && !strncmp(outPath, "mc", 2)){
+		memset(&mcDir, 0, sizeof(mcTable));
+		memcpy(&mcDir._create, &file.createtime, 8);
+		memcpy(&mcDir._modify, &file.modifytime, 8);
+		mcDir.fileSizeByte = file.fileSizeByte;
+		mcDir.attrFile = file.attr;
+		strcpy(mcDir.name, file.name);
+
+		//
+		mcGetInfo(out[2]-'0', 0, NULL, NULL, NULL);	//Wakeup call
+		mcSync(MC_WAIT, NULL, NULL);
+		mcSetFileInfo(out[2]-'0', 0, &out[4], (char*)&mcDir, 0xFFFF); //Fix file stats
+		mcSync(MC_WAIT, NULL, NULL);
+	}
 	ret=0;
 error:
 	free(buff);
 	if(in_fd>0){
 		if(hddin) fileXioClose(in_fd);
-		else	  fioClose(in_fd);
+		else fioClose(in_fd);
 	}
 	if(out_fd>0){	//修正した
 		if(hddout) fileXioClose(out_fd);
-		else	  fioClose(out_fd);
+		else fioClose(out_fd);
 	}
 	return ret;
 }
@@ -1229,7 +1271,7 @@ int paste(const char *path)
 	//ペースト処理
 	for(i=0; i<nclipFiles; i++){
 		strcpy(tmp, clipFiles[i].name);
-		if(clipFiles[i].attr & FIO_S_IFDIR) strcat(tmp,"/");
+		if(clipFiles[i].attr & MC_ATTR_SUBDIR) strcat(tmp,"/");
 		strcat(tmp, " ");
 		strcat(tmp, lang->filer_pasting);
 		drawMsg(tmp);
@@ -1723,7 +1765,7 @@ int psuImport(const char *path, const FILEINFO *file)
 	int ret = -1;	//戻り値
 	int n = 0;
 	PSU_HEADER psu_header[MAX_ENTRY];
-	char outdir[MAX_PATH];		//セーブデータのフォルダ名
+	PSU_HEADER psu_header_dir;
 	char title[16*4+1]="";
 	char *buff=NULL;
 	int outmc=0;	//インポート先のmc番号
@@ -1735,10 +1777,10 @@ int psuImport(const char *path, const FILEINFO *file)
 	int dialog_x;		//ダイアログx位置
 	int dialog_y;		//ダイアログy位置
 	int dialog_width;	//ダイアログ幅 
-	int dialog_height;	//ダイアログ高さ  
+	int dialog_height;	//ダイアログ高さ
 
 	//フォルダのときは、psuからインポートできない
-	if(file->attr & FIO_S_IFDIR){
+	if(file->attr & MC_ATTR_SUBDIR){
 		ret=-1;
 		return ret;
 	}
@@ -1794,12 +1836,11 @@ int psuImport(const char *path, const FILEINFO *file)
 			ret=-3;
 			goto error;
 		}
-		//psuヘッダを読み込むのにpsu_header[0]を一時的に使う
-		memset(&psu_header[0], 0, sizeof(PSU_HEADER));
-		if(hddin) fileXioRead(in_fd, (char*)&psu_header[0], sizeof(PSU_HEADER));
-		else fioRead(in_fd, &psu_header[0], sizeof(PSU_HEADER));
-		n = psu_header[0].size;	//ファイル数
-		strcpy(outdir, psu_header[0].name);	//出力するフォルダ名
+		//psuヘッダを読み込むのにpsu_header_dirをに使う
+		memset(&psu_header_dir, 0, sizeof(PSU_HEADER));
+		if(hddin) fileXioRead(in_fd, (char*)&psu_header_dir, sizeof(PSU_HEADER));
+		else fioRead(in_fd, &psu_header_dir, sizeof(PSU_HEADER));
+		n = psu_header_dir.size;	//ファイル数
 		seek = sizeof(PSU_HEADER);	//ファイルのシーク
 
 		//psu_header[0]から読み込む
@@ -1963,10 +2004,12 @@ int psuImport(const char *path, const FILEINFO *file)
 		char outpath[MAX_PATH];//セーブデータのフォルダを出力するフォルダのフルパス
 		int seek;
 		char tmp[2048];		//雑用 表示用
-		char out[MAX_PATH];	//セーブデータのフォルダの中のファイルのフルパス
+		char out[MAX_PATH];	//セーブデータのフォルダのフルパス セーブデータのフォルダの中のファイルのフルパス
 		size_t outsize;
 		char party[MAX_NAME];
 		int r;
+		mcTable mcDir __attribute__((aligned(64)));	//mcSetFileInfo()用
+
 
 		//セーブデータのフォルダを出力するフォルダのフルパス
 		if(!outmc)
@@ -1991,13 +2034,13 @@ int psuImport(const char *path, const FILEINFO *file)
 		}
 
 		//セーブデータのフォルダ作成
-		r = newdir(outpath, outdir);
+		r = newdir(outpath, psu_header_dir.name);
 		if(r == -17){	//フォルダがすでにあるとき上書きを確認する
 			drawDark();
 			itoGsFinish();
 			itoSwitchFrameBuffers();
 			drawDark();
-			sprintf(tmp, "%s%s/\n%s", outpath, outdir, lang->filer_overwrite);
+			sprintf(tmp, "%s%s/\n%s", outpath, psu_header_dir.name, lang->filer_overwrite);
 			if(ynDialog(tmp,0)<0){	//キャンセル
 				ret = -7;
 				goto error;
@@ -2033,6 +2076,7 @@ int psuImport(const char *path, const FILEINFO *file)
 		itoGsFinish();
 		itoSwitchFrameBuffers();
 		drawDark();
+
 		seek = sizeof(PSU_HEADER);
 		for(i=0;i<n;i++){
 			// プログレスバー
@@ -2048,7 +2092,10 @@ int psuImport(const char *path, const FILEINFO *file)
 			drawScr();
 			//
 			seek += sizeof(PSU_HEADER);
-			if(psu_header[i].size>0){
+			if(psu_header[i].attr&MC_ATTR_SUBDIR){
+				//フォルダのときは何もしない
+			}
+			else{
 				//書き込むデータのメモリを確保
 				buff = (char*)malloc(psu_header[i].size);
 				if(buff==NULL){
@@ -2056,7 +2103,7 @@ int psuImport(const char *path, const FILEINFO *file)
 					goto error;
 				}
 				//出力するファイルオープン
-				sprintf(out, "%s%s/%s", outpath, outdir, psu_header[i].name);
+				sprintf(out, "%s%s/%s", outpath, psu_header_dir.name, psu_header[i].name);
 				out_fd = fioOpen(out, O_WRONLY | O_TRUNC | O_CREAT);
 				if(out_fd<0){
 					ret=-11;
@@ -2081,6 +2128,20 @@ int psuImport(const char *path, const FILEINFO *file)
 				//クローズ
 				fioClose(out_fd); out_fd=-1;
 				free(buff);
+			
+				{	//original source uLaunchELF 4.12
+					memset(&mcDir, 0, sizeof(mcTable));
+					memcpy(&mcDir._create, &psu_header[i].createtime, 8);
+					memcpy(&mcDir._modify, &psu_header[i].modifytime, 8);
+					mcDir.fileSizeByte = psu_header[i].size;
+					mcDir.attrFile = psu_header[i].attr;
+					strcpy(mcDir.name, psu_header[i].name);
+
+					mcGetInfo(out[2]-'0', 0, NULL,NULL, NULL);	//Wakeup call
+					mcSync(MC_WAIT, NULL, NULL);
+					mcSetFileInfo(out[2]-'0', 0, &out[4], (char*)&mcDir, 0xFFFF);	//Fix file stats
+					mcSync(MC_WAIT, NULL, NULL);
+				}
 				//
 				fioLseek(in_fd, seek, SEEK_SET);	//シークをファイルの先頭にに戻す
 				seek += (((psu_header[i].size-1)/0x400)+1)*0x400;
@@ -2091,6 +2152,24 @@ int psuImport(const char *path, const FILEINFO *file)
 		if(hddin) fileXioClose(in_fd);
 		else fioClose(in_fd);
 		in_fd=-1;
+
+		//フォルダのmcSetFileInfo
+		{
+			memset(&mcDir, 0, sizeof(mcTable));
+			memcpy(&mcDir._create, &psu_header_dir.createtime, 8);
+			memcpy(&mcDir._modify, &psu_header_dir.modifytime, 8);
+			mcDir.fileSizeByte = psu_header_dir.size;
+			mcDir.attrFile = psu_header_dir.attr;
+			strcpy(mcDir.name, psu_header_dir.name);
+
+			//
+			sprintf(out, "%s%s", outpath, psu_header_dir.name);
+			mcGetInfo(out[2]-'0', 0, NULL, NULL, NULL);	//Wakeup call
+			mcSync(MC_WAIT, NULL, NULL);
+			mcSetFileInfo(out[2]-'0', 0, &out[4], (char*)&mcDir, 0xFFFF); //Fix file stats
+			mcSync(MC_WAIT, NULL, NULL);
+		}
+
 	}
 	//
 	ret=outmc;
@@ -2131,7 +2210,7 @@ int psuExport(const char *path, const FILEINFO *file)
 	int dialog_height;	//ダイアログ高さ
 
 	//ファイルのときは、psuにエクスポートできない
-	if(file->attr & FIO_S_IFREG){	//ファイル
+	if(!(file->attr & MC_ATTR_SUBDIR)){	//ファイル
 		ret = -1;
 		return ret;
 	}
@@ -2349,8 +2428,10 @@ int psuExport(const char *path, const FILEINFO *file)
 
 		//psuヘッダ書き込み
 		memset(&psu_header, 0, sizeof(PSU_HEADER));
-		psu_header.attr = 0x8427;
+		psu_header.attr = file->attr;
 		psu_header.size = n;
+		memcpy(&psu_header.createtime, &file->createtime, 8);
+		memcpy(&psu_header.modifytime, &file->modifytime, 8);
 		strcpy(psu_header.name, file->name);
 		if(hddout){
 			outsize = fileXioWrite(out_fd, (char*)&psu_header, sizeof(PSU_HEADER));
@@ -2392,6 +2473,8 @@ int psuExport(const char *path, const FILEINFO *file)
 			memset(&psu_header, 0, sizeof(PSU_HEADER));
 			psu_header.attr = mcDir[i].attrFile;	//ファイル属性はメモリーカードと同じにする
 			psu_header.size = mcDir[i].fileSizeByte;
+			memcpy(&psu_header.createtime, &mcDir[i]._create, 8);
+			memcpy(&psu_header.modifytime, &mcDir[i]._modify, 8);
 			strncpy(psu_header.name, mcDir[i].name,32);
 			//ファイルヘッダ書き込み
 			if(hddout){
@@ -2684,9 +2767,10 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 	// ファイルリスト設定
 	if(path[0]==0){
 		for(i=0;i<5;i++){
-			memset(&files[i].modifyTime, 0, sizeof(PS2TIME));
+			memset(&files[i].createtime, 0, sizeof(PS2TIME));
+			memset(&files[i].modifytime, 0, sizeof(PS2TIME));
 			files[i].fileSizeByte = 0;
-			files[i].attr = FIO_S_IFDIR;
+			files[i].attr = MC_ATTR_SUBDIR;
 			if(i==0) strcpy(files[i].name, "mc0:");
 			if(i==1) strcpy(files[i].name, "mc1:");
 			if(i==2) strcpy(files[i].name, "hdd0:");
@@ -2697,9 +2781,10 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 		}
 		nfiles = 5;
 		if(cnfmode==ELF_FILE){
-			memset(&files[5].modifyTime, 0, sizeof(PS2TIME));
+			memset(&files[5].createtime, 0, sizeof(PS2TIME));
+			memset(&files[5].modifytime, 0, sizeof(PS2TIME));
 			files[5].fileSizeByte = 0;
-			files[5].attr = FIO_S_IFDIR;
+			files[5].attr = MC_ATTR_SUBDIR;
 			strcpy(files[5].name, "MISC");
 			files[5].type = TYPE_OTHER;
 			files[5].title[0] = 0;
@@ -2708,12 +2793,13 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 	}
 	else if(!strcmp(path, "MISC/")){
 		for(i=0;i<8;i++){
-			memset(&files[i].modifyTime, 0, sizeof(PS2TIME));
+			memset(&files[i].createtime, 0, sizeof(PS2TIME));
+			memset(&files[i].modifytime, 0, sizeof(PS2TIME));
 			files[i].fileSizeByte = 0;
 			if(i==0)
-				files[i].attr = FIO_S_IFDIR;
+				files[i].attr = MC_ATTR_SUBDIR;
 			else
-				files[i].attr = FIO_S_IFREG;
+				files[i].attr = 0;
 			if(i==0) strcpy(files[i].name, "..");
 			if(i==1) strcpy(files[i].name, "FileBrowser");
 			if(i==2) strcpy(files[i].name, "PS2Browser");
@@ -2729,9 +2815,10 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 	}
 	else{
 		//files[0]を初期化
-		memset(&files[0].modifyTime, 0, sizeof(PS2TIME));
+		memset(&files[0].createtime, 0, sizeof(PS2TIME));
+		memset(&files[0].modifytime, 0, sizeof(PS2TIME));
 		files[0].fileSizeByte = 0;
-		files[0].attr = FIO_S_IFDIR;
+		files[0].attr = MC_ATTR_SUBDIR;
 		strcpy(files[0].name, "..");
 		files[0].title[0] = 0;
 		files[0].type=TYPE_OTHER;
@@ -2740,7 +2827,7 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 		nfiles = getDir(path, &files[1]) + 1;
 		if(strcmp(ext, "*")){	//ファイルマスク
 			for(i=j=1; i<nfiles; i++){
-				if(files[i].attr & FIO_S_IFDIR)
+				if(files[i].attr & MC_ATTR_SUBDIR)
 					files[j++] = files[i];
 				else{
 					p = strrchr(files[i].name, '.');
@@ -2775,7 +2862,7 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 			sjis2ascii(tmp, files[i].title);
 
 			//タイプ取得
-			if(files[i].attr & FIO_S_IFDIR){	//フォルダ
+			if(files[i].attr & MC_ATTR_SUBDIR){	//フォルダ
 				if(ret<0)
 					files[i].type=TYPE_DIR;
 				else if(ret==0)
@@ -2783,7 +2870,7 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 				else if(ret==1)
 					files[i].type=TYPE_PS1SAVE;	//PS1SAVE
 			}
-			else if(files[i].attr & FIO_S_IFREG){	//ファイル
+			else if(!(files[i].attr & MC_ATTR_SUBDIR)){	//ファイル
 				sprintf(fullpath, "%s%s", path, files[i].name);
 				//ELFヘッダを調べる
 				if(!strncmp(path, "mc", 2) || !strncmp(path, "mass", 4)){
@@ -2885,7 +2972,7 @@ void getFilePath(char *out, int cnfmode)
 			else if(new_pad & PAD_TRIANGLE)
 				up=TRUE;
 			else if(new_pad & PAD_CIRCLE){	//change dir
-				if(files[sel].attr & FIO_S_IFDIR){
+				if(files[sel].attr & MC_ATTR_SUBDIR){
 					if(!strcmp(files[sel].name,".."))
 						up=TRUE;
 					else{
@@ -2931,6 +3018,11 @@ void getFilePath(char *out, int cnfmode)
 							sprintf(msg0, "SIZE = %.1f KByte", (double)size/1024);
 						else
 							sprintf(msg0, "SIZE = %d Byte", size);
+						//mcのとき属性表示
+						if(!strncmp(path, "mc", 2) && nmarks==0){
+							sprintf(tmp, " ATTR = %04X", files[sel].attr);
+							strcat(msg0, tmp);
+						}
 					}
 					pushed = FALSE;
 				}
@@ -2949,7 +3041,7 @@ void getFilePath(char *out, int cnfmode)
 			//ELF_FILE ELF選択時
 			if(cnfmode==ELF_FILE){
 				if(new_pad & PAD_CIRCLE) {	//ファイルを決定
-					if(files[sel].attr & FIO_S_IFREG){
+					if(!(files[sel].attr & MC_ATTR_SUBDIR)){
 						char fullpath[MAX_PATH];
 						int ret;
 						sprintf(fullpath, "%s%s", path, files[sel].name);
@@ -2997,7 +3089,7 @@ void getFilePath(char *out, int cnfmode)
 			//FNT_FILE FNT選択時
 			else if(cnfmode==FNT_FILE){
 				if(new_pad & PAD_CIRCLE) {//FNTファイルを決定
-					if(files[sel].attr & FIO_S_IFREG){
+					if(!(files[sel].attr & MC_ATTR_SUBDIR)){
 						sprintf(out, "%s%s", path, files[sel].name);
 						//ヘッダチェック
 						if(checkFONTX2header(out)<0){
@@ -3035,7 +3127,7 @@ void getFilePath(char *out, int cnfmode)
 			//ANY_FILE	ファイラーモード	すべてのファイルが対象
 			else if(cnfmode==ANY_FILE){
 				if(new_pad & PAD_CIRCLE) {
-					if(files[sel].attr & FIO_S_IFREG){	//ファイル
+					if(!(files[sel].attr & MC_ATTR_SUBDIR)){	//ファイル
 						char fullpath[MAX_PATH];
 						int ret;
 						sprintf(fullpath, "%s%s", path, files[sel].name);
@@ -3114,7 +3206,7 @@ void getFilePath(char *out, int cnfmode)
 								sprintf(tmp,"%s",files[sel].title);
 							else{
 								sprintf(tmp,"%s",files[sel].name);
-								if(files[sel].attr & FIO_S_IFDIR)
+								if(files[sel].attr & MC_ATTR_SUBDIR)
 									strcat(tmp,"/");
 							}
 							strcat(tmp, "\n");
@@ -3127,7 +3219,7 @@ void getFilePath(char *out, int cnfmode)
 						if(ret>0){
 							if(nmarks==0){
 								strcpy(tmp, files[sel].name);
-								if(files[sel].attr & FIO_S_IFDIR) strcat(tmp,"/");
+								if(files[sel].attr & MC_ATTR_SUBDIR) strcat(tmp,"/");
 								strcat(tmp, " ");
 								strcat(tmp, lang->filer_deleting);
 								drawMsg(tmp);
@@ -3137,7 +3229,7 @@ void getFilePath(char *out, int cnfmode)
 								for(i=0; i<nfiles; i++){
 									if(marks[i]){
 										strcpy(tmp, files[i].name);
-										if(files[i].attr & FIO_S_IFDIR) strcat(tmp,"/");
+										if(files[i].attr & MC_ATTR_SUBDIR) strcat(tmp,"/");
 										strcat(tmp, " ");
 										strcat(tmp, lang->filer_deleting);
 										drawMsg(tmp);
@@ -3223,12 +3315,17 @@ void getFilePath(char *out, int cnfmode)
 							strcpy(msg0, lang->filer_getsizefailed);
 						}
 						else{
- 							if(size >= 1024*1024)
+							if(size >= 1024*1024)
 								sprintf(msg0, "SIZE = %.1f MByte", (double)size/1024/1024);
 							else if(size >= 1024)
 								sprintf(msg0, "SIZE = %.1f KByte", (double)size/1024);
 							else
 								sprintf(msg0, "SIZE = %d Byte", size);
+							//mcのとき属性表示
+							if(!strncmp(path, "mc", 2) && nmarks==0){
+								sprintf(tmp, " ATTR = %04X", files[sel].attr);
+								strcat(msg0, tmp);
+							}
 						}
 						pushed = FALSE;
 					}
@@ -3395,7 +3492,7 @@ void getFilePath(char *out, int cnfmode)
 				strcpy(tmp,files[top+i].name);	//ファイル名
 
 			//フォルダのときスラッシュつける
-			if((files[top+i].attr & FIO_S_IFDIR)&&(strcmp(files[top+i].name,"..")))
+			if((files[top+i].attr & MC_ATTR_SUBDIR)&&(strcmp(files[top+i].name,"..")))
 				strcat(tmp,"/");
 
 			//ファイル名が長いときは、短くする
@@ -3444,7 +3541,7 @@ void getFilePath(char *out, int cnfmode)
 			else{
 				if(detail==1){	//ファイルサイズ表示
 					int len;
-					if(files[top+i].attr & FIO_S_IFDIR)
+					if(files[top+i].attr & MC_ATTR_SUBDIR)
 						sprintf(tmp,"<DIR>");
 					else{
 						if(files[top+i].fileSizeByte >= 1024*1024)
@@ -3472,12 +3569,12 @@ void getFilePath(char *out, int cnfmode)
 					}
 					else{
 						sprintf(tmp,"%04d/%02d/%02d %02d:%02d:%02d",
-							files[top+i].modifyTime.year,
-							files[top+i].modifyTime.month,
-							files[top+i].modifyTime.day,
-							files[top+i].modifyTime.hour,
-							files[top+i].modifyTime.min,
-							files[top+i].modifyTime.sec);
+							files[top+i].modifytime.year,
+							files[top+i].modifytime.month,
+							files[top+i].modifytime.day,
+							files[top+i].modifytime.hour,
+							files[top+i].modifytime.min,
+							files[top+i].modifytime.sec);
 					}
 					len=strlen(tmp);
 					if(strcmp(files[top+i].name,"..")){

@@ -14,6 +14,7 @@ enum
 	DEF_COLOR7 = ITO_RGBA(0,128,0,0),		//PS2saveƒtƒHƒ‹ƒ_
 	DEF_COLOR8 = ITO_RGBA(128,0,0,0),		//ELFƒtƒ@ƒCƒ‹
 	DEF_COLOR9 = ITO_RGBA(0,128,255,0),		//PS1saveƒtƒHƒ‹ƒ_
+	DEF_COLOR10 = ITO_RGBA(64,64,80,0),		//–³Œø‚Ì•¶ŽšF
 	DEF_SCREEN_X = 160,
 	DEF_SCREEN_Y = 55,
 	DEF_FLICKERCONTROL = TRUE,
@@ -79,6 +80,7 @@ enum
 	COLOR7,
 	COLOR8,
 	COLOR9,
+	COLOR10,
 	TVMODE,
 	INTERLACE,
 	FFMODE,
@@ -187,6 +189,7 @@ void InitScreenSetting(void)
 	setting->color[6] = DEF_COLOR7;
 	setting->color[7] = DEF_COLOR8;
 	setting->color[8] = DEF_COLOR9;
+	setting->color[9] = DEF_COLOR10;
 	setting->screen_x = DEF_SCREEN_X;
 	setting->screen_y = DEF_SCREEN_Y;
 	setting->flickerControl = DEF_FLICKERCONTROL;
@@ -329,6 +332,8 @@ void saveConfig(char *mainMsg)
 	if(cnf_setstr("color_elf_file", tmp)<0) goto error;
 	sprintf(tmp, "%08lX", setting->color[8]);
 	if(cnf_setstr("color_ps1_save", tmp)<0) goto error;
+	sprintf(tmp, "%08lX", setting->color[9]);
+	if(cnf_setstr("color_disable_text", tmp)<0) goto error;
 	//font
 	strcpy(tmp, setting->AsciiFont);
 	if(cnf_setstr("ascii_font", tmp)<0) goto error;
@@ -546,6 +551,8 @@ void loadConfig(char *mainMsg)
 				setting->color[7] = strtoul(tmp, NULL, 16);
 			if(cnf_getstr("color_ps1_save", tmp, "")>=0)
 				setting->color[8] = strtoul(tmp, NULL, 16);
+			if(cnf_getstr("color_disable_text", tmp, "")>=0)
+				setting->color[9] = strtoul(tmp, NULL, 16);
 			//font
 			if(cnf_getstr("ascii_font", tmp, "")>=0)
 				strcpy(setting->AsciiFont, tmp);
@@ -837,7 +844,7 @@ void config_screen(SETTING *setting)
 			else if(new_pad & PAD_DOWN)
 				sel++;
 			else if(new_pad & PAD_LEFT){
-				if(sel>=COLOR1 && sel<=COLOR9){
+				if(sel>=COLOR1 && sel<=COLOR10){
 					sel_x--;
 					if(sel_x<0){
 						sel_x=2;
@@ -850,7 +857,7 @@ void config_screen(SETTING *setting)
 					sel=0;
 			}
 			else if(new_pad & PAD_RIGHT){
-				if(sel>=COLOR1 && sel<=COLOR9){
+				if(sel>=COLOR1 && sel<=COLOR10){
 					sel_x++;
 					if(sel_x>2){
 						sel_x=0;
@@ -866,7 +873,7 @@ void config_screen(SETTING *setting)
 				break;
 			else if(new_pad & PAD_CIRCLE){
 				if(sel==0) break;
-				if(sel>=COLOR1 && sel<=COLOR9){
+				if(sel>=COLOR1 && sel<=COLOR10){
 					r = setting->color[sel-1] & 0xFF;
 					g = setting->color[sel-1] >> 8 & 0xFF;
 					b = setting->color[sel-1] >> 16 & 0xFF;
@@ -944,7 +951,7 @@ void config_screen(SETTING *setting)
 				}
 			}
 			else if(new_pad & PAD_CROSS){	//~
-				if(sel>=COLOR1 && sel<=COLOR9){
+				if(sel>=COLOR1 && sel<=COLOR10){
 					r = setting->color[sel-1] & 0xFF;
 					g = setting->color[sel-1] >> 8 & 0xFF;
 					b = setting->color[sel-1] >> 16 & 0xFF;
@@ -970,58 +977,47 @@ void config_screen(SETTING *setting)
 			}
 			else if(new_pad & PAD_L3){
 				static int preset=0;
-				setting->color[4] = ITO_RGBA(128,128,0,0);	//ƒtƒHƒ‹ƒ_
-				setting->color[5] = ITO_RGBA(128,128,128,0);	//ƒtƒ@ƒCƒ‹
-				setting->color[6] = ITO_RGBA(0,128,0,0);		//PS2saveƒtƒHƒ‹ƒ_
-				setting->color[7] = ITO_RGBA(128,0,0,0);		//ELFƒtƒ@ƒCƒ‹
-				setting->color[8] = ITO_RGBA(0,128,255,0);		//ELFƒtƒ@ƒCƒ‹
 				//ƒfƒtƒHƒ‹ƒg
 				if(preset==0){
-					setting->color[0] = ITO_RGBA(30,30,50,0);		//”wŒi
-					setting->color[1] = ITO_RGBA(64,64,80,0);		//˜g
-					setting->color[2] = ITO_RGBA(192,192,192,0);	//‹­’²‚Ì•¶ŽšF
-					setting->color[3] = ITO_RGBA(128,128,128,0);	//’Êí‚Ì•¶ŽšF
+					setting->color[0] = DEF_COLOR1;
+					setting->color[1] = DEF_COLOR2;
+					setting->color[2] = DEF_COLOR3;
+					setting->color[3] = DEF_COLOR4;
+					setting->color[4] = DEF_COLOR5;
+					setting->color[5] = DEF_COLOR6;
+					setting->color[6] = DEF_COLOR7;
+					setting->color[7] = DEF_COLOR8;
+					setting->color[8] = DEF_COLOR9;
+					setting->color[9] = DEF_COLOR10;
 				}
 				//Unofficial LaunchELF
 				if(preset==1){
-					setting->color[0] = ITO_RGBA(128,128,128,0);		//”wŒi
-					setting->color[1] = ITO_RGBA(64,64,64,0);		//˜g
-					setting->color[2] = ITO_RGBA(96,0,0,0);	//‹­’²‚Ì•¶ŽšF
-					setting->color[3] = ITO_RGBA(0,0,0,0);	//’Êí‚Ì•¶ŽšF
-					setting->color[5] = ITO_RGBA(96,96,96,0);	//ƒtƒ@ƒCƒ‹
-					setting->color[8] = ITO_RGBA(0,96,192,0);	//PS1SAVE
-				}
-				//‰©F‚Ì”wŒi
-				if(preset==2){
-					setting->color[0] = ITO_RGBA(160,160,128,0);		//”wŒi
-					setting->color[1] = ITO_RGBA(128,128,80,0);		//˜g
-					setting->color[2] = ITO_RGBA(0,0,0,0);	//‹­’²‚Ì•¶ŽšF
-					setting->color[3] = ITO_RGBA(64,64,64,0);	//’Êí‚Ì•¶ŽšF
-					setting->color[8] = ITO_RGBA(0,96,192,0);	//PS1SAVE
+					setting->color[0] = ITO_RGBA(128,128,128,0);
+					setting->color[1] = ITO_RGBA(64,64,64,0);
+					setting->color[2] = ITO_RGBA(96,0,0,0);
+					setting->color[3] = ITO_RGBA(0,0,0,0);
+					setting->color[4] = DEF_COLOR5;
+					setting->color[5] = ITO_RGBA(96,96,96,0);
+					setting->color[6] = DEF_COLOR7;
+					setting->color[7] = DEF_COLOR8;
+					setting->color[8] = ITO_RGBA(0,96,192,0);
+					setting->color[9] = ITO_RGBA(64,64,64,0);
 				}
 				//•‚¢”wŒi
-				if(preset==3){
-					setting->color[0] = ITO_RGBA(0,0,0,0);		//”wŒi
-					setting->color[1] = ITO_RGBA(32,32,32,0);		//˜g
-					setting->color[2] = ITO_RGBA(192,192,192,0);	//‹­’²‚Ì•¶ŽšF
-					setting->color[3] = ITO_RGBA(128,128,128,0);	//’Êí‚Ì•¶ŽšF
-				}
-				//—ÎF‚Ì”wŒi
-				if(preset==4){
-					setting->color[0] = ITO_RGBA(0,32,0,0);		//”wŒi
-					setting->color[1] = ITO_RGBA(0,64,0,0);		//˜g
-					setting->color[2] = ITO_RGBA(192,192,192,0);	//‹­’²‚Ì•¶ŽšF
-					setting->color[3] = ITO_RGBA(128,128,128,0);	//’Êí‚Ì•¶ŽšF
-				}
-				//ÔF‚Ì”wŒi
-				if(preset==5){
-					setting->color[0] = ITO_RGBA(32,0,0,0);		//”wŒi
-					setting->color[1] = ITO_RGBA(64,24,24,0);		//˜g
-					setting->color[2] = ITO_RGBA(192,192,192,0);	//‹­’²‚Ì•¶ŽšF
-					setting->color[3] = ITO_RGBA(128,128,128,0);	//’Êí‚Ì•¶ŽšF
+				if(preset==2){
+					setting->color[0] = ITO_RGBA(24,24,24,0);
+					setting->color[1] = ITO_RGBA(64,64,64,0);
+					setting->color[2] = ITO_RGBA(255,128,64,0);
+					setting->color[3] = ITO_RGBA(144,144,144,0);
+					setting->color[4] = DEF_COLOR5;
+					setting->color[5] = DEF_COLOR6;
+					setting->color[6] = DEF_COLOR7;
+					setting->color[7] = DEF_COLOR8;
+					setting->color[8] = DEF_COLOR9;
+					setting->color[9] = ITO_RGBA(64,64,64,0);
 				}
 				preset++;
-				if(preset>5) preset=0;
+				if(preset>2) preset=0;
 			}
 		}
 
@@ -1030,7 +1026,7 @@ void config_screen(SETTING *setting)
 			if(i==0){
 				sprintf(config[i], "..");
 			}
-			else if(i>=COLOR1 && i<=COLOR9){	//COLOR
+			else if(i>=COLOR1 && i<=COLOR10){	//COLOR
 				r = setting->color[i-1] & 0xFF;
 				g = setting->color[i-1] >> 8 & 0xFF;
 				b = setting->color[i-1] >> 16 & 0xFF;
@@ -1043,6 +1039,7 @@ void config_screen(SETTING *setting)
 				if(i==COLOR7) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_ps2save, r, g, b);
 				if(i==COLOR8) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_elffile, r, g, b);
 				if(i==COLOR9) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_ps1save, r, g, b);
+				if(i==COLOR10) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_disabletext, r, g, b);
 			}
 			else if(i==TVMODE){	//TVMODE
 				if(setting->tvmode==0)
@@ -1087,7 +1084,7 @@ void config_screen(SETTING *setting)
 				strcpy(config[i], lang->conf_screensettinginit);
 			}
 		}
-		nList=17;
+		nList=18;
 
 		// ƒŠƒXƒg•\Ž¦—p•Ï”‚Ì³‹K‰»
 		if(top > nList-MAX_ROWS)	top=nList-MAX_ROWS;
@@ -1112,7 +1109,7 @@ void config_screen(SETTING *setting)
 				color = setting->color[3];
 			//ƒJ[ƒ\ƒ‹•\Ž¦
 			if(top+i == sel){
-				if(sel>=COLOR1 && sel<=COLOR9)
+				if(sel>=COLOR1 && sel<=COLOR10)
 					printXY(">", FONT_WIDTH*21 + FONT_WIDTH*sel_x*8, y, color, TRUE);
 				else
 					printXY(">", x, y, color, TRUE);
@@ -1120,7 +1117,7 @@ void config_screen(SETTING *setting)
 			//ƒŠƒXƒg•\Ž¦
 			printXY(config[top+i], x+FONT_WIDTH*2, y, color, TRUE);
 			//F‚ÌƒvƒŒƒrƒ…[
-			if(top+i>=COLOR1 && top+i<=COLOR9){
+			if(top+i>=COLOR1 && top+i<=COLOR10){
 				itoSprite(setting->color[top+i-1],
 					x+FONT_WIDTH*42, y,
 					x+FONT_WIDTH*42+font_h, y+font_h, 0);
@@ -1146,7 +1143,7 @@ void config_screen(SETTING *setting)
 		// ‘€ìà–¾
 		if(sel==0)
 			sprintf(msg1, "›:%s ¢:%s", lang->gen_ok, lang->conf_up);
-		else if(sel>=COLOR1 && sel<=COLOR9)
+		else if(sel>=COLOR1 && sel<=COLOR10)
 			sprintf(msg1, "›:%s ~:%s ¢:%s", lang->conf_add, lang->conf_away, lang->conf_up);
 		else if(sel==TVMODE)
 			sprintf(msg1, "›:%s ¢:%s", lang->conf_change, lang->conf_up);

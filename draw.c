@@ -25,6 +25,8 @@ typedef struct {
 
 //----------------------------------------------------------
 itoGsEnv screen_env;
+uint16 buffer_width;
+uint16 buffer_height;
 
 int initbiosfont=0;
 char *biosfont=NULL;
@@ -106,8 +108,6 @@ unsigned short font_sjis_table[] = {
 0x9840,0x9872
 };
 
-	uint16 buffer_width;
-	uint16 buffer_height;
 //-------------------------------------------------
 // setup ito
 void setupito(int tvmode)
@@ -206,8 +206,6 @@ void setupito(int tvmode)
 	screen_env.vmode			= vmode;
 	
 	itoGsEnvSubmit(&screen_env);
-
-//	itoSetBgColor(setting->color[0]);
 
 	//アルファブレンド
 	itoSetAlphaBlending(

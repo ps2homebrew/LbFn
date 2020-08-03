@@ -33,7 +33,7 @@
 #include "cnf.h"
 
 // バージョン
-#define LBF_VER "LbF v0.63"
+#define LBF_VER "LbF v0.64"
 
 // 垂直スキャンレート
 #define SCANRATE (ITO_VMODE_AUTO==ITO_VMODE_NTSC ? 60:50)
@@ -60,7 +60,7 @@ typedef struct
 	char dirElf[13][MAX_PATH];
 	int timeout;
 	int filename;
-	uint64 color[9];
+	uint64 color[10];
 	int screen_x;
 	int screen_y;
 	int discControl;
@@ -106,12 +106,6 @@ enum	//SetFontMargin GetFontMargin
 	KANJI_FONT_MARGIN_LEFT
 };
 
-enum	//GetCurrentPos
-{
-	CURRENTPOS_X = 0,
-	CURRENTPOS_Y
-};
-
 enum	//GetFontSize
 {
 	ASCII_FONT_WIDTH = 0,
@@ -120,6 +114,13 @@ enum	//GetFontSize
 	KANJI_FONT_HEIGHT
 };
 
+/*
+enum	//GetCurrentPos
+{
+	CURRENTPOS_X = 0,
+	CURRENTPOS_Y
+};
+*/
 extern itoGsEnv screen_env;
 extern int SCREEN_WIDTH;
 extern int SCREEN_HEIGHT;
