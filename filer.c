@@ -2101,7 +2101,7 @@ int psuImport(const char *path, const FILEINFO *file)
 			// ‘€ìà–¾
 			x = FONT_WIDTH*1;
 			y = SCREEN_MARGIN+(MAX_ROWS+4)*FONT_HEIGHT;
-			itoSprite(setting->color[COLOR_TEXT],
+			itoSprite(setting->color[COLOR_BACKGROUND],
 				0, y,
 				SCREEN_WIDTH, y+FONT_HEIGHT, 0);
 			sprintf(tmp,"›:%s ~:%s", lang->gen_ok, lang->gen_cancel);
@@ -2386,7 +2386,7 @@ int psuExport(const char *path, const FILEINFO *file)
 			// •`‰æŠJŽn
 			drawDialogTmp(dialog_x, dialog_y,
 				dialog_x+dialog_width, dialog_y+dialog_height,
-				setting->color[COLOR_TEXT], setting->color[COLOR_FRAME]);
+				setting->color[COLOR_BACKGROUND], setting->color[COLOR_FRAME]);
 			drawFrame(dialog_x+FONT_WIDTH, dialog_y+FONT_HEIGHT*4,
 				dialog_x+dialog_width-FONT_WIDTH, dialog_y+FONT_HEIGHT*14, setting->color[COLOR_FRAME]);
 			//
@@ -2428,7 +2428,7 @@ int psuExport(const char *path, const FILEINFO *file)
 			// ‘€ìà–¾
 			x = FONT_WIDTH*1;
 			y = SCREEN_MARGIN+(MAX_ROWS+4)*FONT_HEIGHT;
-			itoSprite(setting->color[COLOR_TEXT],
+			itoSprite(setting->color[COLOR_BACKGROUND],
 				0, y,
 				SCREEN_WIDTH, y+FONT_HEIGHT, 0);
 			sprintf(tmp,"›:%s ~:%s", lang->gen_ok, lang->gen_cancel);
