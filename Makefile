@@ -1,7 +1,7 @@
 #------------------------------------
 LIBITO=$(PS2DEV)\libito
 PS2ETH=$(PS2DEV)\ps2eth
-PS2_IP=192.168.11.10
+PS2_IP=192.168.0.10
 
 #------------------------------------
 #psbファイル実行機能の有無
@@ -12,7 +12,7 @@ PS2_IP=192.168.11.10
 
 
 #------------------------------------
-EE_BIN = LbF.ELF
+EE_BIN = LbFn.ELF
 
 EE_OBJS = main.o pad.o config.o elf.o draw.o loader.o  filer.o cd.o language.o cnf.o\
 	poweroff.o iomanx.o filexio.o ps2atad.o ps2dev9.o ps2hdd.o ps2fs.o\

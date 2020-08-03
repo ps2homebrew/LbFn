@@ -892,6 +892,10 @@ void RunElf(const char *path)
 		p = strchr(party, '/');
 		sprintf(fullpath, "pfs0:%s", p);
 		*p = 0;
+		if(checkELFheader(fullpath)!=1){
+			sprintf(mainMsg, "%s%s", path, lang->main_notfound);
+			return;
+		}
 	}
 	else if(!strncmp(path, "cdfs", 4)){
 		party[0] = 0;
@@ -935,6 +939,16 @@ void RunElf(const char *path)
 			getIpConfig();	//リロード
 			mainMsg[0] = 0;
 			loadFtpdModules();
+			return;
+		}
+		else if(!stricmp(path, "MISC/DiscStop")){
+			loadCdModules();
+			CDVD_Stop();
+			strcpy(mainMsg, lang->main_stopdisc);
+			return;
+		}
+		else if(!stricmp(path, "MISC/McFormat")){
+			FormatMemoryCard();
 			return;
 		}
 		else if(!stricmp(path, "MISC/PowerOff")){
@@ -1103,16 +1117,18 @@ void LaunchMain(void)
 			}
 		}
 		else{	//mode==DPAD_MISC
-			nList=7;
+			nList=9;
 			for(i=0; i<nList; i++){
 				strcpy(tmp, "         ");
 				if(i==0) strcpy(dummyElf, "MISC/FileBrowser");
 				if(i==1) strcpy(dummyElf, "MISC/PS2Browser");
 				if(i==2) strcpy(dummyElf, "MISC/PS2Disc");
 				if(i==3) strcpy(dummyElf, "MISC/PS2Ftpd");
-				if(i==4) strcpy(dummyElf, "MISC/PowerOff");
-				if(i==5) strcpy(dummyElf, "MISC/INFO");
-				if(i==6) strcpy(dummyElf, "MISC/CONFIG");
+				if(i==4) strcpy(dummyElf, "MISC/DiscStop");
+				if(i==5) strcpy(dummyElf, "MISC/McFormat");
+				if(i==6) strcpy(dummyElf, "MISC/PowerOff");
+				if(i==7) strcpy(dummyElf, "MISC/INFO");
+				if(i==8) strcpy(dummyElf, "MISC/CONFIG");
 				//ELFのパスのリスト
 				strcpy(elfpath[i], dummyElf);
 				//表示するファイル名
