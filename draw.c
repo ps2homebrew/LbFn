@@ -163,7 +163,7 @@ void setScrTmp(const char *msg0, const char *msg1)
 		color, SCREEN_WIDTH, SCREEN_MARGIN+(MAX_ROWS+3.5)*FONT_HEIGHT, 0);	
 
 	// ‘€ìà–¾
-	printXY(msg1, FONT_WIDTH*2, SCREEN_MARGIN+(MAX_ROWS+4)*FONT_HEIGHT, setting->color[3], TRUE);
+	printXY(msg1, FONT_WIDTH*1, SCREEN_MARGIN+(MAX_ROWS+4)*FONT_HEIGHT, setting->color[3], TRUE);
 }
 
 //-------------------------------------------------

@@ -33,7 +33,7 @@
 #include "cnf.h"
 
 // バージョン
-#define LBF_VER "LbF v0.60"
+#define LBF_VER "LbF v0.61"
 
 // 垂直スキャンレート
 #define SCANRATE (ITO_VMODE_AUTO==ITO_VMODE_NTSC ? 60:50)
@@ -62,7 +62,7 @@ typedef struct
 	char dirElf[13][MAX_PATH];
 	int timeout;
 	int filename;
-	uint64 color[8];
+	uint64 color[9];
 	int screen_x;
 	int screen_y;
 	int discControl;

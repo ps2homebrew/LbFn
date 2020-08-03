@@ -1,6 +1,6 @@
 #include "launchelf.h"
 
-#define NUM_CNF_KEY 44
+#define NUM_CNF_KEY 45
 //設定ファイルのキー
 const char *cnf_keyname[NUM_CNF_KEY] = 
 {
@@ -29,6 +29,7 @@ const char *cnf_keyname[NUM_CNF_KEY] =
 	"color_file",
 	"color_ps2_save",
 	"color_elf_file",
+	"color_ps1_save",
 	//font
 	"ascii_font",
 	"kanji_font",
@@ -68,6 +69,7 @@ enum
 	DEF_COLOR6 = ITO_RGBA(128,128,128,0),	//ファイル
 	DEF_COLOR7 = ITO_RGBA(0,128,0,0),		//PS2saveフォルダ
 	DEF_COLOR8 = ITO_RGBA(128,0,0,0),		//ELFファイル
+	DEF_COLOR9 = ITO_RGBA(0,128,255,0),		//PS1saveフォルダ
 	DEF_SCREEN_X = 160,
 	DEF_SCREEN_Y = 55,
 	DEF_FLICKERCONTROL = TRUE,
@@ -131,6 +133,7 @@ enum
 	COLOR6,
 	COLOR7,
 	COLOR8,
+	COLOR9,
 	INTERLACE,
 	FFMODE,
 	SCREEN_X,
@@ -225,6 +228,7 @@ void InitScreenSetting(void)
 	setting->color[5] = DEF_COLOR6;
 	setting->color[6] = DEF_COLOR7;
 	setting->color[7] = DEF_COLOR8;
+	setting->color[8] = DEF_COLOR9;
 	setting->screen_x = DEF_SCREEN_X;
 	setting->screen_y = DEF_SCREEN_Y;
 	setting->flickerControl = DEF_FLICKERCONTROL;
@@ -338,53 +342,53 @@ void saveConfig(char *mainMsg)
 		if(i>=1 && i<=13)
 			strcpy(tmp, setting->dirElf[i-1]);
 		//color
-		if(i>=14 && i<=21)
+		if(i>=14 && i<=22)
 			sprintf(tmp, "%08lX", setting->color[i-14]);
 		//font
-		if(i==22)
-			strcpy(tmp, setting->AsciiFont);
 		if(i==23)
-			strcpy(tmp, setting->KanjiFont);
+			strcpy(tmp, setting->AsciiFont);
 		if(i==24)
-			sprintf(tmp, "%d", setting->CharMargin);
+			strcpy(tmp, setting->KanjiFont);
 		if(i==25)
-			sprintf(tmp, "%d", setting->LineMargin);
+			sprintf(tmp, "%d", setting->CharMargin);
 		if(i==26)
-			sprintf(tmp, "%d", setting->FontBold);
+			sprintf(tmp, "%d", setting->LineMargin);
 		if(i==27)
-			sprintf(tmp, "%d", setting->AsciiMarginTop);
+			sprintf(tmp, "%d", setting->FontBold);
 		if(i==28)
-			sprintf(tmp, "%d", setting->AsciiMarginLeft);
+			sprintf(tmp, "%d", setting->AsciiMarginTop);
 		if(i==29)
-			sprintf(tmp, "%d", setting->KanjiMarginTop);
+			sprintf(tmp, "%d", setting->AsciiMarginLeft);
 		if(i==30)
+			sprintf(tmp, "%d", setting->KanjiMarginTop);
+		if(i==31)
 			sprintf(tmp, "%d", setting->KanjiMarginLeft);
 		//
-		if(i==31)
-			sprintf(tmp, "%d", setting->screen_x);
 		if(i==32)
-			sprintf(tmp, "%d", setting->screen_y);
+			sprintf(tmp, "%d", setting->screen_x);
 		if(i==33)
-			sprintf(tmp, "%d", setting->flickerControl);
+			sprintf(tmp, "%d", setting->screen_y);
 		if(i==34)
-			sprintf(tmp, "%d", setting->language);
+			sprintf(tmp, "%d", setting->flickerControl);
 		if(i==35)
-			sprintf(tmp, "%d", setting->timeout);
+			sprintf(tmp, "%d", setting->language);
 		if(i==36)
-			sprintf(tmp, "%d", setting->discControl);
+			sprintf(tmp, "%d", setting->timeout);
 		if(i==37)
-			sprintf(tmp, "%d", setting->filename);
+			sprintf(tmp, "%d", setting->discControl);
 		if(i==38)
-			sprintf(tmp, "%d", setting->fileicon);
+			sprintf(tmp, "%d", setting->filename);
 		if(i==39)
-			sprintf(tmp, "%d", setting->discPs2saveCheck);
+			sprintf(tmp, "%d", setting->fileicon);
 		if(i==40)
-			sprintf(tmp, "%d", setting->discELFCheck);
+			sprintf(tmp, "%d", setting->discPs2saveCheck);
 		if(i==41)
-			strcpy(tmp, setting->Exportdir);
+			sprintf(tmp, "%d", setting->discELFCheck);
 		if(i==42)
-			sprintf(tmp, "%d", setting->interlace);
+			strcpy(tmp, setting->Exportdir);
 		if(i==43)
+			sprintf(tmp, "%d", setting->interlace);
+		if(i==44)
 			sprintf(tmp, "%d", setting->ffmode);
 		//
 		ret = cnf_setstr(cnf_keyname[i], tmp);
@@ -524,82 +528,82 @@ void loadConfig(char *mainMsg)
 				if(i>=1 && i<=13)
 					strcpy(setting->dirElf[i-1], tmp);
 				//color
-				if(i>=14 && i<=21)
+				if(i>=14 && i<=22)
 					setting->color[i-14] = strtoul(tmp, NULL, 16);
 				//font
-				if(i==22)
-					strcpy(setting->AsciiFont, tmp);
 				if(i==23)
-					strcpy(setting->KanjiFont, tmp);
+					strcpy(setting->AsciiFont, tmp);
 				if(i==24)
-					setting->CharMargin = atoi(tmp);
+					strcpy(setting->KanjiFont, tmp);
 				if(i==25)
-					setting->LineMargin = atoi(tmp);
+					setting->CharMargin = atoi(tmp);
 				if(i==26)
+					setting->LineMargin = atoi(tmp);
+				if(i==27)
 					setting->FontBold = atoi(tmp);
 					if(setting->FontBold<0 || setting->FontBold>1)
 						setting->FontBold = DEF_FONTBOLD;
-				if(i==27)
-					setting->AsciiMarginTop = atoi(tmp);
 				if(i==28)
-					setting->AsciiMarginLeft = atoi(tmp);
+					setting->AsciiMarginTop = atoi(tmp);
 				if(i==29)
-					setting->KanjiMarginTop = atoi(tmp);
+					setting->AsciiMarginLeft = atoi(tmp);
 				if(i==30)
+					setting->KanjiMarginTop = atoi(tmp);
+				if(i==31)
 					setting->KanjiMarginLeft = atoi(tmp);
 				//
-				if(i==31)
-					setting->screen_x = atoi(tmp);
 				if(i==32)
+					setting->screen_x = atoi(tmp);
+				if(i==33)
 					setting->screen_y = atoi(tmp);
-				if(i==33){
+				if(i==34){
 					setting->flickerControl = atoi(tmp);
 					if(setting->flickerControl<0 || setting->flickerControl>1)
 						setting->flickerControl = DEF_FLICKERCONTROL;
 				}
-				if(i==34){
+				if(i==35){
 					setting->language = atoi(tmp);
 					if(setting->language<0 || setting->flickerControl>=NUM_LANG)
 						setting->language = DEF_LANGUAGE;
 				}
-				if(i==35){
+				if(i==36){
 					setting->timeout = atoi(tmp);
 					if(setting->timeout<0)
 						setting->timeout = DEF_TIMEOUT;
 				}
-				if(i==36){
+				if(i==37){
 					setting->discControl = atoi(tmp);
 					if(setting->discControl<0 || setting->discControl>1)
 						setting->discControl = DEF_DISCCONTROL;
 				}
-				if(i==37){
+				if(i==38){
 					setting->filename = atoi(tmp);
 					if(setting->filename<0 || setting->filename>1)
 						setting->filename = DEF_FILENAME;
 				}
-				if(i==38){
+				if(i==39){
 					setting->fileicon = atoi(tmp);
 					if(setting->fileicon<0 || setting->fileicon>1)
 						setting->fileicon = DEF_FILEICON;
 				}
-				if(i==39){
+				if(i==40){
 					setting->discPs2saveCheck = atoi(tmp);
 					if(setting->discPs2saveCheck<0 || setting->discPs2saveCheck>1)
 						setting->discPs2saveCheck = DEF_DISCPS2SAVECHECK;
 				}
-				if(i==40){
+				if(i==41){
 					setting->discELFCheck = atoi(tmp);
 					if(setting->discELFCheck<0 || setting->discELFCheck>1)
 						setting->discELFCheck = DEF_DISCELFCHECK;
 				}
-				if(i==41)
+				if(i==42)
 					strcpy(setting->Exportdir, tmp);
-				if(i==42){
+				if(i==43){
 					setting->interlace = atoi(tmp);
 					if(setting->interlace<0 || setting->interlace>1)
 						setting->interlace = DEF_INTERLACE;
 				}
-				if(i==43){
+				if(i==44){
 					setting->ffmode = atoi(tmp);
 					if(setting->ffmode<0 || setting->ffmode>1)
 						setting->ffmode = DEF_FFMODE;
@@ -821,7 +825,7 @@ void config_screen(SETTING *setting)
 			else if(new_pad & PAD_DOWN)
 				sel++;
 			else if(new_pad & PAD_LEFT){
-				if(sel>=COLOR1 && sel<=COLOR8){
+				if(sel>=COLOR1 && sel<=COLOR9){
 					sel_x--;
 					if(sel_x<0){
 						sel_x=2;
@@ -834,7 +838,7 @@ void config_screen(SETTING *setting)
 					sel=0;
 			}
 			else if(new_pad & PAD_RIGHT){
-				if(sel>=COLOR1 && sel<=COLOR8){
+				if(sel>=COLOR1 && sel<=COLOR9){
 					sel_x++;
 					if(sel_x>2){
 						sel_x=0;
@@ -850,7 +854,7 @@ void config_screen(SETTING *setting)
 				break;
 			else if(new_pad & PAD_CIRCLE){
 				if(sel==0) break;
-				if(sel>=COLOR1 && sel<=COLOR8){
+				if(sel>=COLOR1 && sel<=COLOR9){
 					r = setting->color[sel-1] & 0xFF;
 					g = setting->color[sel-1] >> 8 & 0xFF;
 					b = setting->color[sel-1] >> 16 & 0xFF;
@@ -896,7 +900,7 @@ void config_screen(SETTING *setting)
 				}
 			}
 			else if(new_pad & PAD_CROSS){	//×
-				if(sel>=COLOR1 && sel<=COLOR8){
+				if(sel>=COLOR1 && sel<=COLOR9){
 					r = setting->color[sel-1] & 0xFF;
 					g = setting->color[sel-1] >> 8 & 0xFF;
 					b = setting->color[sel-1] >> 16 & 0xFF;
@@ -926,6 +930,7 @@ void config_screen(SETTING *setting)
 				setting->color[5] = ITO_RGBA(128,128,128,0);	//ファイル
 				setting->color[6] = ITO_RGBA(0,128,0,0);		//PS2saveフォルダ
 				setting->color[7] = ITO_RGBA(128,0,0,0);		//ELFファイル
+				setting->color[8] = ITO_RGBA(0,128,255,0);		//ELFファイル
 				//デフォルト
 				if(preset==0){
 					setting->color[0] = ITO_RGBA(30,30,50,0);		//背景
@@ -940,13 +945,15 @@ void config_screen(SETTING *setting)
 					setting->color[2] = ITO_RGBA(96,0,0,0);	//強調の文字色
 					setting->color[3] = ITO_RGBA(0,0,0,0);	//通常の文字色
 					setting->color[5] = ITO_RGBA(96,96,96,0);	//ファイル
+					setting->color[8] = ITO_RGBA(0,96,192,0);	//PS1SAVE
 				}
-				//白色の背景
+				//黄色の背景
 				if(preset==2){
 					setting->color[0] = ITO_RGBA(160,160,128,0);		//背景
 					setting->color[1] = ITO_RGBA(128,128,80,0);		//枠
 					setting->color[2] = ITO_RGBA(0,0,0,0);	//強調の文字色
 					setting->color[3] = ITO_RGBA(64,64,64,0);	//通常の文字色
+					setting->color[8] = ITO_RGBA(0,96,192,0);	//PS1SAVE
 				}
 				//黒い背景
 				if(preset==3){
@@ -979,7 +986,7 @@ void config_screen(SETTING *setting)
 			if(i==0){
 				sprintf(config[i], "..");
 			}
-			else if(i>=COLOR1 && i<=COLOR8){	//COLOR
+			else if(i>=COLOR1 && i<=COLOR9){	//COLOR
 				r = setting->color[i-1] & 0xFF;
 				g = setting->color[i-1] >> 8 & 0xFF;
 				b = setting->color[i-1] >> 16 & 0xFF;
@@ -991,6 +998,7 @@ void config_screen(SETTING *setting)
 				if(i==COLOR6) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_file, r, g, b);
 				if(i==COLOR7) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_ps2save, r, g, b);
 				if(i==COLOR8) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_elffile, r, g, b);
+				if(i==COLOR9) sprintf(config[i], "%s:   R:%3d   G:%3d   B:%3d", lang->conf_ps1save, r, g, b);
 			}
 			else if(i==INTERLACE){	//INTERLACE
 				sprintf(config[i], "%s: ", lang->conf_interlace);
@@ -1023,7 +1031,7 @@ void config_screen(SETTING *setting)
 				strcpy(config[i], lang->conf_screensettinginit);
 			}
 		}
-		nList=15;
+		nList=16;
 
 		// リスト表示用変数の正規化
 		if(top > nList-MAX_ROWS)	top=nList-MAX_ROWS;
@@ -1048,7 +1056,7 @@ void config_screen(SETTING *setting)
 				color = setting->color[3];
 			//カーソル表示
 			if(top+i == sel){
-				if(sel>=COLOR1 && sel<=COLOR8)
+				if(sel>=COLOR1 && sel<=COLOR9)
 					printXY(">", FONT_WIDTH*21 + FONT_WIDTH*sel_x*8, y, color, TRUE);
 				else
 					printXY(">", x, y, color, TRUE);
@@ -1056,7 +1064,7 @@ void config_screen(SETTING *setting)
 			//リスト表示
 			printXY(config[top+i], x+FONT_WIDTH*2, y, color, TRUE);
 			//色のプレビュー
-			if(top+i>=COLOR1 && top+i<=COLOR8){
+			if(top+i>=COLOR1 && top+i<=COLOR9){
 				itoSprite(setting->color[top+i-1],
 					x+FONT_WIDTH*42, y,
 					x+FONT_WIDTH*42+font_h, y+font_h, 0);
@@ -1082,7 +1090,7 @@ void config_screen(SETTING *setting)
 		// 操作説明
 		if(sel==0)
 			sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
-		else if(sel>=COLOR1 && sel<=COLOR8)
+		else if(sel>=COLOR1 && sel<=COLOR9)
 			sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_add, lang->conf_away, lang->conf_up);
 		else if(sel==INTERLACE)
 			sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);

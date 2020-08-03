@@ -42,7 +42,8 @@ enum
 	TYPE_DIR,
 	TYPE_FILE,
 	TYPE_PS2SAVE,
-	TYPE_ELF
+	TYPE_ELF,
+	TYPE_PS1SAVE
 };
 
 //menu
@@ -66,18 +67,18 @@ const unsigned char sjis_lookup_81[256] = {
   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,  // 0x10
   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,  // 0x20
   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,  // 0x30
-  ' ', ',', '.', ',', '.', 0xFF,':', ';', '?', '!', 0xFF,0xFF,'ｴ', '`', 0xFF,'^',   // 0x40
-  0xFF,'_', 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,'0', 0xFF,'-', '-', 0xFF,0xFF,  // 0x50
-  0xFF,0xFF,0xFF,0xFF,0xFF,'\'','\'','"', '"', '(', ')', 0xFF,0xFF,'[', ']', '{',   // 0x60
-  0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,'+', '-', 0xFF,'*', 0xFF,  // 0x70
-  '/', '=', 0xFF,'<', '>', 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,'ｰ', 0xFF,0xFF,'ｰ', 0xFF,  // 0x80
-  '$', 0xFF,0xFF,'%', '#', '&', '*', '@', 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,  // 0x90
+   ' ', ',', '.', ',', '.',0xFF, ':', ';', '?', '!',0xFF,0xFF,'\'', '`',0xFF, '^',  // 0x40
+  0xFF, '_',0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF, '-', '-', '-', '/',0xFF,  // 0x50
+  0xFF,0xFF,0xFF,0xFF,0xFF,'\'','\'', '"', '"', '(', ')', '[', ']', '[', ']', '{',  // 0x60
+   '}',0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF, '+', '-',0xFF,'*', 0xFF,  // 0x70
+   '/', '=',0xFF, '<', '>',0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,'\\',  // 0x80
+   '$',0xFF,0xFF, '%', '#', '&', '*', '@',0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,  // 0x90
   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,  // 0xA0
   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,  // 0xB0
-  0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,'&', '|', '!', 0xFF,0xFF,0xFF,0xFF,0xFF,  // 0xC0
+  0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,  // 0xC0
   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,  // 0xD0
   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,  // 0xE0
-  0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,  // 0xF0
+  0xFF,0xFF, '#',0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,  // 0xF0
 };
 const unsigned char sjis_lookup_82[256] = {
   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,  // 0x00
@@ -125,19 +126,28 @@ char* getExtension(const char *path)
 int getHddParty(const char *path, const FILEINFO *file, char *party, char *dir)
 {
 	char fullpath[MAX_PATH], *p;
-	
+
 	if(strncmp(path,"hdd",3)) return -1;
-	
+
+	//fullpathを作成
 	strcpy(fullpath, path);
 	if(file!=NULL){
-		strcat(fullpath, file->name);
-		if(file->attr & FIO_S_IFDIR) strcat(fullpath,"/");
+		strcat(fullpath, file->name);	//
+		if(file->attr & FIO_S_IFDIR)	//フォルダのときスラッシュつける
+			strcat(fullpath,"/");
 	}
-	if((p=strchr(&fullpath[6], '/'))==NULL) return -1;
-	if(dir!=NULL) sprintf(dir, "pfs0:%s", p);
+	//パーティション名がないときはエラー
+	if((p=strchr(&fullpath[6], '/'))==NULL)
+		return -1;
+	//dirにpfs0:から始まるパスをコピー 例:pfs0:/BOOT.ELF
+	if(dir!=NULL)
+		sprintf(dir, "pfs0:%s", p);
+	//パスをパーティション名までにする
 	*p=0;
-	if(party!=NULL) sprintf(party, "hdd0:%s", &fullpath[6]);
-	
+	//partyにhdd0:とパーティション名をコピー 例:hdd0:__boot
+	if(party!=NULL)
+		sprintf(party, "hdd0:%s", &fullpath[6]);
+
 	return 0;
 }
 
@@ -145,13 +155,17 @@ int getHddParty(const char *path, const FILEINFO *file, char *party, char *dir)
 // パーティションのマウント
 int mountParty(const char *party)
 {
+	//マウントしていたら番号を返す
 	if(!strcmp(party, mountedParty[0]))
 		return 0;
 	else if(!strcmp(party, mountedParty[1]))
 		return 1;
-	
-	fileXioUmount("pfs0:"); mountedParty[0][0]=0;
-	if(fileXioMount("pfs0:", party, FIO_MT_RDWR) < 0) return -1;
+
+	//マウントしていないときpfs0にマウント
+	fileXioUmount("pfs0:");
+	mountedParty[0][0]=0;
+	if(fileXioMount("pfs0:", party, FIO_MT_RDWR) < 0)
+		return -1;
 	strcpy(mountedParty[0], party);
 	return 0;
 }
@@ -193,7 +207,7 @@ int ynDialog(const char *message, int defaultsel)
 	dh = FONT_HEIGHT*(n+2)+y_margin*2;	//ダイアログの高さ
 	dx = (SCREEN_WIDTH-dw)/2;			//ダイアログのx
 	dy = (SCREEN_HEIGHT-dh)/2;			//ダイアログのy
-	
+
 	while(1){
 		waitPadReady(0, 0);
 		if(readpad()){
@@ -286,7 +300,7 @@ void MessageDialog(const char *message)
 	dh = FONT_HEIGHT*(n+2)+y_margin*2;	//ダイアログの高さ
 	dx = (SCREEN_WIDTH-dw)/2;			//ダイアログのx
 	dy = (SCREEN_HEIGHT-dh)/2;			//ダイアログのy
-	
+
 	while(1){
 		waitPadReady(0, 0);
 		if(readpad()){
@@ -319,7 +333,7 @@ int cmpFile(FILEINFO *a, FILEINFO *b)
 {
 	unsigned char *p, ca, cb;
 	int i, n, ret, aElf=FALSE, bElf=FALSE, t=title;
-	
+
 	if(a->attr==b->attr){
 		if(a->attr & FIO_S_IFREG){
 			p = strrchr(a->name, '.');
@@ -350,7 +364,7 @@ int cmpFile(FILEINFO *a, FILEINFO *b)
 		}
 		return 0;
 	}
-	
+
 	if(a->attr & FIO_S_IFDIR)	return -1;
 	else						return 1;
 }
@@ -358,7 +372,7 @@ void sort(FILEINFO *a, int left, int right)
 {
 	FILEINFO tmp, pivot;
 	int i, p;
-	
+
 	if (left < right) {
 		pivot = a[left];
 		p = left;
@@ -384,13 +398,13 @@ int readMC(const char *path, FILEINFO *info, int max)
 	static mcTable mcDir[MAX_ENTRY] __attribute__((aligned(64)));
 	char dir[MAX_PATH];
 	int i, j, ret;
-	
+
 	mcSync(0,NULL,NULL);
-	
+
 	strcpy(dir, &path[4]); strcat(dir, "*");
 	mcGetDir(path[2]-'0', 0, dir, 0, MAX_ENTRY-2, mcDir);
 	mcSync(0, NULL, &ret);
-	
+
 	for(i=j=0; i<ret; i++)
 	{
 		if(mcDir[i].attrFile & MC_ATTR_SUBDIR &&
@@ -411,7 +425,7 @@ int readMC(const char *path, FILEINFO *info, int max)
 		info[j].modifyTime.year = mcDir[i]._modify.year;
 		j++;
 	}
-	
+
 	return j;
 }
 
@@ -422,13 +436,13 @@ int readCD(const char *path, FILEINFO *info, int max)
 	static struct TocEntry TocEntryList[MAX_ENTRY];
 	char dir[MAX_PATH];
 	int i, j, n;
-	
+
 	loadCdModules();
-	
+
 	strcpy(dir, &path[5]);
 	CDVD_FlushCache();
 	n = CDVD_GetDir(dir, NULL, CDVD_GET_FILES_AND_DIRS, TocEntryList, MAX_ENTRY, dir);
-	
+
 	for(i=j=0; i<n; i++)
 	{
 		if(TocEntryList[i].fileProperties & 0x02 &&
@@ -444,7 +458,7 @@ int readCD(const char *path, FILEINFO *info, int max)
 		memset(&info[j].modifyTime, 0, sizeof(PS2TIME)); //取得できない
 		j++;
 	}
-	
+
 	return j;
 }
 
@@ -454,7 +468,7 @@ void setPartyList(void)
 {
 	iox_dirent_t dirEnt;
 	int hddFd;
-	
+
 	nparties=0;
 	
 	if((hddFd=fileXioDopen("hdd0:")) < 0)
@@ -470,7 +484,6 @@ void setPartyList(void)
 			continue;
 		if(!strncmp(dirEnt.name, "__", 2) && strcmp(dirEnt.name, "__boot"))
 			continue;
-		
 		strcpy(parties[nparties++], dirEnt.name);
 	}
 	fileXioDclose(hddFd);
@@ -483,12 +496,12 @@ int readHDD(const char *path, FILEINFO *info, int max)
 	iox_dirent_t dirbuf;
 	char party[MAX_PATH], dir[MAX_PATH];
 	int i=0, fd, ret;
-	
+
 	if(nparties==0){
 		loadHddModules();
 		setPartyList();
 	}
-	
+
 	if(!strcmp(path, "hdd0:/")){
 		for(i=0; i<nparties; i++){
 			strcpy(info[i].name, parties[i]);
@@ -498,19 +511,19 @@ int readHDD(const char *path, FILEINFO *info, int max)
 		}
 		return nparties;
 	}
-	
+
 	getHddParty(path, NULL, party, dir);
 	ret = mountParty(party);
 	if(ret<0) return 0;
 	dir[3] = ret+'0';
-	
+
 	if((fd=fileXioDopen(dir)) < 0) return 0;
-	
+
 	while(fileXioDread(fd, &dirbuf)){
 		if(dirbuf.stat.mode & FIO_S_IFDIR &&
 		(!strcmp(dirbuf.name, ".") || !strcmp(dirbuf.name, "..")))
 			continue;
-		
+
 		info[i].attr = dirbuf.stat.mode;
 		strcpy(info[i].name, dirbuf.name);
 		info[i].fileSizeByte = dirbuf.stat.size;
@@ -524,9 +537,9 @@ int readHDD(const char *path, FILEINFO *info, int max)
 		i++;
 		if(i==max) break;
 	}
-	
+
 	fileXioDclose(fd);
-	
+
 	return i;
 }
 
@@ -579,7 +592,7 @@ int getDir(const char *path, FILEINFO *info)
 {
 	int max=MAX_ENTRY-2;
 	int n;
-	
+
 	if(!strncmp(path, "mc", 2))
 		n=readMC(path, info, max);
 	else if(!strncmp(path, "hdd", 3))
@@ -590,7 +603,7 @@ int getDir(const char *path, FILEINFO *info)
 		n=readCD(path, info, max);
 	else
 		return 0;
-	
+
 	return n;
 }
 
@@ -600,55 +613,118 @@ int getGameTitle(const char *path, const FILEINFO *file, char *out)
 {
 	iox_dirent_t dirEnt;
 	char party[MAX_NAME], dir[MAX_PATH];
-	int fd=-1, dirfd=-1, size, hddin=FALSE, ret;
-	
-	if(file->attr & FIO_S_IFREG) return -1;
+	int fd=-1, hddin=FALSE, ret, dirfd=-1;//, size
+
+	//ルートかパーティションリスト
 	if(path[0]==0 || !strcmp(path, "hdd0:/")) return -1;
-	
+	//フルパス
 	if(!strncmp(path, "hdd", 3)){
 		getHddParty(path, file, party, dir);
 		ret = mountParty(party);
 		if(ret<0) return -1;
 		dir[3]=ret+'0';
 		hddin=TRUE;
-	}else
-		sprintf(dir, "%s%s/", path, file->name);
-	
-	ret = -1;
-	if(hddin){
-		if((dirfd=fileXioDopen(dir)) < 0) goto error;
-		while(fileXioDread(dirfd, &dirEnt)){
-			if(dirEnt.stat.mode & FIO_S_IFREG &&
-			 !strcmp(dirEnt.name, "icon.sys")){
-				strcat(dir, "icon.sys");
-				if((fd=fileXioOpen(dir, O_RDONLY, fileMode)) < 0)
-					goto error;
-				if((size=fileXioLseek(fd, 0, SEEK_END)) <= 0x100)
-					goto error;
-				fileXioLseek(fd, 0xC0, SEEK_SET);
-				fileXioRead(fd, out, 16*4);
-				out[16*4] = 0;
-				fileXioClose(fd); fd=-1;
-				ret=0;
-				break;
-			}
-		}
-		fileXioDclose(dirfd); dirfd=-1;
 	}
 	else{
-		strcat(dir, "icon.sys");
-		if((fd=fioOpen(dir, O_RDONLY)) < 0) goto error;
-		if((size=fioLseek(fd, 0, SEEK_END)) <= 0x100) goto error;
-		fioLseek(fd, 0xC0, SEEK_SET);
-		fioRead(fd, out, 16*4);
-		out[16*4] = 0;
-		fioClose(fd); fd=-1;
-		ret=0;
+		sprintf(dir, "%s%s", path, file->name);
+		if(file->attr & FIO_S_IFDIR) strcat(dir, "/");
+	}
+
+	ret = -1;
+	if(file->attr & FIO_S_IFREG){
+		//ファイルのときPS1のゲームタイトル取得してみる
+		if(hddin){
+			if((fd=fileXioOpen(dir, O_RDONLY, fileMode)) < 0) goto error;
+			if(fileXioLseek(fd, 0, SEEK_END) < 0x2000) goto error;
+			fileXioLseek(fd, 0, SEEK_SET);
+			fileXioRead(fd, out, 2);
+			if(strncmp(out, "SC", 2)) goto error;
+			fileXioLseek(fd, 4, SEEK_SET);
+			fileXioRead(fd, out, 16*4);
+			out[16*4] = 0;
+			fileXioClose(fd); fd=-1;
+			ret=1;
+		}
+		else{
+			if((fd=fioOpen(dir, O_RDONLY)) < 0) goto error;
+			if(fioLseek(fd, 0, SEEK_END) < 0x2000) goto error;
+			fioLseek(fd, 0, SEEK_SET);
+			fioRead(fd, out, 2);
+			if(strncmp(out, "SC", 2)) goto error;
+			fioLseek(fd, 4, SEEK_SET);
+			fioRead(fd, out, 16*4);
+			out[16*4] = 0;
+			fioClose(fd); fd=-1;
+			ret=1;
+		}
+	}
+	else{
+//	else if(file->attr & FIO_S_IFDIR){
+		//フォルダのときicon.sysからゲームタイトル取得
+		if(hddin){
+			if((dirfd=fileXioDopen(dir)) < 0)
+				goto error;
+			while(fileXioDread(dirfd, &dirEnt)){
+				if(dirEnt.stat.mode & FIO_S_IFREG){
+					if(!strcmp(dirEnt.name, "icon.sys")){
+						strcat(dir, "icon.sys");
+						if((fd=fileXioOpen(dir, O_RDONLY, fileMode)) < 0)
+							goto error;
+						if(fileXioLseek(fd,0,SEEK_END) <= 0x100)
+							goto error;
+						fileXioLseek(fd, 0xC0, SEEK_SET);
+						fileXioRead(fd, out, 16*4);
+						out[16*4] = 0;
+						fileXioClose(fd); fd=-1;
+						ret=0;
+//						break;
+					}
+					else if(!strcmp(dirEnt.name, file->name)){	//PS1
+						char dirps1[MAX_PATH];
+						FILEINFO fi;
+						sprintf(dirps1, "%s%s/", path, file->name);
+						strcpy(fi.name, file->name);
+						fi.attr = FIO_S_IFREG;
+						if(getGameTitle(dirps1, &fi, out)>=0)
+							ret=1;
+						else
+							out[0]=0;
+//						break;
+					}
+				}
+			}
+			fileXioDclose(dirfd); dirfd=-1;
+		}
+		else{
+			strcat(dir, "icon.sys");
+			if((fd=fioOpen(dir, O_RDONLY)) < 0){
+				//icon.sysがないとき
+				char dirps1[MAX_PATH];
+				FILEINFO fi;
+				sprintf(dirps1, "%s%s/", path, file->name);
+				strcpy(fi.name, file->name);
+				fi.attr = FIO_S_IFREG;
+				if(getGameTitle(dirps1, &fi, out)>=0)
+					ret=1;
+				else
+					out[0]=0;
+			}
+			else{
+				if(fioLseek(fd,0,SEEK_END) <= 0x100) goto error;
+				fioLseek(fd, 0xC0, SEEK_SET);
+				fioRead(fd, out, 16*4);
+				out[16*4] = 0;
+				fioClose(fd); fd=-1;
+				ret=0;
+			}
+		}
 	}
 error:
 	if(fd>=0){
-		if(hddin) fileXioClose(fd);
-		else	  fioClose(fd);
+		if(hddin)
+			fileXioClose(fd);
+		else
+			fioClose(fd);
 	}
 	if(dirfd>=0) fileXioDclose(dirfd);
 	return ret;
@@ -661,7 +737,7 @@ int menu(const char *path, const char *file)
 	uint64 color;
 	char enable[NUM_MENU], tmp[MAX_PATH];
 	int x, y, i, sel;
-	
+
 	int menu_x = SCREEN_WIDTH-FONT_WIDTH*19;
 	int menu_y = FONT_HEIGHT*4;
 	int menu_w = FONT_WIDTH*15;
@@ -728,7 +804,7 @@ int menu(const char *path, const char *file)
 	// 初期選択項設定
 	for(sel=0; sel<NUM_MENU; sel++)
 		if(enable[sel]==TRUE) break;
-	
+
 	while(1){
 		waitPadReady(0, 0);
 		if(readpad()){
@@ -747,7 +823,7 @@ int menu(const char *path, const char *file)
 			else if(new_pad & PAD_CIRCLE)
 				break;
 		}
-		
+
 		// 描画開始
 		drawDialogTmp(menu_x, menu_y, menu_x+menu_w, menu_y+menu_h, setting->color[0], setting->color[1]);
 		for(i=0,y=74; i<NUM_MENU; i++){
@@ -765,7 +841,7 @@ int menu(const char *path, const char *file)
 				color = setting->color[2];
 			else
 				color = setting->color[3];
-			
+
 			printXY(tmp, menu_x+FONT_WIDTH*2, menu_y+FONT_HEIGHT/2+i*FONT_HEIGHT, color, TRUE);
 			y+=FONT_HEIGHT;
 		}
@@ -773,7 +849,7 @@ int menu(const char *path, const char *file)
 			printXY(">", menu_x+FONT_WIDTH, menu_y+FONT_HEIGHT/2+sel*FONT_HEIGHT, setting->color[2], TRUE);
 
 		// 操作説明
-		x = FONT_WIDTH*2;
+		x = FONT_WIDTH*1;
 		y = SCREEN_MARGIN+(MAX_ROWS+4)*FONT_HEIGHT;
 		itoSprite(setting->color[0],
 			0, y,
@@ -782,7 +858,7 @@ int menu(const char *path, const char *file)
 		printXY(tmp, x, y, setting->color[3], TRUE);
 		drawScr();
 	}
-	
+
 	return sel;
 }
 
@@ -794,7 +870,7 @@ size_t getFileSize(const char *path, const FILEINFO *file)
 	FILEINFO files[MAX_ENTRY];
 	char dir[MAX_PATH], party[MAX_NAME];
 	int nfiles, i, ret, fd;
-	
+
 	if(file->attr & FIO_S_IFDIR){
 		sprintf(dir, "%s%s/", path, file->name);
 		// 対象フォルダ内の全ファイル・フォルダサイズを合計
@@ -835,7 +911,7 @@ int delete(const char *path, const FILEINFO *file)
 	FILEINFO files[MAX_ENTRY];
 	char party[MAX_NAME], dir[MAX_PATH], hdddir[MAX_PATH];
 	int nfiles, i, ret;
-	
+
 	// パーティションマウント
 	if(!strncmp(path, "hdd", 3)){
 		getHddParty(path,file,party,hdddir);
@@ -844,7 +920,7 @@ int delete(const char *path, const FILEINFO *file)
 		hdddir[3] = ret+'0';
 	}
 	sprintf(dir, "%s%s", path, file->name);
-	
+
 	if(file->attr & FIO_S_IFDIR){
 		strcat(dir,"/");
 		// 対象フォルダ内の全ファイル・フォルダを削除
@@ -889,22 +965,22 @@ int Rename(const char *path, const FILEINFO *file, const char *name)
 {
 	char party[MAX_NAME], oldPath[MAX_PATH], newPath[MAX_PATH];
 	int ret=0;
-	
+
 	if(!strncmp(path, "hdd", 3)){
 		sprintf(party, "hdd0:%s", &path[6]);
 		*strchr(party, '/')=0;
 		sprintf(oldPath, "pfs0:%s", strchr(&path[6], '/')+1);
 		sprintf(newPath, "%s%s", oldPath, name);
 		strcat(oldPath, file->name);
-		
+
 		ret = mountParty(party);
 		if(ret<0) return -1;
 		oldPath[3] = newPath[3] = ret+'0';
-		
+
 		ret=fileXioRename(oldPath, newPath);
 	}else
 		return -1;
-	
+
 	return ret;
 }
 
@@ -914,7 +990,7 @@ int newdir(const char *path, const char *name)
 {
 	char party[MAX_NAME], dir[MAX_PATH];
 	int ret=0;
-	
+
 	if(!strncmp(path, "hdd", 3)){
 		getHddParty(path,NULL,party,dir);
 		ret = mountParty(party);
@@ -935,7 +1011,7 @@ int newdir(const char *path, const char *name)
 		strcat(dir, name);
 		ret = fioMkdir(dir);
 	}
-	
+
 	return ret;
 }
 
@@ -969,61 +1045,76 @@ int copy(const char *outPath, const char *inPath, FILEINFO file, int n)
 	sprintf(out, "%s%s", outPath, file.name);
 	sprintf(in, "%s%s", inPath, file.name);
 	
-	// 入力パスの設定とパーティションのマウント。
+	//入力パスのパーティションがマウントしているかチェックする
 	if(!strncmp(inPath, "hdd", 3)){
 		hddin = TRUE;
 		getHddParty(inPath, &file, inParty, in);
 		if(!strcmp(inParty, mountedParty[0]))
-			pfsin=0;
+			pfsin=0;	//pfs0にマウントしている
 		else if(!strcmp(inParty, mountedParty[1]))
-			pfsin=1;
+			pfsin=1;	//pfs1にマウントしている
 		else
-			pfsin=-1;
+			pfsin=-1;	//マウントしていない
 	}
-	// 出力パスの設定とパーティションのマウント。
+	//出力パスのパーティションがマウントしているかチェックする
 	if(!strncmp(outPath, "hdd", 3)){
 		hddout = TRUE;
 		getHddParty(outPath, &file, outParty, out);
 		if(!strcmp(outParty, mountedParty[0]))
-			pfsout=0;
+			pfsout=0;	//pfs0にマウントしている
 		else if(!strcmp(outParty, mountedParty[1]))
-			pfsout=1;
+			pfsout=1;	//pfs1にマウントしている
 		else
-			pfsout=-1;
+			pfsout=-1;	//マウントしていない
 	}
-	//入力パスがHDDのときマウント
+
+	//入力パスの設定とマウント
 	if(hddin){
-		if(pfsin<0){
-			if(pfsout==0) pfsin=1;
-			else		  pfsin=0;
+		if(pfsin<0){	//マウントしていないとき
+			if(pfsout==0)
+				pfsin=1;	//マウントする番号
+			else
+				pfsin=0;	//マウントする番号
+			//アンマウント
 			sprintf(tmp, "pfs%d:", pfsin);
-			if(mountedParty[pfsin][0]!=0)
-				fileXioUmount(tmp); mountedParty[pfsin][0]=0;
+			if(mountedParty[pfsin][0]!=0){
+				fileXioUmount(tmp);
+				mountedParty[pfsin][0]=0;
+			}
+			//マウント
 			printf("%s mounting\n", inParty);
-			if(fileXioMount(tmp, inParty, FIO_MT_RDWR) < 0) return -1;
+			if(fileXioMount(tmp, inParty, FIO_MT_RDWR) < 0)
+				return -1;
 			strcpy(mountedParty[pfsin], inParty);
 		}
-		in[3]=pfsin+'0';
+		in[3]=pfsin+'0';	//入力パス
 	}
 	else
-		sprintf(in, "%s%s", inPath, file.name);
-	//出力パスがHDDのときマウント
+		sprintf(in, "%s%s", inPath, file.name);	//入力パス
+	//出力パスの設定とマウント
 	if(hddout){
-		if(pfsout<0){
-			if(pfsin==0) pfsout=1;
-			else		 pfsout=0;
+		if(pfsout<0){	//マウントしていないとき
+			if(pfsin==0)
+				pfsout=1;	//マウントする番号
+			else
+				pfsout=0;	//マウントする番号
+			//アンマウント
 			sprintf(tmp, "pfs%d:", pfsout);
-			if(mountedParty[pfsout][0]!=0)
-				fileXioUmount(tmp); mountedParty[pfsout][0]=0;
-			if(fileXioMount(tmp, outParty, FIO_MT_RDWR) < 0) return -1;
+			if(mountedParty[pfsout][0]!=0){
+				fileXioUmount(tmp);
+				mountedParty[pfsout][0]=0;
+			}
+			//マウント
 			printf("%s mounting\n", outParty);
+			if(fileXioMount(tmp, outParty, FIO_MT_RDWR) < 0)
+				return -1;
 			strcpy(mountedParty[pfsout], outParty);
 		}
-		out[3]=pfsout+'0';
+		out[3]=pfsout+'0';	//出力パス
 	}
 	else
-		sprintf(out, "%s%s", outPath, file.name);
-	
+		sprintf(out, "%s%s", outPath, file.name);	//出力パス
+
 	// フォルダの場合
 	if(file.attr & FIO_S_IFDIR){
 		// フォルダ作成
@@ -1131,9 +1222,11 @@ int paste(const char *path)
 {
 	char tmp[MAX_PATH];
 	int i, ret=-1;
-	
+
+	//コピー先とコピー元が同じ
 	if(!strcmp(path,clipPath)) return -1;
-	
+
+	//ペースト処理
 	for(i=0; i<nclipFiles; i++){
 		strcpy(tmp, clipFiles[i].name);
 		if(clipFiles[i].attr & FIO_S_IFDIR) strcat(tmp,"/");
@@ -1141,21 +1234,25 @@ int paste(const char *path)
 		strcat(tmp, lang->filer_pasting);
 		drawMsg(tmp);
 		ret=copy(path, clipPath, clipFiles[i], 0);
+		//コピー失敗したら中断
 		if(ret < 0) break;
+		//切り取りフラグが立っていたら削除する
 		if(cut){
 			ret=delete(clipPath, &clipFiles[i]);
+			//削除失敗したら中断
 			if(ret<0) break;
 		}
 	}
-	
+	//HDDアンマウント
 	if(mountedParty[0][0]!=0){
-		fileXioUmount("pfs0:"); mountedParty[0][0]=0;
+		fileXioUmount("pfs0:");
+		mountedParty[0][0]=0;
 	}
-	
 	if(mountedParty[1][0]!=0){
-		fileXioUmount("pfs1:"); mountedParty[1][0]=0;
+		fileXioUmount("pfs1:");
+		mountedParty[1][0]=0;
 	}
-	
+
 	return ret;
 }
 
@@ -1243,7 +1340,6 @@ int psbCommand(void)
 			}
 		}
 		else{
-		
 			file.attr=FIO_S_IFDIR;	//フォルダ
 		}
 	}
@@ -1266,7 +1362,6 @@ int psbCommand(void)
 			}
 		}
 		else{
-		
 			file.attr=FIO_S_IFDIR;	//フォルダ
 		}
 		if(setting->discControl) CDVD_Stop();
@@ -1313,7 +1408,6 @@ int psbCommand(void)
 			}
 		}
 		else{
-		
 			file.attr=FIO_S_IFDIR;	//フォルダ
 			fioDclose(fd);
 		}
@@ -1694,7 +1788,7 @@ int psuImport(const char *path, const FILEINFO *file)
 			psuSize = fioLseek(in_fd, 0, SEEK_END);
 			fioLseek(in_fd, 0, SEEK_SET);
 		}
-	
+
 		//psuヘッダ読み込む
 		if(psuSize<sizeof(PSU_HEADER)){
 			ret=-3;
@@ -1707,7 +1801,7 @@ int psuImport(const char *path, const FILEINFO *file)
 		n = psu_header[0].size;	//ファイル数
 		strcpy(outdir, psu_header[0].name);	//出力するフォルダ名
 		seek = sizeof(PSU_HEADER);	//ファイルのシーク
-	
+
 		//psu_header[0]から読み込む
 		for(i=0;i<n;i++){
 			//ファイルヘッダ読み込む
@@ -1814,7 +1908,7 @@ int psuImport(const char *path, const FILEINFO *file)
 			drawFrame(dialog_x+FONT_WIDTH, dialog_y+FONT_HEIGHT*4,
 				dialog_x+dialog_width-FONT_WIDTH, dialog_y+FONT_HEIGHT*14, setting->color[1]);
 			// psuファイルの情報を表示
-			x = dialog_x+FONT_WIDTH*2;
+			x = dialog_x+FONT_WIDTH*1;
 			y = dialog_y+FONT_HEIGHT*0.5;
 			strcpy(tmp, fullpath);
 			if(strlen(tmp)>46){
@@ -1852,7 +1946,7 @@ int psuImport(const char *path, const FILEINFO *file)
 			printXY(tmp, x, y, setting->color[3], TRUE);
 			printXY(">", x+FONT_WIDTH+FONT_WIDTH*9*outmc, y, setting->color[3], TRUE);
 			// 操作説明
-			x = FONT_WIDTH*2;
+			x = FONT_WIDTH*1;
 			y = SCREEN_MARGIN+(MAX_ROWS+4)*FONT_HEIGHT;
 			itoSprite(setting->color[0],
 				0, y,
@@ -2099,7 +2193,7 @@ int psuExport(const char *path, const FILEINFO *file)
 					break;
 				}
 			}
-	
+
 			// 描画開始
 			drawDialogTmp(dialog_x, dialog_y,
 				dialog_x+dialog_width, dialog_y+dialog_height,
@@ -2107,7 +2201,7 @@ int psuExport(const char *path, const FILEINFO *file)
 			drawFrame(dialog_x+FONT_WIDTH, dialog_y+FONT_HEIGHT*4,
 				dialog_x+dialog_width-FONT_WIDTH, dialog_y+FONT_HEIGHT*14, setting->color[1]);
 			//
-			x = dialog_x+FONT_WIDTH*2;
+			x = dialog_x+FONT_WIDTH*1;
 			y = dialog_y+FONT_HEIGHT*0.5;
 			sprintf(tmp, "%s/", inpath);
 			if(strlen(tmp)>46){
@@ -2143,14 +2237,14 @@ int psuExport(const char *path, const FILEINFO *file)
 			sprintf(tmp,"○:%s ×:%s", lang->gen_ok, lang->gen_cancel);
 			printXY(tmp, x, y, setting->color[3], TRUE);
 			// 操作説明
-			x = FONT_WIDTH*2;
+			x = FONT_WIDTH*1;
 			y = SCREEN_MARGIN+(MAX_ROWS+4)*FONT_HEIGHT;
 			itoSprite(setting->color[0],
 				0, y,
 				SCREEN_WIDTH, y+FONT_HEIGHT, 0);
 			sprintf(tmp,"○:%s ×:%s", lang->gen_ok, lang->gen_cancel);
 			printXY(tmp, x, y, setting->color[3], TRUE);
-	
+
 			drawScr();
 		}
 	}
@@ -2259,7 +2353,7 @@ int psuExport(const char *path, const FILEINFO *file)
 				goto error;
 			}
 		}
-	
+
 		//ファイルヘッダとファイル書き込み
 		dialog_width = FONT_WIDTH*32;
 		dialog_height = FONT_HEIGHT*2;
@@ -2408,7 +2502,7 @@ int keyboard(char *out, int max)
 	KEY_H=(HFONTS+4.5)*FONT_HEIGHT;
 	KEY_X=(SCREEN_WIDTH-KEY_W)/2;
 	KEY_Y=(SCREEN_HEIGHT-KEY_H)/2;
-	
+
 /*
 	//キャレットを拡張子の前に移動
 	p=strrchr(out, '.');
@@ -2549,7 +2643,7 @@ int keyboard(char *out, int max)
 		sprintf(tmp, "%s",lang->gen_cancel);
 		printXY(tmp, KEY_X+KEY_W/2+x, KEY_Y+FONT_HEIGHT*10, setting->color[3], TRUE);
 		// 操作説明
-		x = FONT_WIDTH*2;
+		x = FONT_WIDTH*1;
 		y = SCREEN_MARGIN+(MAX_ROWS+4)*FONT_HEIGHT;
 		itoSprite(setting->color[0],
 			0, y,
@@ -2569,8 +2663,9 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 	char fullpath[MAX_PATH];
 
 	int checkELFret;
-	FILEINFO file;
-	char party[MAX_NAME], dir[MAX_PATH];
+	char party[MAX_NAME];
+//	FILEINFO file;
+//	char dir[MAX_PATH];
 
 	char tmp[16*4+1];
 
@@ -2671,15 +2766,17 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 			if(files[i].attr & FIO_S_IFDIR){	//フォルダ
 				if(ret<0)
 					files[i].type=TYPE_DIR;
-				else
+				else if(ret==0)
 					files[i].type=TYPE_PS2SAVE;	//PS2SAVE
+				else if(ret==1)
+					files[i].type=TYPE_PS1SAVE;	//PS1SAVE
 			}
 			else if(files[i].attr & FIO_S_IFREG){	//ファイル
 				sprintf(fullpath, "%s%s", path, files[i].name);
 				//ELFヘッダを調べる
 				if(!strncmp(path, "mc", 2) || !strncmp(path, "mass", 4)){
 					checkELFret = checkELFheader(fullpath);
-					mountedParty[0][0]=0;
+					//mountedParty[0][0]=0;
 					if(checkELFret==1)
 						files[i].type=TYPE_ELF;
 					else
@@ -2693,17 +2790,19 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 					else
 						files[i].type=TYPE_FILE;
 					//HDDのとき再マウント
-					strcpy(file.name, files[i].name);
-					strcpy(file.title, files[i].title);
-					file.attr=files[i].attr;
-					file.type=files[i].type;
+//					strcpy(file.name, files[i].name);
+//					strcpy(file.title, files[i].title);
+//					file.attr=files[i].attr;
+//					file.type=files[i].type;
 					//
-					getHddParty(path, &file, party, dir);
+//					getHddParty(path, &file, party, dir);
+					getHddParty(path, NULL, party, NULL);
 					mountParty(party);
 				}
 				else if( !strncmp(path, "cdfs", 4)){
 					if(setting->discELFCheck){
 						checkELFret = checkELFheader(fullpath);
+						//mountedParty[0][0]=0;
 						if(checkELFret==1)
 							files[i].type=TYPE_ELF;
 						else
@@ -2719,7 +2818,7 @@ int setFileList(const char *path, const char *ext, FILEINFO *files, int cnfmode)
 		if(nfiles>1)
 			sort(&files[1], 0, nfiles-2);
 	}
-	
+
 	return nfiles;
 }
 
@@ -2848,7 +2947,8 @@ void getFilePath(char *out, int cnfmode)
 							break;
 						}
 						ret = checkELFheader(fullpath);
-						mountedParty[0][0]=0;
+						if(!strncmp(fullpath, "hdd", 3))
+							mountedParty[0][0]=0;
 						if(ret==1){
 							//ELFファイル選択
 							strcpy(out, fullpath);
@@ -2889,7 +2989,6 @@ void getFilePath(char *out, int cnfmode)
 						sprintf(out, "%s%s", path, files[sel].name);
 						//ヘッダチェック
 						if(checkFONTX2header(out)<0){
-							mountedParty[0][0]=0;
 							pushed=FALSE;
 							sprintf(msg0, lang->filer_not_fnt);
 							out[0] = 0;
@@ -2929,7 +3028,8 @@ void getFilePath(char *out, int cnfmode)
 						int ret;
 						sprintf(fullpath, "%s%s", path, files[sel].name);
 						ret = checkELFheader(fullpath);
-						mountedParty[0][0]=0;
+						if(!strncmp(fullpath, "hdd", 3))
+							mountedParty[0][0]=0;
 						if(ret==1){
 							//ELFファイル選択
 							strcpy(out, fullpath);
@@ -3268,18 +3368,19 @@ void getFilePath(char *out, int cnfmode)
 			if(marks[top+i]){
 				printXY("*", x+FONT_WIDTH, y, setting->color[3], TRUE);
 			}
-
 			//ファイルリスト表示
-			if(files[top+i].attr & FIO_S_IFDIR){	//フォルダのとき
-				if(!strcmp(files[top+i].name,".."))
-					strcpy(tmp,"..");
-				else if(title && files[top+i].title[0]!=0)
+			if(title){
+				if(files[top+i].title[0]!=0)
 					strcpy(tmp,files[top+i].title);	//ゲームタイトル
 				else
-					sprintf(tmp, "%s/", files[top+i].name);	//フォルダ名
+					strcpy(tmp,files[top+i].name);	//ファイル名
 			}
 			else
 				strcpy(tmp,files[top+i].name);	//ファイル名
+
+			//フォルダのときスラッシュつける
+			if((files[top+i].attr & FIO_S_IFDIR)&&(strcmp(files[top+i].name,"..")))
+				strcat(tmp,"/");
 
 			//ファイル名が長いときは、短くする
 			if(strlen(tmp)>52){
@@ -3290,15 +3391,24 @@ void getFilePath(char *out, int cnfmode)
 				strcat(tmp,"...");
 			}
 
-			//
+			//ファイル名を表示
 			if(setting->fileicon){
-				//ファイル名とアイコンを表示
+				//アイコンを表示
 				if(files[top+i].type!=TYPE_OTHER){
 					if(files[top+i].type==TYPE_DIR) iconcolor=setting->color[4];
 					else if(files[top+i].type==TYPE_FILE) iconcolor=setting->color[5];
 					else if(files[top+i].type==TYPE_PS2SAVE) iconcolor=setting->color[6];
 					else if(files[top+i].type==TYPE_ELF) iconcolor=setting->color[7];
+					else if(files[top+i].type==TYPE_PS1SAVE) iconcolor=setting->color[8];
 					//アイコン
+					/*アイコンにふちをつける
+					itoSprite(setting->color[1],
+						x+FONT_WIDTH*2, y,
+						x+FONT_WIDTH*2+FONT_WIDTH, y+(FONT_HEIGHT - GetFontMargin(LINE_MARGIN)), 0);
+					itoSprite(iconcolor,
+						x+FONT_WIDTH*2+1, y+1,
+						x+FONT_WIDTH*2+FONT_WIDTH-1, y+(FONT_HEIGHT - GetFontMargin(LINE_MARGIN))-1, 0);
+					*/
 					itoSprite(iconcolor,
 						x+FONT_WIDTH*2, y,
 						x+FONT_WIDTH*2+FONT_WIDTH, y+(FONT_HEIGHT - GetFontMargin(LINE_MARGIN)), 0);

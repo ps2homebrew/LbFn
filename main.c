@@ -983,11 +983,23 @@ void LaunchMain(void)
 			if(cdmode==CDVD_TYPE_NODISK){
 				trayopen = TRUE;
 				strcpy(mainMsg, lang->main_nodisc);
-			}else if(cdmode>=0x01 && cdmode<=0x04){
+			}
+			else if(cdmode>=CDVD_TYPE_DETECT && cdmode<=CDVD_TYPE_DETECT_DVDDUAL){
 				strcpy(mainMsg, lang->main_detectingdisc);
-			}else if(trayopen==TRUE){
-				trayopen=FALSE;
-				strcpy(mainMsg, lang->main_stopdisc);
+			}
+			else if(cdmode>=CDVD_TYPE_UNKNOWN){
+				if(trayopen==TRUE){
+					char Message[MAX_PATH];
+					trayopen=FALSE;
+					strcpy(Message, lang->main_stopdisc);
+					if(cdmode==CDVD_TYPE_PS1CD||cdmode==CDVD_TYPE_PS1CDDA)
+						strcat(Message,"(PS1CD)");
+					else if(cdmode==CDVD_TYPE_PS2CD||cdmode==CDVD_TYPE_PS2CDDA)
+						strcat(Message,"(PS2CD)");
+					else if(cdmode==CDVD_TYPE_PS2DVD)
+						strcat(Message,"(PS2DVD)");
+					strcpy(mainMsg, Message);
+				}
 			}
 		}
 
@@ -1262,7 +1274,6 @@ int main(int argc, char *argv[])
 			*p = '\0';
 		}
 	}
-
 	//フォルダ名がcdrom0から始まるパスのとき変換
 	if(!strncmp(LaunchElfDir, "cdrom0", 6)){
 		char tmp[MAX_PATH];
@@ -1270,9 +1281,12 @@ int main(int argc, char *argv[])
 		p = strchr(tmp, ':');
 		sprintf(LaunchElfDir, "cdfs%s", p);
 	}
+	//SWAPMAGIC
+	if(!strcmp(LaunchElfDir, "mass0:\\SWAPMAGIC\\"))
+		strcpy(LaunchElfDir, "mass:SWAPMAGIC/");
 
 	//ブートしたデバイス	original source altimit
-	boot = 0;
+	boot = UNK_BOOT;
 	if(!strncmp(LaunchElfDir, "cd", 2))
 		boot = CD_BOOT;
 	else if(!strncmp(LaunchElfDir, "mc", 2))
@@ -1285,8 +1299,6 @@ int main(int argc, char *argv[])
 	}
 	else if(!strncmp(LaunchElfDir, "mass", 4))
 		boot = MASS_BOOT;
-	else
-		boot = UNK_BOOT;
 
 	SifInitRpc(0);
 

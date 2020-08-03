@@ -113,6 +113,7 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_file, "FILE          ");
 		strcpy(lang->conf_ps2save, "PS2 SAVE      ");
 		strcpy(lang->conf_elffile, "ELF FILE      ");
+		strcpy(lang->conf_ps1save, "PS1 SAVE      ");
 		strcpy(lang->conf_interlace, "INTERLACE");
 		strcpy(lang->conf_ffmode, "FFMODE");
 		strcpy(lang->conf_ffmode_field, "FIELD");
@@ -213,8 +214,8 @@ void SetLanguage(const int langID)
 		strcpy(lang->filer_importfailed, "インポート失敗しました");
 		strcpy(lang->filer_importto, "インポートした場所");
 		strcpy(lang->filer_keyboard_hint, "○:決定 ×:削除 L1:左へ R1:右へ");
-		strcpy(lang->filer_anyfile_hint1, "○:決定 △:上へ ×:マーク □:マーク反転 R1:メニュー");
-		strcpy(lang->filer_anyfile_hint2, "○:決定 △:上へ ×:マーク □:マーク反転 R1:メニュー");
+		strcpy(lang->filer_anyfile_hint1, "○:決定 △:上へ ×:マーク □:マーク反転 L1:タイトル R1:メニュー");
+		strcpy(lang->filer_anyfile_hint2, "○:決定 △:上へ ×:マーク □:マーク反転 L1:タイトル R1:メニュー");
 		strcpy(lang->filer_elffile_hint1, "○:決定 ×:キャンセル △:上へ □:*->ELF");
 		strcpy(lang->filer_elffile_hint2, "○:決定 ×:キャンセル △:上へ □:ELF->*");
 		strcpy(lang->filer_fntfile_hint1, "○:決定 ×:キャンセル △:上へ □:*->FNT");
@@ -251,6 +252,7 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_file, "ファイル      ");
 		strcpy(lang->conf_ps2save, "PS2 セーブ    ");
 		strcpy(lang->conf_elffile, "ELF ファイル  ");
+		strcpy(lang->conf_ps1save, "PS1 セーブ    ");
 		strcpy(lang->conf_screen_x, "画面位置 X");
 		strcpy(lang->conf_screen_y, "画面位置 Y");
 		strcpy(lang->conf_interlace, "インターレース");
