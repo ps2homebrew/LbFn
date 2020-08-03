@@ -416,7 +416,7 @@ int menu_player(SUBMENU* data, char *mainMsg, int title)
 						*d ^= 1;
 						break;
 					case type_chr:
-						keyboard(c, data[cc].prms[0]);
+						keyboard(SKBD_ALL, c, data[cc].prms[0]);
 						new_pad = PAD_CIRCLE;
 						break;
 					case type_flt:
@@ -650,7 +650,7 @@ int menu_player(SUBMENU* data, char *mainMsg, int title)
 				}
 				y += FONT_HEIGHT;
 			}
-			strcpy(msg1, lang->fmcb[data[cc].help]);
+			strcpy(msg1, lang->fmcb[data[cs+cy].help]);
 			if (cx > 0) strcpy(msg1, lang->fmcb[59]);
 			if (cs != 0) {
 				strcat(msg1, " \x81\xA2:");
@@ -1083,7 +1083,7 @@ void fmcb_cfg(char *mainMsg)
 	strcpy(LBF_VER, "FMCB Configurator in " LBFN_VER);
 
 	// FREEMCB.CNFの自動読み込み
-	for(i=0;i<3+(boot==HOST_BOOT);i++){
+	for(i=0,k=0;i<3+(boot==HOST_BOOT);i++){
 		k=fmcb_load(fmcbpath[i]);
 		if (k==0) break;
 	}

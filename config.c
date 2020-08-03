@@ -14,6 +14,8 @@ enum
 	DEF_SORT_TYPE = 1,	//0=none 1=filename 2=extension 3=gametitle 4=size 5=timestamp
 	DEF_SORT_DIR = TRUE,
 	DEF_SORT_EXT = TRUE,
+	DEF_GETCRC32 = TRUE,
+	DEF_EXPORTNAME = 3,	//0=normal 1=timestamp 2=crc 3=both
 
 	DEF_CHAR_MARGIN = 2,
 	DEF_LINE_MARGIN = 4,
@@ -154,7 +156,9 @@ enum
 	ELFCHECK,
 	FILEPS2SAVECHECK,
 	FILEELFCHECK,
+	GETSIZECRC32,
 	EXPORTDIR,
+	EXPORTNAME,
 	DEFAULTTITLE,
 	DEFAULTDETAIL,
 	SORT_TYPE,
@@ -412,12 +416,12 @@ int CheckMC(void)
 // GSプリセット値を初期化
 void InitGSREG(void)
 {// 480,576,96,48,275+48=323
-	char src[15][128] = {
+	char src[31][128] = {
 		//"\"NTSC\",640,224,1914,275,3,0,4,640,0,0,640,224,0,448,2,0,1,1,2,0,2,0,0,0,224",
 		"\"NTSC\",640,448,720,480,0x02,1914,275,3,0,4,0,1,0,0,1,2",
 		"\"PAL\",640,512,720,576,0x03,1934,328,3,0,4,0,1,0,0,1,2",
-		"\"480p\",640,448,720,480,0x50,948,275,1,0,4,0,0,0,0,1,2",
-		"\"1080i\",1820,1024,1920,1080,0x51,1194,578,0,0,2,1,1,0,0,0,2",
+		"\"480p\",684,448,720,480,0x50,948,275,1,0,4,0,0,0,0,1,2",
+		"\"1080i\",1824,1024,1920,1080,0x51,1194,578,0,0,2,1,1,0,0,0,2",
 		"\"720p\",1216,684,1280,720,0x52,938,384,0,0,2,1,0,0,0,1,2",
 		"\"CFG0 (NTSC,640x224)\",640,224,640,224,0x02,1914,275,3,0,4,0,1,1,0,1,2",
 		"\"CFG1 (NTSC,832x448)\",832,448,832,448,0x02,1914,275,2,0,4,0,1,0,0,1,2",
@@ -429,18 +433,35 @@ void InitGSREG(void)
 		"\"CFG7 (1080i,1600x448)\",1600,448,1600,448,0x51,1195,578,0,0,2,1,1,1,0,1,2",
 		"\"CFG8 (720p,960x540)\",960,540,960,540,0x52,938,384,0,0,4,0,0,0,0,1,2",
 		"\"CFG9 (720p,1024x640)\",1024,640,1024,640,0x52,938,384,0,0,2,1,0,0,0,1,2",
+		"\"RGB 640x480@60Hz\",640,480,640,480,0x1A,920,258,1,0,4,0,0,0,0,1,2",
+		"\"RGB 640x480@72Hz\",640,480,640,480,0x1B,970,258,1,0,4,0,0,0,0,1,2",
+		"\"RGB 640x480@75Hz\",640,480,640,480,0x1C,1000,258,1,0,4,0,0,0,0,1,2",
+		"\"RGB 640x480@85Hz\",640,480,640,480,0x1D,900,258,1,0,4,0,0,0,0,1,2",
+		"\"RGB 800x600@56Hz\",800,600,800,600,0x2A,1250,325,1,0,4,0,0,0,0,1,2",
+		"\"RGB 800x600@60Hz\",800,600,800,600,0x2B,1265,325,1,0,4,0,0,0,0,1,2",
+		"\"RGB 800x600@72Hz\",800,600,800,600,0x2C,1265,325,1,0,4,0,0,0,0,1,2",
+		"\"RGB 800x600@75Hz\",800,600,800,600,0x2D,1310,325,1,0,4,0,0,0,0,1,2",
+		"\"RGB 800x600@85Hz\",800,600,800,600,0x2E,1300,325,1,0,4,0,0,0,0,1,2",
+		"\"RGB 1024x768@60Hz\",1024,768,1024,768,0x3B,1604,414,1,0,2,1,0,0,0,1,2",
+		"\"RGB 1024x768@70Hz\",1024,768,1024,768,0x3C,778,414,0,0,2,1,0,0,0,1,2",
+		"\"RGB 1024x768@75Hz\",1024,768,1024,768,0x3D,772,414,0,0,2,1,0,0,0,1,2",
+		"\"RGB 1024x768@85Hz\",1024,768,1024,768,0x3E,802,414,0,0,2,1,0,0,0,1,2",
+		"\"RGB 1280x1024@60Hz\",1280,1024,1280,1024,0x4A,990,552,0,0,2,1,0,0,0,0,2",
+		"\"RGB 1280x1024@75Hz\",1280,1024,1280,1024,0x4B,990,552,0,0,2,1,0,0,0,0,2",
+		"\"576p\",684,512,720,576,0x53,976,352,1,0,4,0,0,0,0,1,2",
+		//"name",w,h,w,h,vmode,left,top,magx,magy,psm,dither,interlace,ffmode,vesa, dblbuf,zpsm
 	};
 	int i;
-	
 	for (i=0;i<MAX_GSREG;i++) {
 		gsregs[i].loaded = 0;
 		gsregs[i].name[0] = 0;
 		gsregs[i].width = 0;
 		gsregs[i].height = 0;
 	}
-	for (i=0;i<15;i++) {
+	for (i=0;i<31;i++) {
 		if (src[i][0] == 0) break;
 		strtogsreg(i+1,src[i]);
+		gsregs[i+1].loaded = 1;
 	}
 	if (boot==PCSX_BOOT)
 		for(i=0;i<3;i++)
@@ -680,6 +701,7 @@ int strtogsreg(int num, char *src)
 		printf(",%d", tmpi[j]);
 	printf("\n");
 */	j = 0;
+// 
 	strcpy(gsregs[num].name, tmps[j++]);
 	gsregs[num].width = tmpi[j++];
 	gsregs[num].height = tmpi[j++];
@@ -988,8 +1010,12 @@ void saveConfig(char *mainMsg)
 	if(cnf_setstr("file_ps2save_check", tmp)<0) goto error;
 	sprintf(tmp, "%d", setting->fileELFCheck);
 	if(cnf_setstr("file_elf_check", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->getsizecrc32);
+	if(cnf_setstr("getsizecrc32", tmp)<0) goto error;
 	strcpy(tmp, setting->Exportdir);
 	if(cnf_setstr("export_dir", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->exportname);
+	if(cnf_setstr("exportname", tmp)<0) goto error;
 	sprintf(tmp, "%d", setting->tvmode);
 	if(cnf_setstr("tvmode", tmp)<0) goto error;
 	sprintf(tmp, "%d", setting->defaulttitle);
@@ -1263,8 +1289,12 @@ void loadConfig(char *mainMsg)
 				settingcheck(&setting->filePs2saveCheck, tmp, 0, 1, DEF_FILEPS2SAVECHECK);
 			if(cnf_getstr("file_elf_check", tmp, "")>=0)
 				settingcheck(&setting->fileELFCheck, tmp, 0, 1, DEF_FILEELFCHECK);
+			if(cnf_getstr("getsizecrc32", tmp, "")>=0)
+				settingcheck(&setting->getsizecrc32, tmp, 0, 2, DEF_GETCRC32);
 			if(cnf_getstr("export_dir", tmp, "")>=0)
 				strcpy(setting->Exportdir, tmp);
+			if(cnf_getstr("exportname", tmp, "")>=0)
+				settingcheck(&setting->exportname, tmp, 0, 3, DEF_EXPORTNAME);
 			if(cnf_getstr("tvmode", tmp, "")>=0)
 				settingcheck(&setting->tvmode, tmp, 0, MAX_GSREG-1, DEF_TVMODE);
 			if(cnf_getstr("default_title", tmp, "")>=0)
@@ -1539,6 +1569,20 @@ void ipconfig(char *mainMsg)
 
 //-------------------------------------------------
 //画面モードリスト
+int getromver(void) 
+{
+	int fd;
+	char romver[5];
+	static int ret=0;
+	if (ret) return ret;
+	fd = fioOpen("rom0:ROMVER", O_RDONLY);
+	fioRead(fd, romver, 4);
+	fioClose(fd);
+	romver[4] = 0;
+	ret = atoi(romver);
+	//printf("getromver: [%s] => %d\n", romver, ret);
+	return ret;
+}
 void config_screen_mode(SETTING *setting)
 {
 	char msg0[MAX_PATH], msg1[MAX_PATH];
@@ -1575,7 +1619,7 @@ void config_screen_mode(SETTING *setting)
 				} else if (sel == oldvmode+1) {
 					ret = -1;
 					break;
-				} else if ((sel == 1) || ((gsregs[sel-1].loaded == 1) && drawDarks(1) && (MessageBox(lang->conf_screenmodemsg1, LBF_VER, MB_OKCANCEL) == IDOK))){
+				} else if ((sel == 1) || ((gsregs[sel-1].loaded == 1) && ((gsregs[sel-1].vmode != 0x53) || (getromver() >= 200)) && drawDarks(1) && (MessageBox(lang->conf_screenmodemsg1, LBF_VER, MB_OKCANCEL) == IDOK))){
 					setting->tvmode = sel-1;
 					SetScreenPosVM();
 					itoGsReset();
@@ -1610,7 +1654,7 @@ void config_screen_mode(SETTING *setting)
 		if (redraw) {
 			strcpy(config[0], "..");
 			strcpy(config[1], "AUTO");
-			for(i=1,nList=2;i<=MAX_GSREG;i++){
+			for(i=1,nList=2;i<MAX_GSREG;i++){
 				if (gsregs[i].loaded==1)
 					strcpy(config[nList++], gsregs[i].name);
 			}
@@ -1710,7 +1754,8 @@ void config_screen_edit(SETTING *setting)
 				break;
 			else if(new_pad & PAD_CIRCLE){
 				if (sel==0) break;
-				if ((sel==GSCFG_SCANMODE) && (tvmode <= 5)) {
+				//if ((sel==GSCFG_SCANMODE) && (tvmode <= 5)) {
+				if ((sel==GSCFG_SCANMODE) && ((gsregs[tvmode].width != gsregs[tvmode].defwidth) || (gsregs[tvmode].height != gsregs[tvmode].defheight))) {
 					setting->screen_scan[tvmode]^=1;
 					SetScreenPosVM();
 					setupito(setting->tvmode);
@@ -1858,7 +1903,14 @@ void gsconfig_easy(GSREG *gsregs)
 	char tmp[MAX_PATH];
 	char psmtable[5][6] = {	"32bpp", "24bpp", "16bpp", "8bpp", "4bpp"};
 	char *onoff[3] = {lang->conf_off, lang->conf_on, "FIELD"};
-	char name[64] = "";
+/*	char vmodesrc[22][8] = {
+		"AUTO","NTSC","PAL","480p","576p","1080i","720p",
+		"VGA@60","VGA@72","VGA@75","VGA@85",
+		"SVGA@56","SVGA@60","SVGA@72","SVGA@75","SVGA@85",
+		"XGA@60","XGA@72","XGA@75","XGA@85",
+		"SXGA@60","SXGA@75"
+	};
+*/	char name[64] = "";
 	int maxwidth,maxheight;
 	int totalsize,changed=0,vmoded=0,saved=1;
 	
@@ -3789,11 +3841,15 @@ void config_filer(SETTING *setting)
 					setting->filePs2saveCheck = !setting->filePs2saveCheck;
 				else if(sel==FILEELFCHECK)
 					setting->fileELFCheck = !setting->fileELFCheck;
+				else if(sel==GETSIZECRC32)
+					setting->getsizecrc32 = !setting->getsizecrc32;
 				else if(sel==EXPORTDIR){
 					getFilePath(setting->Exportdir, DIR);
 					if(!strncmp(setting->Exportdir, "cdfs", 2))
 						setting->Exportdir[0]='\0';
 				}
+				else if(sel==EXPORTNAME)
+					setting->exportname = (setting->exportname + 1) & 3;
 				else if(sel==DEFAULTTITLE)
 					setting->defaulttitle = !setting->defaulttitle;
 				else if(sel==DEFAULTDETAIL){
@@ -3845,8 +3901,14 @@ void config_filer(SETTING *setting)
 			else if(i==FILEELFCHECK){	// FILE ELF CHECK
 				sprintf(config[i], "%s: %s", lang->conf_file_elf_check, onoff[setting->fileELFCheck != 0]);
 			}
+			else if(i==GETSIZECRC32){	// 
+				sprintf(config[i], "%s: %s", lang->conf_getsizecrc32, onoff[setting->getsizecrc32 != 0]);
+			}
 			else if(i==EXPORTDIR){	//EXPORT DIR
 				sprintf(config[i], "%s: %s", lang->conf_export_dir, setting->Exportdir);
+			}
+			else if(i==EXPORTNAME){	// EXPORT NAME
+				sprintf(config[i], "%s: %s", lang->conf_exportname, lang->conf_exportnames[setting->exportname & 3]);
 			}
 			else if(i==DEFAULTTITLE){	//DEFAULTTITLE
 				sprintf(config[i], "%s: %s", lang->conf_defaulttitle, onoff[setting->defaulttitle != 0]);
@@ -3927,30 +3989,12 @@ void config_filer(SETTING *setting)
 			// 操作説明
 			if(sel==0)
 				sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
-			else if(sel==FILEICON)
-				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
-			else if(sel==PS2SAVECHECK)
-				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
-			else if(sel==ELFCHECK)
-				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
-			else if(sel==FILEPS2SAVECHECK)
-				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
-			else if(sel==FILEELFCHECK)
-				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
 			else if(sel==EXPORTDIR)
 				sprintf(msg1, "○:%s ×:%s △:%s", lang->conf_edit, lang->conf_clear, lang->conf_up);
-			else if(sel==DEFAULTTITLE)
-				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
-			else if(sel==DEFAULTDETAIL)
-				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
-			else if(sel==SORT_TYPE)
-				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
-			else if(sel==SORT_DIR)
-				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
-			else if(sel==SORT_EXT)
-				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
 			else if(sel==FILERINIT)
 				sprintf(msg1, "○:%s △:%s", lang->gen_ok, lang->conf_up);
+			else
+				sprintf(msg1, "○:%s △:%s", lang->conf_change, lang->conf_up);
 			setScrTmp(msg0, msg1);
 			drawScr();
 			redraw--;

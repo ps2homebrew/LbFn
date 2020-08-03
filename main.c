@@ -1,10 +1,10 @@
 #include "launchelf.h"
 
 //#define	MAX_UCS_CODE	0x10000
-extern u8 *iomanx_irx;
-extern int size_iomanx_irx;
-extern u8 *filexio_irx;
-extern int size_filexio_irx;
+extern u8 *iomanX_irx;
+extern int size_iomanX_irx;
+extern u8 *fileXio_irx;
+extern int size_fileXio_irx;
 extern u8 *ps2dev9_irx;
 extern int size_ps2dev9_irx;
 extern u8 *ps2atad_irx;
@@ -39,6 +39,8 @@ extern u8 *ps2http_irx;
 extern int size_ps2http_irx;
 extern u8 *dns_irx;
 extern int size_dns_irx;
+extern u8 *vmc_fs_irx;
+extern int size_vmc_fs_irx;
 
 //#define DEBUG
 #ifdef DEBUG
@@ -492,7 +494,7 @@ void	load_iomanx(void)
 
 	if(!loaded){
 		if(smod_get_mod_by_name( "IOX/File_Manager", &mod_t )==0)
-			X_SifExecModuleBuffer(&iomanx_irx, size_iomanx_irx, 0, NULL, &ret);
+			X_SifExecModuleBuffer(&iomanX_irx, size_iomanX_irx, 0, NULL, &ret);
 		loaded=TRUE;
 	}
 }
@@ -506,7 +508,7 @@ void	load_filexio(void)
 
 	if(!loaded){
 		if(smod_get_mod_by_name( "IOX/File_Manager_Rpc", &mod_t )==0)
-			X_SifExecModuleBuffer(&filexio_irx, size_filexio_irx, 0, NULL, &ret);
+			X_SifExecModuleBuffer(&fileXio_irx, size_fileXio_irx, 0, NULL, &ret);
 		loaded=TRUE;
 	}
 }
@@ -1501,6 +1503,7 @@ void LaunchMain(void)
 	int x, y, y0, y1;
 
 	timeout = (setting->timeout+1)*SCANRATE;
+	if (!setting->dirElf[0].path[0][0]) cancel=TRUE;
 
 	while(1){
 		mode_changed=FALSE;
@@ -1847,7 +1850,7 @@ void LaunchMain(void)
 	
 			setScrTmp(mainMsg, tmp);
 			drawScr();
-			redraw--;
+			if (redraw) redraw--;
 		} else {
 			itoVSync();
 		}

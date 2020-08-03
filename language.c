@@ -259,6 +259,12 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_disc_elf_check, "DISC ELF CHECK");
 		strcpy(lang->conf_file_ps2save_check, "FILE PS2SAVE CHECK");
 		strcpy(lang->conf_file_elf_check, "FILE ELF CHECK");
+		strcpy(lang->conf_getsizecrc32, "DISPLAY CRC32 WITH GET SIZE");
+		strcpy(lang->conf_exportname, "ADD EXPORT FILENAME");
+		strcpy(lang->conf_exportnames[0], "OFF");
+		strcpy(lang->conf_exportnames[1], "TIMESTAMP");
+		strcpy(lang->conf_exportnames[2], "CRC32");
+		strcpy(lang->conf_exportnames[3], "TIME AND CRC32");
 		strcpy(lang->conf_export_dir, "EXPORT DIR");
 		strcpy(lang->conf_defaulttitle, "DEFAULT SHOW TITLE");
 		strcpy(lang->conf_defaultdetail, "DEFAULT SHOW DETAIL");
@@ -679,6 +685,12 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_disc_elf_check, "CD/DVDのときELFか調べる");
 		strcpy(lang->conf_file_ps2save_check, "CD/DVD/MC以外のときセーブデータか調べる");
 		strcpy(lang->conf_file_elf_check, "CD/DVD以外のときELFか調べる");
+		strcpy(lang->conf_getsizecrc32, "サイズ取得でCRC32も表\示する");
+		strcpy(lang->conf_exportname, "エクスポートファイル名追加");
+		strcpy(lang->conf_exportnames[0], "OFF");
+		strcpy(lang->conf_exportnames[1], "更新日時");
+		strcpy(lang->conf_exportnames[2], "CRC32");
+		strcpy(lang->conf_exportnames[3], "更新日時とCRC32");
 		strcpy(lang->conf_export_dir, "エクスポートフォルダ");
 		strcpy(lang->conf_defaulttitle, "ゲームタイトル表\示をデフォルトにする");
 		strcpy(lang->conf_defaultdetail, "詳細表\示のデフォルト");

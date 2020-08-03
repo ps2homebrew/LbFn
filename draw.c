@@ -572,13 +572,13 @@ void drawFrame(int x1, int y1, int x2, int y2, uint64 color)
 // スクロールバーの描画
 void drawBar(int x1, int y1, int x2, int y2, uint64 color, int ofs, int len, int size)
 {
-	int z0,z1,z2;
+	long long z0,z1,z2;
 	itoSprite(setting->color[COLOR_BACKGROUND], x1, y1, x2+1, y2+2, 0);
 	drawFrame(x1, y1, x2, y2, color);
 	if (x2-x1 > y2-y1) {
 		z0 = x2 - x1;
-		z1 = ofs * z0 / size;
-		z2 = (ofs + len) * z0 / size;
+		z1 = z0 * ofs / size;
+		z2 = z0 * (ofs + len) / size;
 		if (z1 < 0) z1 = 0;
 		if (z2 < 0) z2 = 0;
 		if (z1 > z0) z1 = z0;
@@ -587,8 +587,8 @@ void drawBar(int x1, int y1, int x2, int y2, uint64 color, int ofs, int len, int
 		itoSprite(color, z1+x1, y1, z2+x1, y2, 0);
 	} else {
 		z0 = y2 - y1;
-		z1 = ofs * z0 / size;
-		z2 = (ofs + len) * z0 / size;
+		z1 = z0 * ofs / size;
+		z2 = z0 * (ofs + len) / size;
 		if (z1 < 0) z1 = 0;
 		if (z2 < 0) z2 = 0;
 		if (z1 > z0) z1 = z0;
@@ -1066,7 +1066,7 @@ int InitFontKnaji(const char *path)
 					l = l - 0x40 - (l>0x7F);
 					n = h * 188 + l + 256;
 					// フォント高速描画用にポインタなどの情報を準備しておく
-					font[n].offset = kanji_data.offset + kanji_data.size * c++;
+					font[n].offset = kanji_data.offset + kanji_data.size * c;
 					font[n].width = kanji_data.width;
 					font[n].height = kanji_data.height;
 					//printf("fontcache_full: font[%d].offset=%08X, .width=%3d, .height=%3d\n", n, font[n].offset, font[n].width, font[n].height);
@@ -1079,6 +1079,7 @@ int InitFontKnaji(const char *path)
 						}
 					}
 				}
+				c++;
 			}
 		}
 	}

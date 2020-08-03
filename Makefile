@@ -10,21 +10,21 @@ PS2_IP=192.168.0.10
 #アイコンの有無
 #ICON = yes
 
-
+#TEK = yes
 #------------------------------------
 EE_BIN = LbFn.ELF
 
 EE_OBJS = main.o pad.o config.o elf.o draw.o loader.o  filer.o cd.o language.o\
-	cnf.o tek.o viewer.o shiftjis.o bmp.o jpeg.o gif.o fmcb_cfg.o misc.o\
-	poweroff.o iomanx.o filexio.o ps2atad.o ps2dev9.o ps2hdd.o ps2fs.o\
+	cnf.o tek.o viewer.o shiftjis.o bmp.o jpeg.o gif.o ps2ico.o fmcb_cfg.o misc.o\
+	poweroff.o iomanX.o fileXio.o ps2atad.o ps2dev9.o ps2hdd.o ps2fs.o\
 	usbd.o usbhdfsd.o cdvd.o ps2ip.o ps2smap.o ps2ftpd.o dns.o ps2http.o fakehost.o
+#	vmc_fs.o
 
 EE_INCS := -I$(LIBITO)/include -I$(PS2DEV)/libcdvd/ee
 
 EE_LDFLAGS := -L$(LIBITO)/lib -L$(PS2DEV)/libcdvd/lib -s
 
 EE_LIBS = -lpad -lito -lmc -lhdd -lcdvd -lcdvdfs -lfileXio -lpatches -lpoweroff -lkbd -lmouse -ldebug\
-
 
 ifeq ($(PSB), yes)
 EE_CFLAGS += -DENABLE_PSB
@@ -42,6 +42,7 @@ endif
 all: $(EE_BIN)
 
 clean:
+	$(MAKE) -C loader clean
 	rm -f $(EE_BIN) *.o *.s
 
 test: all
@@ -52,90 +53,38 @@ reset: clean
 
 
 #------------------------------------
-usbd.s:
-	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:$(PS2SDK)/iop/usb/usbd/bin/usbd.irx out:usbd.ir5
-	bin2s usbd.ir5 usbd.s usbd_irx
-
-usbhdfsd.s:
-	bin2s usbhdfsd.irx usbhdfsd.s usbhdfsd_irx
-#	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:$(PS2DEV)/usbhdfsd/bin/usbhdfsd.irx out:usbhdfsd.ir5
-#	bin2s usbhdfsd.ir5 usbhdfsd.s usbhdfsd_irx
+ifeq ($(TEK), yes)
 
 #cdvd.irx ulaunchELF 4.01
-cdvd.s:
-	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:modules/cdvd.irx out:cdvd.ir5
-	bin2s cdvd.ir5 cdvd.s cdvd_irx
+#ps2ftpd.irx uLaunchELF 4.01
+#loader.elf uLaunchELF 4.12
 
-poweroff.s:
-	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:$(PS2SDK)/iop/irx/poweroff.irx out:poweroff.ir5
-	bin2s poweroff.ir5 poweroff.s poweroff_irx
+else
 
-iomanx.s:
-	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:$(PS2SDK)/iop/irx/iomanx.irx out:iomanx.ir5
-	bin2s iomanX.ir5 iomanx.s iomanx_irx
-
-filexio.s:
-	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:$(PS2SDK)/iop/irx/filexio.irx out:filexio.ir5
-	bin2s fileXio.ir5 filexio.s filexio_irx
-
-ps2dev9.s:
-	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:$(PS2SDK)/iop/irx/ps2dev9.irx out:ps2dev9.ir5
-	bin2s ps2dev9.ir5 ps2dev9.s ps2dev9_irx
-
-ps2atad.s:
-	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:$(PS2SDK)/iop/irx/ps2atad.irx out:ps2atad.ir5
-	bin2s ps2atad.ir5 ps2atad.s ps2atad_irx
-
-ps2hdd.s:
-	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:$(PS2SDK)/iop/irx/ps2hdd.irx out:ps2hdd.ir5
-	bin2s ps2hdd.ir5 ps2hdd.s ps2hdd_irx
-
-ps2fs.s:
-	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:$(PS2SDK)/iop/irx/ps2fs.irx out:ps2fs.ir5
-	bin2s ps2fs.ir5 ps2fs.s ps2fs_irx
-
-fakehost.s:
-	bin2s $(PS2SDK)/iop/irx/fakehost.irx fakehost.s fakehost_irx
+usbd.s:
+	bin2s $(PS2SDK)/iop/usb/usbd/bin/usbd.irx usbd.s usbd_irx
 
 ps2smap.s:
-	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:$(PS2ETH)/smap/ps2smap.irx out:ps2smap.ir5
-	bin2s ps2smap.ir5 ps2smap.s ps2smap_irx
+	bin2s $(PS2ETH)/smap/ps2smap.irx ps2smap.s ps2smap_irx
 
-ps2ip.s:
-	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:$(PS2SDK)/iop/irx/ps2ip.irx out:ps2ip.ir5
-	bin2s ps2ip.ir5 ps2ip.s ps2ip_irx
+loader/loader.elf: loader/loader.c
+	$(MAKE) -C loader
 
-#ps2ftpd.irx uLaunchELF 4.01
-ps2ftpd.s:
-	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:modules/ps2ftpd.irx out:ps2ftpd.ir5
-	bin2s ps2ftpd.ir5 ps2ftpd.s ps2ftpd_irx
-
-dns.s:
-	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:dns.irx out:dns.ir5
-	bin2s dns.ir5 dns.s dns_irx
-#	bin2s dns.irx dns.s dns_irx
-
-ps2http.s:
-	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:ps2http.irx out:ps2http.ir5
-	bin2s ps2http.ir5 ps2http.s ps2http_irx
-#	bin2s ps2http.irx ps2http.s ps2http_irx
-
-#loader.elf uLaunchELF 4.12
-loader.s:
+loader.s: loader/loader.elf
 	bin2s loader/loader.elf loader.s loader_elf
 
-ps2kbd.s:
-	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:irx/ps2kbd.irx out:irx/ps2kbd.ir5
-	bin2s irx/ps2kbd.ir5 ps2kbd.s ps2kbd_irx
+%.s : modules/%.irx
+	bin2s modules/$*.irx $*.s $*_irx
 
-ps2mouse.s:
-	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:irx/ps2mouse.irx out:irx/ps2mouse.ir5
-	bin2s irx/ps2mouse.ir5 ps2mouse.s ps2mouse_irx
+%.s : $(PS2SDK)/iop/irx/%.irx
+	bin2s $(PS2SDK)/iop/irx/$*.irx $*.s $*_irx
+
+endif
 
 icon.s:image/icon.iif
 	bin2s image/icon.iif icon.s icon_iif
 
-cd.o config.o draw.o elf.o filer.o main.o pad.o viewer.o language.o cnf.o misc.o:launchelf.h language.h
+cd.o config.o draw.o elf.o filer.o main.o pad.o viewer.o language.o cnf.o misc.o fmcb_cfg.o:launchelf.h language.h
 
 
 #------------------------------------

@@ -31,7 +31,7 @@
 #include <libmouse.h>
 
 // バージョン
-#define LBFN_VER "LbFn v0.70.14"
+#define LBFN_VER "LbFn v0.70.15"
 
 // 垂直スキャンレート
 //#define SCANRATE (ITO_VMODE_AUTO==ITO_VMODE_PAL ? 50:60)
@@ -110,6 +110,10 @@ enum
 	FT_PNG,
 	FT_GIF,
 	FT_BMP,
+	FT_P2S,
+	FT_P2T,
+	FT_PS1,
+	FT_ICO,
 	FT_MP3,
 	FT_AAC,
 	FT_AC3,
@@ -165,6 +169,8 @@ typedef struct
 	int discELFCheck;
 	int filePs2saveCheck;
 	int fileELFCheck;
+	int getsizecrc32;
+	int exportname;
 	char Exportdir[MAX_PATH];
 	int defaulttitle;
 	int defaultdetail;
@@ -251,6 +257,8 @@ void loadUsbMassModules(void);
 void loadUsbKbdModules(void);
 void loadUsbMouseModules(void);
 void loadHddModules(void);
+void loadHTTPModules(void);
+int loadSoundModules(void);
 void delay(int count);
 
 /* elf.c */
@@ -498,15 +506,21 @@ int bineditfile(int mode, char *file);
 int binedit(int mode, char *file, unsigned char *buffer, unsigned int size);
 int imgviewfile(int mode, char *file);
 int imgview(int mode, char *file, unsigned char *buffer, int w, int h, int bpp);
+int imgdraw(unsigned char *buffer, int sw, int sh, int bpp, int dx, int dy, int dw, int dh);
 int viewer_file(int mode, char *file);
 int viewer(int mode, char *file, unsigned char *buffer, unsigned int size);
 int fntview_file(int mode, char *file);
 int fntview(int mode, char *file, unsigned char *buffer, unsigned int size);
 int pcmpause(void);
 int pcmplay(void);
-int pcminit(int mode, int rate, int channels, int bits);
 int pcmclear(void);
+int pcmconfig(int mode, int rate, int channels, int bits);
+int pcmspeed(int rate);
 int pcmadd(char *buffer, int size);
+int pcmvolume(int volume);
+int pcmregist(void (*callback)(void));
+int pcmdelete(void);
+int pcmquit(void);
 int formatcheck(unsigned char *buff, unsigned int size);
 int formatcheckfile(char *file);
 int set_viewerconfig(int linedisp, int tabspaces, int chardisp, int screenmode, int textwrap, int drawtype);
@@ -522,5 +536,6 @@ enum{
 extern char LBF_VER[];
 int keyboard(int type, char *buff, int limit);
 int NetworkDownload(char* msg0);
-
+unsigned int CRC32Check(unsigned char *buff, unsigned int size);
+unsigned int CRC32file(char *file);
 #endif

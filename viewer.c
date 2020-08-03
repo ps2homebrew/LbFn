@@ -11,7 +11,7 @@ typedef struct {
 
 static unsigned int ft_type[FT_TYPES] = {
 	FT_ELF, FT_EXE,
-	FT_JPG, FT_PNG, FT_GIF, FT_BMP,
+	FT_JPG, FT_PNG, FT_GIF, FT_BMP, FT_P2T, FT_PS1, FT_ICO,
 	FT_MP3, FT_AAC, FT_AC3, FT_PCM, FT_MID,
 	FT_TXT, FT_XML, FT_HTM,
 	FT_ZIP, FT_RAR, FT_LZH, FT_TEK, FT_GZ, FT_7Z,
@@ -21,15 +21,15 @@ static unsigned int ft_type[FT_TYPES] = {
 };
 static unsigned char ft_char[FT_TYPES][4] = {
 	"ELF", "EXE",
-	"JPG", "PNG", "GIF", "BMP",
+	"JPG", "PNG", "GIF", "BMP", "ICO", "PS1", "ICO",
 	"MP3", "AAC", "AC3", "WAV", "MID",
 	"TXT", "XML", "HTM",
 	"ZIP", "RAR", "LZH", "TEK", "GZ ", "7Z ",
 	"AVI", "MPG", "MP4",
 	"FNT",
 };
-static unsigned char *clipbuffer=NULL;
-static unsigned char editline[2][MAX_COLS];
+//static unsigned char *clipbuffer=NULL;
+//static unsigned char editline[2][MAX_COLS];
 static unsigned char displine[MAX_COLS];
 static int redraw=2, charset=0, fullscreen=0, resizer=1;
 int linenum=0, defaultcharset=0, tabmode=8, tabdisp=0, nldisp=0;
@@ -44,6 +44,7 @@ static int alphablend=0;
 static int chartable[] = {TXT_AUTO, TXT_ASCII, TXT_SJIS, TXT_EUCJP, TXT_JIS, TXT_UTF8, -1};
 static char chartablename[][8] = {"AUTO", "ASCII", "SJIS", "EUCJP", "JIS", "UTF8", ""};
 static unsigned char ctrlchars[32];
+//*/
 //int txt_convert_encoding(unsigned char *dist, unsigned char *src, int dist_char, int src_char);
 int txtdraw(unsigned char *buffer, unsigned int size, int charcode);
 int utftosjis2(unsigned char *dist, unsigned char *src, unsigned int limit, unsigned int size);
@@ -58,6 +59,10 @@ int decode0_JPEG(void *env, int size, unsigned char *fp, int b_type, unsigned ch
 int decode0_JPEGpart(void *env, int xsz, int ysz, int x0, int y0, int size, unsigned char *fp, int b_type, unsigned char *buf, int skip);
 int info_GIF(int *info, char *src, int size);
 int decode_GIF(char *dist, char *src, int size, int bpp);
+int info_PS2ICO(int *info, char *src, int size);
+int decode_PS2ICO(char *dist, char *src, int size, int bpp);
+int info_PS1ICO(int *info, char *src, int size);
+int decode_PS1ICO(char *dist, char *src, int size, int bpp);
 
 ////////////////////////////////
 // デバッグ用トラップ
@@ -307,8 +312,10 @@ int txtedit(int mode, char *file, unsigned char *c, unsigned int size)
 	
 	strcpy(msg0, file);
 	
-	charset = txt_detect(c, size);
 	lines = txt_count(c, size, line, wordwrap * (MAX_ROWS_X +6), MAX_LINES);
+	if (lines == MAX_LINES)
+		size = line[lines-1].offset + line[lines-1].bytes;
+	charset = txt_detect(c, size);
 	
 	cs = TXT_AUTO; cp=0;
 	redraw=fieldbuffers;
@@ -891,6 +898,10 @@ int formatcheck(unsigned char *c, unsigned int size)
 		type = FT_GIF;
 	} else if ((size >= 14) && (c[0] == 0x42) && (c[1] == 0x4D) && (c[6] == 0x00) && (c[7] == 0x00) && (c[8] == 0x00) && (c[9] == 0x00)) {
 		type = FT_BMP;
+	} else if ((size >= 20) && (c[0] == 0) && (c[1] == 0) && (c[2] == 1) && (c[3] == 0) && (c[4] < 16) && (c[5] == 0) && (c[6] == 0) && (c[7] == 0) && (c[9] == 0) && (c[10] == 0) && (c[11] == 0)) {
+		type = FT_P2T;
+	} else if ((size >= 256) && (c[0] == 0x53) && (c[1] == 0x43) && (c[2] > 0x10) && (c[2] < 0x20) && (c[3] > 0) && (c[3] < 16)) {
+		type = FT_PS1;
 	} else if ((size >= 64) && (c[0] == 0x7F) && (c[1] == 0x45) && (c[2] == 0x4C) && (c[3] == 0x46) && (c[4] == 0x01) && (c[5] == 0x01)) {
 		type = FT_ELF;
 	} else if ((size >= 6) && (c[0] == 0x52) && (c[1] == 0x61) && (c[2] == 0x72) && (c[3] == 0x21) && (c[4] == 0x1A) && (c[5] == 0x07)) {
@@ -907,7 +918,7 @@ int formatcheck(unsigned char *c, unsigned int size)
 		type = FT_MID;
 	} else if ((size >= 44) && (c[0] == 0x52) && (c[1] == 0x49) && (c[2] == 0x46) && (c[3] == 0x46) && (c[8] == 0x57) && (c[9] == 0x41) && (c[10] == 0x56) && (c[11] == 0x45)) {
 		type = FT_PCM;
-	} else if ((size >= 64) && ( ((c[0] == 0xFF) && ((c[1] & 0xF0) == 0xF0) && (c[4] == 0x00) && (c[5] == 0x00)) || ((c[0] == 0x49) && (c[1] == 0x44) && (c[2] == 0x33)) )) {
+	} else if ((size >= 64) && ( ((c[0] == 0xFF) && ((c[1] & 0xE0) == 0xE0) && (c[4] == 0x00) && (c[5] == 0x00)) || ((c[0] == 0x49) && (c[1] == 0x44) && (c[2] == 0x33)) )) {
 		type = FT_MP3;
 	} else if ((size >= 64) && (c[4] == 0x66) && (c[5] == 0x74) && (c[6] == 0x79) && (c[7] == 0x70) && (c[8] == 0x4D) && (c[9] == 0x34) && (c[10] == 0x41) && (c[11] == 0x20)) {
 		type = FT_AAC;
@@ -1136,11 +1147,46 @@ int viewer(int mode, char *file, unsigned char *c, unsigned int size)
 			//return i;
 			break;
 		}
-		case FT_FNT:
-		{	// フォントビューアを起動
-			ret = fntview(mode, file, buffer, dsize);
+		case FT_P2T:
+		{
+			i = info_PS2ICO(info, decoded, dsize);
+			printf("viewer: info_PS2ICO returned: %d\n", i);
+			printf("viewer: info data: %d,%dx%d(%dbpp)\n", info[0], info[2], info[3], info[1]);
+			if ((info[0] != 0x7009) || (info[2] * info[3] == 0))
+				break;
+			buffer = malloc(info[2] * info[3] * 2);
+			if (buffer == NULL) {
+				ret = -2;
+				break;
+			}
+			i = decode_PS2ICO(buffer, decoded, dsize, 2);
+			printf("viewer: decode_PS2ICO(%dbpp) returned: %d\n", 16, i);
+			ret = imgview(mode, file, buffer, info[2], info[3], 2);
 			break;
 		}
+		case FT_PS1:
+		{
+			i = info_PS1ICO(info, decoded, dsize);
+			printf("viewer: info_PS1ICO returned: %d\n", i);
+			printf("viewer: info data: %d,%dx%d(%dbpp)\n", info[0], info[2], info[3], info[1]);
+			if ((info[0] != 0x700A) || (info[2] * info[3] == 0))
+				break;
+			buffer = (char*)malloc(info[2] * info[3]);
+			if (buffer == NULL) {
+				ret = -2;
+				break;
+			}
+			i = decode_PS1ICO(buffer, decoded, dsize, 1);
+			printf("viewer: decode_PS1ICO(%dbpp) returned: %d\n", 8, i);
+			ret = imgview(mode, file, buffer, info[2], info[3], 1);
+			break;
+		}
+		case FT_FNT:
+		{	// フォントビューアを起動
+			//ret = fntview(mode, file, buffer, dsize);
+			break;
+		}
+		case FT_MP3:
 		case FT_PCM:
 		{
 			break;
@@ -1336,7 +1382,7 @@ int imgview(int mode, char *file, unsigned char *buffer, int w, int h, int bpp)
 					// 描画
 					for (y=0;y<h;y++)
 						for (x=0;x<w;)
-							itoSprite(pget(buffer,x,y,w,h,bpp), tmpx[x], tmpy[y], tmpx[++x], tmpy[y+1], 0);
+							itoSprite(pget(buffer,x,y,w,h,bpp), tmpx[x++], tmpy[y], tmpx[x], tmpy[y+1], 0);
 				} else {
 					// 座標のキャッシュ - 高速化を期待してみる
 					for (x=0;x<dw;x++)
@@ -1442,9 +1488,9 @@ int fntview(int mode, char *file, unsigned char *buffer, unsigned int size)
 	// フォントビューア
 	//	*buffer が対応しているフォント形式なら表示する (単一のファイルのみ)
 	// 対応形式: FONTX2形式(半角/全角), MS-Win2.0(uLaunchELF互換)形式(半角かつビットマップフォントのみ)
-	int ret=0,i,redraw=fieldbuffers, ref=fieldbuffers;
+	int ret=0,redraw=fieldbuffers, ref=fieldbuffers;
 	char msg0[MAX_PATH], msg1[MAX_PATH];
-	int cx,cy,ox,oy,cp,op,tx,ty;
+	int cx,cy,ox,oy,cp,op,ty;
 	
 	cx=cy=cp=ox=oy=0; op=1;
 	strcpy(msg0, file);
@@ -1467,7 +1513,7 @@ int fntview(int mode, char *file, unsigned char *buffer, unsigned int size)
 		}
 		if (redraw) {
 			
-			// LbFn v0.70.14                                                             
+			// LbFn v0.70.15                                                             
 			// mass:/tmp.fnt                                                             
 			// ─────────────────────────────────────
 			//   種類: FONTX2(SBCS/ASCII), 8x16                                          

@@ -220,7 +220,10 @@ typedef struct
 	char conf_disc_elf_check[MAX_LANGUAGE_STR];
 	char conf_file_ps2save_check[MAX_LANGUAGE_STR];
 	char conf_file_elf_check[MAX_LANGUAGE_STR];
+	char conf_getsizecrc32[MAX_LANGUAGE_STR];
 	char conf_export_dir[MAX_LANGUAGE_STR];
+	char conf_exportname[MAX_LANGUAGE_STR];
+	char conf_exportnames[4][MAX_LANGUAGE_STR];
 	char conf_defaulttitle[MAX_LANGUAGE_STR];
 	char conf_defaultdetail[MAX_LANGUAGE_STR];
 	char conf_defaultdetail_none[MAX_LANGUAGE_STR];

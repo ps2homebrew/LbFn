@@ -955,10 +955,11 @@ typedef struct {
 
 int file_put_contents(char *path, char *buff, int size)
 {
-	int dl, dt, dw, dh, tl, tt, tw, th, bl, bt, bw, bh, ml, mt, my, r;
+	int dl, dt, dw, dh, tl, tt, tw, th, bl, bt, bw, bh, ml, mt, my, r, fd;
 	FILE *fp=NULL;
-	size_t now,rem,tsize,packetsize=16384;
+	size_t now,rem,tsize,packetsize=4096;
 	char tmp[192];
+	uint64 oldframe=0;
 	fp = fopen(path, "wb");
 	if (fp != NULL) {
 		//drawDarks(0);
@@ -970,23 +971,36 @@ int file_put_contents(char *path, char *buff, int size)
 		ml = bl = tl = dl + 4 + FONT_WIDTH; mt = tt = dt + 4 + (FONT_HEIGHT >> 1);
 		my = mt + FONT_HEIGHT;
 		bt = mt + FONT_HEIGHT*5/2; bh = FONT_HEIGHT;
+		fd = 0;
 		//ダイアログ
 		for (now=0, rem=size; now<size; now+=packetsize, rem-=packetsize) {
 			if (size-now < packetsize) tsize = size-now; else tsize = packetsize;
 			//sprintf(msg, "%s [%d/%dKB:%3d%%]", lang->nupd[8], now >> 10, (size+1023) >> 10, now * 100 / size);
 			//drawMsg(msg);
 			////itoGsFinish();
-			for(r=0;r<fieldbuffers;r++){
-				drawDialogTmp(dl, dt, dl+dw, dt+dh, setting->color[COLOR_BACKGROUND], setting->color[COLOR_FRAME]);
-				//メッセージ
-				printXY(lang->nupd[9], ml, mt, setting->color[COLOR_TEXT], TRUE);
-				sprintf(tmp, "%5d KB / %d KB ( %3d%% )", (now +tsize +512) >> 10, (size +512) >> 10, (now+tsize) * 100 / size);
-				// *****/*****KB (***%)
-				printXY(tmp, ml, my, setting->color[COLOR_TEXT], TRUE);
-				//プログレスバー
-				drawBar(bl, bt, bl+bw, bt+bh, setting->color[COLOR_FRAME], 0, now+packetsize, size);
-				drawScr();
-			}//*/
+			if ((oldframe != totalcount) || (rem <= packetsize)) {
+				for(r=0;r<fieldbuffers;r++){
+					if (fd < framebuffers) {
+						drawDialogTmp(dl, dt, dl+dw, dt+dh, setting->color[COLOR_BACKGROUND], setting->color[COLOR_FRAME]);
+						//メッセージ
+						printXY(lang->nupd[9], ml, mt, setting->color[COLOR_TEXT], TRUE);
+					}
+					sprintf(tmp, "%5d KB / %d KB ( %3d%% )", (now +tsize +512) >> 10, (size +512) >> 10, (now+tsize) * 100 / size);
+					// *****/*****KB (***%)
+					if (fd >= framebuffers)
+						itoSprite(setting->color[COLOR_BACKGROUND], ml, my, ml+FONT_WIDTH*32, my+FONT_HEIGHT+1, 0);
+					printXY(tmp, ml, my, setting->color[COLOR_TEXT], TRUE);
+					//プログレスバー
+					drawBar(bl, bt, bl+bw, bt+bh, setting->color[COLOR_FRAME], 0, now+packetsize, size);
+					itoGsFinish();
+					if (ffmode)
+						itoSetActiveFrameBuffer(itoGetActiveFrameBuffer()^1);
+					else
+						itoSwitchFrameBuffers();
+					if (fd < framebuffers) fd++;
+				}//*/
+				oldframe = totalcount;
+			}
 			if (fwrite(buff +now, 1, tsize, fp) < tsize) {
 				fclose(fp);
 				return -2;
@@ -1000,20 +1014,22 @@ int file_put_contents(char *path, char *buff, int size)
 
 string file_get_contents(char *url, int dsize)
 {
-	int dl, dt, dw, dh, tl, tt, tw, th, bl, bt, bw, bh, ml, mt, my, r;
+	int dl, dt, dw, dh, tl, tt, tw, th, bl, bt, bw, bh, ml, mt, my, r, fd, cnt, k=IDNO;
 	FILE *fp=NULL;
-	size_t size=0,now,rem,tsize,packetsize=16384;
-	char *buff=NULL, tmp[192];
+	size_t size=0,now,rem,tsize,packetsize=1024,contentlength,i;
+	char *buff=NULL, *rema=NULL, tmp[192];
 	string ret;
+	uint64 oldframe=0;
+	enum{defaultsize=262144,extendsize=131072};
 	fp = fopen(url, "rb");
 	if (fp != NULL) {
 		drawDarks(0);
 		//drawMsg(lang->nupd[8]);
 		fseek(fp, 0, SEEK_END);
-		size = ftell(fp);
+		size = contentlength = ftell(fp);
 		fseek(fp, 0, SEEK_SET);
 		if (size == 0) size = dsize;
-		if (size == 0) size = 16384;
+		if (size == 0) size = defaultsize;
 		buff = (char*)malloc(size);
 		if (buff != NULL) {
 			bw = tw = FONT_WIDTH*32;	th = FONT_HEIGHT*4;
@@ -1023,27 +1039,78 @@ string file_get_contents(char *url, int dsize)
 			ml = bl = tl = dl + 4 + FONT_WIDTH; mt = tt = dt + 4 + (FONT_HEIGHT >> 1);
 			my = mt + FONT_HEIGHT;
 			bt = mt + FONT_HEIGHT*5/2; bh = FONT_HEIGHT;
+			fd = 0; cnt = totalcount -32;
 			//ダイアログ
-			for (now=0, rem=size; now<size; now+=packetsize, rem-=packetsize) {
+			for (now=0, rem=size; now<size; now+=tsize, rem-=tsize) {
 				if (size-now < packetsize) tsize = size-now; else tsize = packetsize;
 				//sprintf(msg, "%s [%d/%dKB:%3d%%]", lang->nupd[8], now >> 10, (size+1023) >> 10, now * 100 / size);
 				//drawMsg(msg);
 				////itoGsFinish();
-				for(r=0;r<fieldbuffers;r++){
-					drawDialogTmp(dl, dt, dl+dw, dt+dh, setting->color[COLOR_BACKGROUND], setting->color[COLOR_FRAME]);
-					//メッセージ
-					printXY(lang->nupd[8], ml, mt, setting->color[COLOR_TEXT], TRUE);
-					sprintf(tmp, "%5d KB / %d KB ( %3d%% )", (now +tsize +512) >> 10, (size +512) >> 10, (now+tsize) * 100 / size);
-					// *****/*****KB (***%)
-					printXY(tmp, ml, my, setting->color[COLOR_TEXT], TRUE);
-					//プログレスバー
-					drawBar(bl, bt, bl+bw, bt+bh, setting->color[COLOR_FRAME], 0, now+packetsize, size);
-					drawScr();
-				}//*/
-				fread(buff +now, 1, tsize, fp);
+				if ((oldframe != totalcount) || (rem <= packetsize)) {
+					if (readpad()) {
+						if (new_pad & PAD_TRIANGLE) {
+							k = MessageBox("abort the download?", LBFN_VER, MB_YESNO|MB_DEFBUTTON2);
+							if (k == IDYES) {
+								break;
+							}
+							fd = 0;
+						}
+					}
+					for(r=0;r<fieldbuffers;r++){
+						if (fd < framebuffers) {
+							drawDialogTmp(dl, dt, dl+dw, dt+dh, setting->color[COLOR_BACKGROUND], setting->color[COLOR_FRAME]);
+							//メッセージ
+							printXY(lang->nupd[8], ml, mt, setting->color[COLOR_TEXT], TRUE);
+						}
+						if (contentlength)
+							sprintf(tmp, "%5d KB / %d KB ( %3d%% )", (now +tsize +512) >> 10, (size +512) >> 10, (now+tsize) * 100 / size);
+						else
+							sprintf(tmp, "%5d KB", (now +tsize + 512) >> 10);
+						// *****/*****KB (***%)
+						if (fd >= framebuffers) 
+							itoSprite(setting->color[COLOR_BACKGROUND], ml, my, ml+FONT_WIDTH*32, my+FONT_HEIGHT+1, 0);
+						printXY(tmp, ml, my, setting->color[COLOR_TEXT], TRUE);
+						//プログレスバー
+						if (contentlength)
+							drawBar(bl, bt, bl+bw, bt+bh, setting->color[COLOR_FRAME], 0, now+packetsize, size);
+						else
+							drawBar(bl, bt, bl+bw, bt+bh, setting->color[COLOR_FRAME], ((totalcount - cnt) % (96 + 32)) - 32, 32, 96);
+						itoGsFinish();
+						if (ffmode)
+							itoSetActiveFrameBuffer(itoGetActiveFrameBuffer()^1);
+						else
+							itoSwitchFrameBuffers();
+						if (fd < framebuffers) fd++;
+					}//*/
+					oldframe = totalcount;
+				}
+				i = fread(buff +now, 1, tsize, fp);
+				if (!contentlength) {
+					if (i < tsize) {
+						size = now+i;
+						break;
+					} else if (now + tsize >= size) {
+						rema = (char*)realloc(buff, size+extendsize);
+						//printf("file_get_contents: remalloc(%d): 0x%08X => 0x%08X\n", size+extendsize, (u32)buff, (u32)rema);
+						if (rema == NULL) {
+							break;
+						} else if (rema != buff) {
+							buff = rema;
+						}
+						size+=extendsize;
+						rem+=extendsize;
+					}
+				}
+				//printf("file_get_contents: fread=%d\n", i);
 			}
 		}
 		fclose(fp);
+		if (k == IDYES) {
+			free(buff);
+			ret.buff = 0;
+			ret.size = -123456;
+			return ret;
+		}
 	} else {
 		size = -(int)fp;
 	}
@@ -1056,6 +1123,7 @@ int NetworkDownload(char* msg0)
 {	
 	int ret=-1,i,k,m,files=0;
 	char tmp[2048], key[16], msg1[240];
+	char testpath[1024];
 	extern char tmps[32][MAX_PATH];
 	extern int tmpi[32], explodeconfig(const char *src);
 	dldata *list=NULL;
@@ -1105,6 +1173,8 @@ int NetworkDownload(char* msg0)
 		execute,
 		downloadback,
 		menuitems,
+		testurl,
+		testdl,
 		backupcopy,
 	};
 	uint64 color;
@@ -1115,10 +1185,13 @@ int NetworkDownload(char* msg0)
 	char dlpath[MAX_PATH],dlrename[64];
 	char config[menuitems][MAX_PATH];
 	char *onoff[2] = {lang->conf_off, lang->conf_on};
+	//char *lang0[10] = {lang->nupd[1], lang->nupd[2], lang->nupd[3], "testurl: %s", "testdl", lang->nupd[5], lang->nupd[6], lang->nupd[4]};
+	//char *lang1[10] = {lang->nupd[19], lang->nupd[20], lang->nupd[20], lang->nupd[20], lang->nupd[21], lang->nupd[21], lang->nupd[21], lang->nupd[20]};
 	char *lang0[8] = {lang->nupd[1], lang->nupd[2], lang->nupd[3], lang->nupd[5], lang->nupd[6], lang->nupd[4]};
 	char *lang1[8] = {lang->nupd[19], lang->nupd[20], lang->nupd[20], lang->nupd[21], lang->nupd[21], lang->nupd[20]};
 	strcpy(dlpath, setting->downloadpath);
 	strcpy(dlrename, list[0].def);
+	strcpy(testpath, "http://www.nicovideo.jp/ranking/hourly/fav/all");
 
 	while(1){
 		waitPadReady(0, 0);
@@ -1159,10 +1232,23 @@ int NetworkDownload(char* msg0)
 						strcpy(chkstr, "error");
 						checkword = makecheckword(data.buff, data.size);
 						if (checkword == list[filenum].chk) strcpy(chkstr, "ok");
-						printf("update: checkword: %s, list: 0x%08X, dl: 0x%08X\n", chkstr, list[filenum].chk, checkword);
+						i = CRC32Check(data.buff, data.size);
+						printf("update: checkword: %s, list: 0x%08X, dl: 0x%08X, CRC32:%08X\n", chkstr, list[filenum].chk, checkword, i);
 						viewer(0, list[filenum].url, data.buff, data.size);
 						free(data.buff);
 						data.buff = NULL;
+					}
+				}
+				else if(sel==testurl){
+					strcpy(tmp, testpath);
+					if(keyboard(SKBD_ALL, tmp, 1024)>=0)
+						strcpy(testpath, tmp);
+				}
+				else if(sel==testdl){
+					data = file_get_contents(testpath, 0);
+					if (data.buff != NULL) {
+						viewer(0, testpath, data.buff, data.size);
+						free(data.buff);
 					}
 				}
 				else if(sel==downloadback){
@@ -1208,11 +1294,14 @@ int NetworkDownload(char* msg0)
 							}
 							free(data.buff);
 							data.buff = NULL;
+						} else if (data.size == -123456) {
+							// ダウンロード中止
+							msg0[0] = 0;
 						} else {
 							// ダウンロード失敗
 							sprintf(msg0, "%s [%d]", lang->nupd[10], -(int)data.size);
 						}
-						MessageBox(msg0, lang->nupd[0], MB_OK);
+						if (msg0[0]) MessageBox(msg0, lang->nupd[0], MB_OK);
 					}
 				}
 			}
@@ -1265,6 +1354,8 @@ int NetworkDownload(char* msg0)
 						break;
 				}
 			}
+			else if (i==testurl)
+				strcpy(msg1, testpath);
 			else if (i==downloadpath)
 				strcpy(msg1, dlpath);
 			else if (i==downloadname)
@@ -1366,4 +1457,323 @@ int NetworkDownload(char* msg0)
 		fclose(fp);
 	}
 }*/
+
+unsigned int crc32table[256] = {0,0,};
+void CRC32Init(void)
+{
+	if (crc32table[1]) return;
+	unsigned int poly=0xEDB88320, u, i, j;
+
+	for (i = 0; i < 256; i++) {
+		u = i;
+		for (j = 0; j < 8; j++) {
+			if (u & 1) {
+				u = (u >> 1) ^ poly;
+			} else {
+				u >>= 1;
+			}
+		}
+		crc32table[i] = u;
+	}
+	printf("CRC32Inited\n");
+}
+
+unsigned int CRC32check(unsigned char *buff, unsigned int size, unsigned int oldcrc)
+{
+    unsigned int ret=oldcrc, i;
+	if (!crc32table[1]) CRC32Init();
+    for(i = 0; i < size; i++){
+        ret = (ret >> 8) ^ crc32table[buff[i] ^ (ret & 0xFF)];
+    }
+	//printf("CRC32check: %08X => %08X\n", oldcrc, ~ret);
+    return ~ret;
+	
+}
+unsigned int CRC32Check(unsigned char *buff, unsigned int size)
+{
+	return CRC32check(buff, size, 0xFFFFFFFF);
+}
+unsigned int CRC32file(char *file)
+{
+	int fd;
+	char *p;
+	unsigned char buffer[32768];
+	unsigned int size, i, crc, siz;
+	char fullpath[MAX_PATH], tmp[MAX_PATH];
+	
+	crc = ~0xFFFFFFFF;
+	if (!strncmp(file, "hdd0", 4)) {
+		sprintf(tmp, "hdd0:%s", &file[6]);
+		p = strchr(tmp, '/');
+		sprintf(fullpath, "pfs0:%s", p);
+		*p = 0;
+		//printf("viewer: mode: %d\nviewer: file: %s\n", mode, file);
+		printf("viewer: hddpath: %s\n", fullpath);
+		//fileXioMount("pfs0:", tmp, FIO_MT_RDONLY);
+		if ((fd = fileXioOpen(fullpath, O_RDONLY, FIO_S_IRUSR | FIO_S_IWUSR | FIO_S_IXUSR | FIO_S_IRGRP | FIO_S_IWGRP | FIO_S_IXGRP | FIO_S_IROTH | FIO_S_IWOTH | FIO_S_IXOTH)) < 0){
+			//fileXioUmount("pfs0:");
+			return -1;
+		}
+		size = fileXioLseek(fd, 0, SEEK_END);
+		//printf("viewer: size: %d\n", size);
+		fileXioLseek(fd, 0, SEEK_SET);
+		for(i=0; i<size; i+=sizeof(buffer)) {
+			siz = sizeof(buffer);
+			if (i+siz > size) siz = size - i;
+			fileXioRead(fd, buffer, siz);
+			crc = CRC32check(buffer, siz, ~crc);
+		}
+		fileXioClose(fd);
+		//fileXioUmount("pfs0:");
+	} else {
+		strcpy(fullpath, file);
+		//printf("viewer: mode: %d\nviewer: file: %s\n", mode, file);
+		printf("viewer: file: %s\n", file);
+		fd = fioOpen(fullpath, O_RDONLY);
+		if (fd<0)
+			return -1;
+		size = fioLseek(fd, 0, SEEK_END);
+		//printf("viewer: size: %d\n", size);
+		fioLseek(fd, 0, SEEK_SET);
+		for(i=0; i<size; i+=sizeof(buffer)) {
+			siz = sizeof(buffer);
+			if (i+siz > size) siz = size - i;
+			fioRead(fd, buffer, siz);
+			crc = CRC32check(buffer, siz, ~crc);
+		}
+		fioClose(fd);
+	}
+	return crc;
+}
+
+
+//-------------------------------------------------
+//メッセージボックス
+int MessageBox(const char *Text, const char *Caption, int type)
+{
+	char MessageText[2048];
+	int i,n;
+	char *p;
+	int tw;
+	int ret=0;
+	char CaptionText[256];
+	char ButtonText[256];
+	int DialogType;
+	int len;
+	int dialog_x;		//ダイアログx位置
+	int dialog_y;		//ダイアログy位置
+	int dialog_width;	//ダイアログ幅
+	int dialog_height;	//ダイアログ高さ
+	int sel, redraw=framebuffers;
+	int x, y;
+	int timeout;
+	char tmp[256];		//表示用
+
+	//
+	sel=0;
+	if(type&MB_DEFBUTTON1) sel=0;
+	if(type&MB_DEFBUTTON2) sel=1;
+	if(type&MB_DEFBUTTON3) sel=2;
+	timeout=-5;
+	if(type&MB_USETIMEOUT) timeout=9.5*SCANRATE;
+	//メッセージ
+	strncpy(MessageText, Text, 2048);
+	//\n区切りを\0区切りに変換 n:改行の数
+	for(i=0,n=1; MessageText[i]!=0; i++)
+		if(MessageText[i]=='\n'){MessageText[i]='\0';n++;}
+	//メッセージの一番長い行の文字数を調べる tw:文字数
+	p = MessageText;
+	tw = 0;
+	for(i=0;i<n;i++){
+		len = strlen(p);
+		if(len>tw) tw=len;
+		p += len+1;
+	}
+	//キャプション
+	if(Caption==NULL)
+		strcpy(CaptionText, "error");
+	else{
+		//\nまでをキャプションにする
+		strncpy(CaptionText, Caption, 256);
+		p = strchr(CaptionText, '\n');
+		if(p!=NULL) *p='\0';
+	}
+	//ダイアログのボタン
+	DialogType = type&0xf;
+	if(DialogType==MB_OK)
+		sprintf(ButtonText, "%s", lang->gen_ok);
+	else if(DialogType==MB_OKCANCEL)
+		sprintf(ButtonText, " %-10s %-10s", lang->gen_ok, lang->gen_cancel);
+	else if(DialogType==MB_YESNOCANCEL)
+		sprintf(ButtonText, " %-10s %-10s %-10s", lang->gen_yes, lang->gen_no, lang->gen_cancel);
+	else if(DialogType==MB_YESNO)
+		sprintf(ButtonText, " %-10s %-10s", lang->gen_yes, lang->gen_no);
+	else if(DialogType==MB_MC0MC1CANCEL)
+		sprintf(ButtonText, " %-10s %-10s %-10s", "mc0:/", "mc1:/", lang->gen_cancel);
+	else
+		return 0;
+	//ダイアログに表示する最大の文字数
+	if(tw<strlen(ButtonText)) tw=strlen(ButtonText);
+	if(tw<strlen(CaptionText)) tw=strlen(CaptionText);
+	
+	dialog_width = FONT_WIDTH*(tw+2);
+	dialog_height = FONT_HEIGHT*(n+5);
+	dialog_x = (SCREEN_WIDTH-dialog_width)/2;
+	dialog_y = (SCREEN_HEIGHT-dialog_height)/2;
+	while(1){
+		waitPadReady(0, 0);
+		if(readpad()){
+			if (new_pad) redraw=fieldbuffers;
+			if(new_pad & PAD_LEFT){
+				sel--;
+				if(sel<0) sel=0; 
+			}
+			else if(new_pad & PAD_RIGHT){
+				sel++;
+				if(DialogType==MB_OKCANCEL||DialogType==MB_YESNO){
+					if(sel>1) sel=1;
+				}
+				if(DialogType==MB_YESNOCANCEL||DialogType==MB_MC0MC1CANCEL){
+					if(sel>2) sel=2;
+				}
+			}
+			else if(new_pad & PAD_CROSS){	//キャンセル
+				ret=0;
+				break;
+			}
+			else if(new_pad & PAD_CIRCLE){
+				if(DialogType==MB_OK)
+					ret=IDOK;
+				if(DialogType==MB_OKCANCEL){
+					if(sel==0) ret=IDOK;
+					if(sel==1) ret=IDCANCEL;
+				}
+				if(DialogType==MB_YESNOCANCEL){
+					if(sel==0) ret=IDYES;
+					if(sel==1) ret=IDNO;
+					if(sel==2) ret=IDCANCEL;
+				}
+				if(DialogType==MB_YESNO){
+					if(sel==0) ret=IDYES;
+					if(sel==1) ret=IDNO;
+				}
+				if(DialogType==MB_MC0MC1CANCEL){
+					if(sel==0) ret=IDMC0;
+					if(sel==1) ret=IDMC1;
+					if(sel==2) ret=IDCANCEL;
+				}
+				break;
+			}
+			else if(new_pad & PAD_SELECT){	//キャンセルにカーソルを移動
+				if(DialogType==MB_OKCANCEL||DialogType==MB_YESNO) sel=1;
+				if(DialogType==MB_YESNOCANCEL||DialogType==MB_MC0MC1CANCEL) sel=2;
+			}
+			else if(new_pad & PAD_START){	//OKにカーソルを移動
+				sel=0;
+			}
+			//△ボタンで決定
+			if(new_pad & PAD_TRIANGLE){
+				if(type&MB_USETRIANGLE){
+					if(DialogType==MB_OK)
+						ret=IDOK|IDTRIANGLE;
+					if(DialogType==MB_OKCANCEL){
+						if(sel==0) ret=IDOK|IDTRIANGLE;
+						if(sel==1) ret=IDCANCEL|IDTRIANGLE;
+					}
+					if(DialogType==MB_YESNOCANCEL){
+						if(sel==0) ret=IDYES|IDTRIANGLE;
+						if(sel==1) ret=IDNO|IDTRIANGLE;
+						if(sel==2) ret=IDCANCEL|IDTRIANGLE;
+					}
+					if(DialogType==MB_YESNO){
+						if(sel==0) ret=IDYES|IDTRIANGLE;
+						if(sel==1) ret=IDNO|IDTRIANGLE;
+					}
+					if(DialogType==MB_MC0MC1CANCEL){
+						if(sel==0) ret=IDMC0|IDTRIANGLE;
+						if(sel==1) ret=IDMC1|IDTRIANGLE;
+						if(sel==2) ret=IDCANCEL|IDTRIANGLE;
+					}
+					break;
+				}
+			}
+			//□ボタンで決定
+			if(new_pad & PAD_SQUARE){
+				if(type&MB_USESQUARE){
+					if(DialogType==MB_OK)
+						ret=IDOK|IDSQUARE;
+					if(DialogType==MB_OKCANCEL){
+						if(sel==0) ret=IDOK|IDSQUARE;
+						if(sel==1) ret=IDCANCEL|IDSQUARE;
+					}
+					if(DialogType==MB_YESNOCANCEL){
+						if(sel==0) ret=IDYES|IDSQUARE;
+						if(sel==1) ret=IDNO|IDSQUARE;
+						if(sel==2) ret=IDCANCEL|IDSQUARE;
+					}
+					if(DialogType==MB_YESNO){
+						if(sel==0) ret=IDYES|IDSQUARE;
+						if(sel==1) ret=IDNO|IDSQUARE;
+					}
+					if(DialogType==MB_MC0MC1CANCEL){
+						if(sel==0) ret=IDMC0|IDSQUARE;
+						if(sel==1) ret=IDMC1|IDSQUARE;
+						if(sel==2) ret=IDCANCEL|IDSQUARE;
+					}
+					break;
+				}
+			}
+		}
+		if (timeout == 0) {
+			ret = IDTIMEOUT;
+			break;
+		}
+
+		if (redraw) {
+			// 描画開始
+			drawDialogTmp(dialog_x, dialog_y,
+				dialog_x+dialog_width, dialog_y+dialog_height,
+				setting->color[COLOR_BACKGROUND], setting->color[COLOR_FRAME]);
+			itoLine(setting->color[COLOR_FRAME], dialog_x+FONT_WIDTH, dialog_y+FONT_HEIGHT*1.75, 0,
+				setting->color[COLOR_FRAME], dialog_x+dialog_width-FONT_WIDTH, dialog_y+FONT_HEIGHT*1.75, 0);
+			//キャプション
+			x = dialog_x+FONT_WIDTH*1;
+			y = dialog_y+FONT_HEIGHT*0.5;
+			printXY(CaptionText, x, y, setting->color[COLOR_TEXT], TRUE);
+			//メッセージ
+			x = dialog_x+FONT_WIDTH*1;
+			y = dialog_y+FONT_HEIGHT*2.5;
+			p = MessageText;
+			for(i=0;i<n;i++){
+				printXY(p, x, y, setting->color[COLOR_TEXT], TRUE);
+				p += strlen(p)+1;
+				y += FONT_HEIGHT;
+			}
+			y += FONT_HEIGHT;	//空行
+			//ボタン
+			x = dialog_x+(dialog_width-(strlen(ButtonText)*FONT_WIDTH))/2;
+			printXY(ButtonText, x, y, setting->color[COLOR_TEXT], TRUE);
+			//カーソル
+			if(DialogType!=MB_OK){
+				x = dialog_x+(dialog_width-(strlen(ButtonText)*FONT_WIDTH))/2 + (sel*FONT_WIDTH*11);
+				printXY(">", x, y, setting->color[COLOR_TEXT], TRUE);
+			}
+			// 操作説明
+			x = FONT_WIDTH*1;
+			y = SCREEN_MARGIN+(MAX_ROWS+4)*FONT_HEIGHT;
+			itoSprite(setting->color[COLOR_BACKGROUND],
+				0, y,
+				SCREEN_WIDTH, y+FONT_HEIGHT, 0);
+			sprintf(tmp,"○:%s ×:%s", lang->gen_ok, lang->gen_cancel);
+			printXY(tmp, x, y, setting->color[COLOR_TEXT], TRUE);
+			drawScr();
+			redraw--;
+		} else {
+			itoVSync();
+		}
+		if (timeout > 0) timeout--;
+	}
+	return ret;
+}
+
 char LBF_VER[64] = LBFN_VER;
