@@ -2854,6 +2854,10 @@ void getFilePath(char *out, int cnfmode)
 							strcpy(LastDir, path);
 							break;
 						}
+						if(!strncmp(path, "MISC/",5)){
+							strcpy(LastDir, path);
+							break;
+						}
 						else{
 							//ELFƒtƒ@ƒCƒ‹‚Å‚Í‚È‚¢‚Æ‚«
 							char *extension;
