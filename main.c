@@ -644,6 +644,7 @@ void showinfo(void)
 	int fd;
 	char romver[16];
 
+/*
 	//build info
 	strcpy(info[nList], "BUILD INFO  : ");
 #ifdef ENABLE_PSB
@@ -653,6 +654,7 @@ void showinfo(void)
 	strcat(info[nList], "ICON ");
 #endif
 	nList++;
+*/
 	//ROM Version
 	fd = fioOpen("rom0:ROMVER", O_RDONLY);
 	fioRead(fd, romver, sizeof(romver));
@@ -755,14 +757,14 @@ void showinfo(void)
 
 		// スクロールバー
 		if(nList > MAX_ROWS){
-			drawFrame(SCREEN_WIDTH-FONT_WIDTH*3, SCREEN_MARGIN+FONT_HEIGHT*3,
-				SCREEN_WIDTH-FONT_WIDTH*2, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[1]);
+			drawFrame((MAX_ROWS_X+8)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3,
+				(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[1]);
 			y0=FONT_HEIGHT*MAX_ROWS*((double)top/nList);
 			y1=FONT_HEIGHT*MAX_ROWS*((double)(top+MAX_ROWS)/nList);
 			itoSprite(setting->color[1],
-				SCREEN_WIDTH-FONT_WIDTH*3,
+				(MAX_ROWS_X+8)*FONT_WIDTH,
 				SCREEN_MARGIN+FONT_HEIGHT*3+y0,
-				SCREEN_WIDTH-FONT_WIDTH*2,
+				(MAX_ROWS_X+9)*FONT_WIDTH,
 				SCREEN_MARGIN+FONT_HEIGHT*3+y1,
 				0);
 		}
@@ -1128,7 +1130,12 @@ void LaunchMain(void)
 		if(readpad()){
 			if(new_pad) cancel=TRUE;
 			if(mode==BUTTON){
-				if(new_pad & PAD_UP || new_pad & PAD_DOWN){
+				if(new_pad & PAD_UP){
+					sel=nList-1;
+					mode=DPAD;
+					mode_changed=TRUE;
+				}
+				else if(new_pad & PAD_DOWN){
 					sel=0;
 					if(use_default) sel=1; 
 					mode=DPAD;
@@ -1210,7 +1217,7 @@ void LaunchMain(void)
 					mode_changed=TRUE;
 				}
 				else if(new_pad & PAD_CIRCLE){
-					RunElf(elfpath[sel]);	//ランチャー
+					RunElf(elfpath[sel]);
 				}
 			}
 		}
@@ -1245,14 +1252,14 @@ void LaunchMain(void)
 			}
 			// スクロールバー
 			if(nList > MAX_ROWS){
-				drawFrame(SCREEN_WIDTH-FONT_WIDTH*3, SCREEN_MARGIN+FONT_HEIGHT*3,
-					SCREEN_WIDTH-FONT_WIDTH*2, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[1]);
+				drawFrame((MAX_ROWS_X+8)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3,
+					(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[1]);
 				y0=FONT_HEIGHT*MAX_ROWS*((double)top/nList);
 				y1=FONT_HEIGHT*MAX_ROWS*((double)(top+MAX_ROWS)/nList);
 				itoSprite(setting->color[1],
-					SCREEN_WIDTH-FONT_WIDTH*3,
+					(MAX_ROWS_X+8)*FONT_WIDTH,
 					SCREEN_MARGIN+FONT_HEIGHT*3+y0,
-					SCREEN_WIDTH-FONT_WIDTH*2,
+					(MAX_ROWS_X+9)*FONT_WIDTH,
 					SCREEN_MARGIN+FONT_HEIGHT*3+y1,
 					0);
 			}
@@ -1310,13 +1317,7 @@ int main(int argc, char *argv[])
 			*p = '\0';
 		}
 	}
-	//フォルダ名がcdrom0から始まるパスのとき変換
-	if(!strncmp(LaunchElfDir, "cdrom0", 6)){
-		char tmp[MAX_PATH];
-		strcpy(tmp, LaunchElfDir);
-		p = strchr(tmp, ':');
-		sprintf(LaunchElfDir, "cdfs%s", p);
-	}
+
 	//SWAPMAGIC
 	if(!strcmp(LaunchElfDir, "mass0:\\SWAPMAGIC\\"))
 		strcpy(LaunchElfDir, "mass:SWAPMAGIC/");

@@ -458,6 +458,7 @@ void loadConfig(char *mainMsg)
 	//LaunchELFが実行されたパスから設定ファイルを開く
 	if(boot!=HOST_BOOT){
 		sprintf(path, "%sLBF.CNF", LaunchElfDir);
+		if(!strncmp(path, "cdrom", 5)) strcat(path, ";1");
 		fd = fioOpen(path, O_RDONLY);
 		if(fd >= 0)
 			fioClose(fd);
@@ -786,14 +787,14 @@ void config_button(SETTING *setting)
 
 		// スクロールバー
 		if(nList > MAX_ROWS){
-			drawFrame(SCREEN_WIDTH-FONT_WIDTH*3, SCREEN_MARGIN+FONT_HEIGHT*3,
-				SCREEN_WIDTH-FONT_WIDTH*2, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[1]);
+			drawFrame((MAX_ROWS_X+8)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3,
+				(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[1]);
 			y0=FONT_HEIGHT*MAX_ROWS*((double)top/nList);
 			y1=FONT_HEIGHT*MAX_ROWS*((double)(top+MAX_ROWS)/nList);
 			itoSprite(setting->color[1],
-				SCREEN_WIDTH-FONT_WIDTH*3,
+				(MAX_ROWS_X+8)*FONT_WIDTH,
 				SCREEN_MARGIN+FONT_HEIGHT*3+y0,
-				SCREEN_WIDTH-FONT_WIDTH*2,
+				(MAX_ROWS_X+9)*FONT_WIDTH,
 				SCREEN_MARGIN+FONT_HEIGHT*3+y1,
 				0);
 		}
@@ -883,25 +884,28 @@ void config_screen(SETTING *setting)
 					setting->color[sel-1] = ITO_RGBA(r, g, b, 0);
 				}
 				else if(sel==TVMODE){	//TVMODE
-					if(setting->tvmode==2){	//PALから480pへ変更
-						if(setting->interlace){
-							setting->screen_y-=30;
-							setting->interlace = ITO_NON_INTERLACE;
-						}
-						if(setting->ffmode)
-							setting->ffmode = ITO_FIELD;
-						setting->screen_y += 25;
-					}
-					if(setting->tvmode==3)	//480pから720pへ変更
-						setting->screen_x += 170;
-					if(setting->tvmode==4){	//720pからautoへ変更
-						setting->screen_x -= 170;
-						setting->screen_y -= 25;
-					}
 					//tvmode変更
 					setting->tvmode++;
-					if(setting->tvmode>4)
-						setting->tvmode=0;
+					if(setting->tvmode==2){	//NTSCからPALへ変更
+						setting->screen_x += 5;
+						setting->screen_y += 10;
+					}
+					//
+					if(setting->tvmode==3){	//PALから480pへ変更
+						if(setting->interlace)
+							setting->screen_y -= 30;
+						setting->ffmode = ITO_FIELD;
+						setting->interlace = ITO_NON_INTERLACE;
+						setting->screen_y += 15;
+					}
+					if(setting->tvmode==4)	//480pから720pへ変更
+						setting->screen_x += 170;
+					if(setting->tvmode==5){	//720pからautoへ変更
+						setting->screen_x -= 175;
+						setting->screen_y += 5;
+						setting->tvmode = 0;
+						setting->interlace = ITO_INTERLACE;
+					}
 					//
 					itoGsReset();
 					setupito(setting->tvmode);
@@ -1007,7 +1011,7 @@ void config_screen(SETTING *setting)
 				if(preset==2){
 					setting->color[0] = ITO_RGBA(24,24,24,0);
 					setting->color[1] = ITO_RGBA(64,64,64,0);
-					setting->color[2] = ITO_RGBA(255,128,64,0);
+					setting->color[2] = ITO_RGBA(255,128,0,0);
 					setting->color[3] = ITO_RGBA(144,144,144,0);
 					setting->color[4] = DEF_COLOR5;
 					setting->color[5] = DEF_COLOR6;
@@ -1127,14 +1131,14 @@ void config_screen(SETTING *setting)
 
 		// スクロールバー
 		if(nList > MAX_ROWS){
-			drawFrame(SCREEN_WIDTH-FONT_WIDTH*3, SCREEN_MARGIN+FONT_HEIGHT*3,
-				SCREEN_WIDTH-FONT_WIDTH*2, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[1]);
+			drawFrame((MAX_ROWS_X+8)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3,
+				(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[1]);
 			y0=FONT_HEIGHT*MAX_ROWS*((double)top/nList);
 			y1=FONT_HEIGHT*MAX_ROWS*((double)(top+MAX_ROWS)/nList);
 			itoSprite(setting->color[1],
-				SCREEN_WIDTH-FONT_WIDTH*3,
+				(MAX_ROWS_X+8)*FONT_WIDTH,
 				SCREEN_MARGIN+FONT_HEIGHT*3+y0,
-				SCREEN_WIDTH-FONT_WIDTH*2,
+				(MAX_ROWS_X+9)*FONT_WIDTH,
 				SCREEN_MARGIN+FONT_HEIGHT*3+y1,
 				0);
 		}
@@ -1309,14 +1313,14 @@ void config_network(SETTING *setting)
 
 		// スクロールバー
 		if(nList > MAX_ROWS){
-			drawFrame(SCREEN_WIDTH-FONT_WIDTH*3, SCREEN_MARGIN+FONT_HEIGHT*3,
-				SCREEN_WIDTH-FONT_WIDTH*2, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[1]);
+			drawFrame((MAX_ROWS_X+8)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3,
+				(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[1]);
 			y0=FONT_HEIGHT*MAX_ROWS*((double)top/nList);
 			y1=FONT_HEIGHT*MAX_ROWS*((double)(top+MAX_ROWS)/nList);
 			itoSprite(setting->color[1],
-				SCREEN_WIDTH-FONT_WIDTH*3,
+				(MAX_ROWS_X+8)*FONT_WIDTH,
 				SCREEN_MARGIN+FONT_HEIGHT*3+y0,
-				SCREEN_WIDTH-FONT_WIDTH*2,
+				(MAX_ROWS_X+9)*FONT_WIDTH,
 				SCREEN_MARGIN+FONT_HEIGHT*3+y1,
 				0);
 		}
@@ -1558,14 +1562,14 @@ void config_font(SETTING *setting)
 
 		// スクロールバー
 		if(nList > MAX_ROWS){
-			drawFrame(SCREEN_WIDTH-FONT_WIDTH*3, SCREEN_MARGIN+FONT_HEIGHT*3,
-				SCREEN_WIDTH-FONT_WIDTH*2, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[1]);
+			drawFrame((MAX_ROWS_X+8)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3,
+				(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[1]);
 			y0=FONT_HEIGHT*MAX_ROWS*((double)top/nList);
 			y1=FONT_HEIGHT*MAX_ROWS*((double)(top+MAX_ROWS)/nList);
 			itoSprite(setting->color[1],
-				SCREEN_WIDTH-FONT_WIDTH*3,
+				(MAX_ROWS_X+8)*FONT_WIDTH,
 				SCREEN_MARGIN+FONT_HEIGHT*3+y0,
-				SCREEN_WIDTH-FONT_WIDTH*2,
+				(MAX_ROWS_X+9)*FONT_WIDTH,
 				SCREEN_MARGIN+FONT_HEIGHT*3+y1,
 				0);
 		}
@@ -1646,11 +1650,14 @@ void config_misc(SETTING *setting)
 				else if(sel==FILEICON)
 					setting->fileicon = !setting->fileicon;
 				else if(sel==PS2SAVECHECK)
-						setting->discPs2saveCheck = !setting->discPs2saveCheck;
+					setting->discPs2saveCheck = !setting->discPs2saveCheck;
 				else if(sel==ELFCHECK)
-						setting->discELFCheck = !setting->discELFCheck;
-				else if(sel==EXPORTDIR)
+					setting->discELFCheck = !setting->discELFCheck;
+				else if(sel==EXPORTDIR){
 					getFilePath(setting->Exportdir, DIR);
+					if(!strncmp(setting->Exportdir, "cdfs", 2))
+						setting->Exportdir[0]='\0';
+				}
 				else if(sel==MISCINIT){
 					//init
 					InitMiscSetting();
@@ -1757,14 +1764,14 @@ void config_misc(SETTING *setting)
 
 		// スクロールバー
 		if(nList > MAX_ROWS){
-			drawFrame(SCREEN_WIDTH-FONT_WIDTH*3, SCREEN_MARGIN+FONT_HEIGHT*3,
-				SCREEN_WIDTH-FONT_WIDTH*2, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[1]);
+			drawFrame((MAX_ROWS_X+8)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3,
+				(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[1]);
 			y0=FONT_HEIGHT*MAX_ROWS*((double)top/nList);
 			y1=FONT_HEIGHT*MAX_ROWS*((double)(top+MAX_ROWS)/nList);
 			itoSprite(setting->color[1],
-				SCREEN_WIDTH-FONT_WIDTH*3,
+				(MAX_ROWS_X+8)*FONT_WIDTH,
 				SCREEN_MARGIN+FONT_HEIGHT*3+y0,
-				SCREEN_WIDTH-FONT_WIDTH*2,
+				(MAX_ROWS_X+9)*FONT_WIDTH,
 				SCREEN_MARGIN+FONT_HEIGHT*3+y1,
 				0);
 		}
@@ -1922,14 +1929,14 @@ void config(char *mainMsg)
 
 		// スクロールバー
 		if(nList > MAX_ROWS){
-			drawFrame(SCREEN_WIDTH-FONT_WIDTH*3, SCREEN_MARGIN+FONT_HEIGHT*3,
-				SCREEN_WIDTH-FONT_WIDTH*2, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[1]);
+			drawFrame((MAX_ROWS_X+8)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3,
+				(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[1]);
 			y0=FONT_HEIGHT*MAX_ROWS*((double)top/nList);
 			y1=FONT_HEIGHT*MAX_ROWS*((double)(top+MAX_ROWS)/nList);
 			itoSprite(setting->color[1],
-				SCREEN_WIDTH-FONT_WIDTH*3,
+				(MAX_ROWS_X+8)*FONT_WIDTH,
 				SCREEN_MARGIN+FONT_HEIGHT*3+y0,
-				SCREEN_WIDTH-FONT_WIDTH*2,
+				(MAX_ROWS_X+9)*FONT_WIDTH,
 				SCREEN_MARGIN+FONT_HEIGHT*3+y1,
 				0);
 		}

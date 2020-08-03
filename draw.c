@@ -41,6 +41,7 @@ int SCREEN_MARGIN;
 int FONT_WIDTH;
 int FONT_HEIGHT;
 int MAX_ROWS;
+int MAX_ROWS_X;
 
 int char_Margin;	//文字の間隔
 int line_Margin;	//行の間隔
@@ -234,7 +235,7 @@ void drawDark(void)
 	//
 	itoSprite(ITO_RGBA(0,0,0,0x10),
 		0, SCREEN_MARGIN+FONT_HEIGHT*2.5,
-		SCREEN_WIDTH, SCREEN_HEIGHT-SCREEN_MARGIN-FONT_HEIGHT*1.5, 0);
+		SCREEN_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3.5), 0);
 	//アルファブレンド無効
 	itoPrimAlphaBlending(FALSE);
 }
@@ -265,25 +266,29 @@ void setScrTmp(const char *msg0, const char *msg1)
 	// メッセージ
 	printXY(msg0, FONT_WIDTH*2, SCREEN_MARGIN+FONT_HEIGHT, setting->color[3], TRUE);
 
+	//上の横線
+	itoLine(color, 0, SCREEN_MARGIN+FONT_HEIGHT*2.5, 0,
+		color, SCREEN_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*2.5, 0);	
+	//下の横線
+	itoLine(color, 0, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3.5), 0,
+		color, SCREEN_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3.5), 0);	
+
 	//FLICKER CONTROL: ON
-	if( (setting->flickerControl)||(SCREEN_HEIGHT==448) ){
+	if(setting->flickerControl==TRUE && setting->interlace==TRUE){
 		//アルファブレンド有効
 		itoPrimAlphaBlending( TRUE );
+		//上の横線
 		itoLine(color2, 0, SCREEN_MARGIN+FONT_HEIGHT*2.5+1, 0,
 			color2, SCREEN_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*2.5+1, 0);	
-		itoLine(color2, 0, SCREEN_MARGIN+(MAX_ROWS+3.5)*FONT_HEIGHT+1, 0,
-			color2, SCREEN_WIDTH, SCREEN_MARGIN+(MAX_ROWS+3.5)*FONT_HEIGHT+1, 0);	
+		//下の横線
+		itoLine(color2, 0, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3.5)+1, 0,
+			color2, SCREEN_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3.5)+1, 0);	
 		//アルファブレンド無効
 		itoPrimAlphaBlending(FALSE);
 	}
 
-	itoLine(color, 0, SCREEN_MARGIN+FONT_HEIGHT*2.5, 0,
-		color, SCREEN_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*2.5, 0);	
-	itoLine(color, 0, SCREEN_MARGIN+(MAX_ROWS+3.5)*FONT_HEIGHT, 0,
-		color, SCREEN_WIDTH, SCREEN_MARGIN+(MAX_ROWS+3.5)*FONT_HEIGHT, 0);	
-
 	// 操作説明
-	printXY(msg1, FONT_WIDTH*1, SCREEN_MARGIN+(MAX_ROWS+4)*FONT_HEIGHT, setting->color[3], TRUE);
+	printXY(msg1, FONT_WIDTH*1, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+4), setting->color[3], TRUE);
 }
 
 //-------------------------------------------------
@@ -302,18 +307,28 @@ void drawMsg(const char *msg)
 // 画面のクリア
 void clrScr(uint64 color)
 {
-	//type A
 	itoSprite(color, 0, 0, buffer_width, buffer_height, 0);
-
-	//type B
-//	itoSprite(ITO_RGBA(0x00,0x00,0x00,0x00), 0, 0, buffer_width, buffer_height-32, 0);//ちらつき防止のためにbuffer_heightを-32する
-//	itoSprite(color, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
 }
 
 //-------------------------------------------------
 // 画面の描画
 void drawScr(void)
 {
+/*
+	int x,y;
+
+	itoPrimAlphaBlending(TRUE);
+	for(x=0;x<SCREEN_WIDTH;x+=FONT_WIDTH)
+		itoLine(
+			ITO_RGBA(0xFF,0x00,0x00,0x10), x, 0, 0,
+			ITO_RGBA(0xFF,0x00,0x00,0x10), x, SCREEN_HEIGHT, 0);	
+	for(y=SCREEN_MARGIN;y<SCREEN_HEIGHT;y+=FONT_HEIGHT)
+		itoLine(
+			ITO_RGBA(0xFF,0x00,0x00,0x10), 0, y, 0,
+			ITO_RGBA(0xFF,0x00,0x00,0x10), SCREEN_WIDTH, y, 0);	
+	itoPrimAlphaBlending(FALSE);
+*/
+
 	itoGsFinish();
 	itoVSync();
 	itoSwitchFrameBuffers();
@@ -330,7 +345,7 @@ void drawFrame(int x1, int y1, int x2, int y2, uint64 color)
 	color2 = color|0x10000000;	//半透明
 
 	//FLICKER CONTROL: ON
-	if((setting->flickerControl)|(SCREEN_HEIGHT==448)){
+	if(setting->flickerControl==TRUE && setting->interlace==TRUE){
 		//アルファブレンド有効
 		itoPrimAlphaBlending( TRUE );
 		//上の横線
@@ -356,29 +371,56 @@ void drawFrame(int x1, int y1, int x2, int y2, uint64 color)
 void SetHeight(void)
 {
 	//SCREEN_WIDTHとSCREEN_HEIGHT
-	if(setting->tvmode==3){	//480p
-		SCREEN_WIDTH = 640;
-		SCREEN_HEIGHT = 480-32;
-	}
-	else if(setting->tvmode==4){	//720p
-		SCREEN_WIDTH = 1280-64;
-		SCREEN_HEIGHT = 720-32;
-	}
-	else{
-		SCREEN_WIDTH = 640;
-		if(ITO_VMODE_AUTO==ITO_VMODE_NTSC){
-			//NTSC
+	switch(setting->tvmode)
+	{
+		case 0:	//AUTO
+		{
+			SCREEN_WIDTH = 640;
+			if(ITO_VMODE_AUTO==ITO_VMODE_NTSC){
+				//NTSC
+				if(setting->ffmode==FALSE && setting->interlace==TRUE)
+					SCREEN_HEIGHT = 448;
+				else
+					SCREEN_HEIGHT = 224;
+			}
+			else{
+				//PAL
+				if(setting->ffmode==FALSE && setting->interlace==TRUE)
+					SCREEN_HEIGHT = 512;
+				else
+					SCREEN_HEIGHT = 256;
+			}
+			break;
+		}
+		case 1:	//NTSC
+		{
+			SCREEN_WIDTH = 640;
 			if(setting->ffmode==FALSE && setting->interlace==TRUE)
 				SCREEN_HEIGHT = 448;
 			else
 				SCREEN_HEIGHT = 224;
+			break;
 		}
-		else{
-			//PAL
+		case 2:	//PAL
+		{
+			SCREEN_WIDTH = 640;
 			if(setting->ffmode==FALSE && setting->interlace==TRUE)
 				SCREEN_HEIGHT = 512;
 			else
 				SCREEN_HEIGHT = 256;
+			break;
+		}
+		case 3:	//480p
+		{
+			SCREEN_WIDTH = 640+16;
+			SCREEN_HEIGHT = 480-32;
+			break;
+		}
+		case 4:	//720p
+		{
+			SCREEN_WIDTH = 1280-64;
+			SCREEN_HEIGHT = 720-32;
+			break;
 		}
 	}
 
@@ -393,6 +435,7 @@ void SetHeight(void)
 
 	//MAX_ROWS
 	MAX_ROWS = SCREEN_HEIGHT/FONT_HEIGHT-6;
+	MAX_ROWS_X = SCREEN_WIDTH/FONT_WIDTH-11;
 
 	//SCREEN_MARGIN
 	SCREEN_MARGIN = (SCREEN_HEIGHT - ((MAX_ROWS+5) * FONT_HEIGHT))/2;
@@ -513,6 +556,7 @@ int InitFontAscii(const char *path)
 	init_ascii=1;
 	return 0;
 }
+
 //------------------------------------------------------------
 //漢字フォントをロード
 int InitFontKnaji(const char *path)
@@ -631,6 +675,7 @@ int InitFontKnaji(const char *path)
 	init_kanji=1;
 	return 0;
 }
+
 //------------------------------------------------------------
 //半角フォントを開放
 void FreeFontAscii(void)
@@ -640,6 +685,7 @@ void FreeFontAscii(void)
 	init_ascii=0;
 	return;
 }
+
 //------------------------------------------------------------
 //漢字フォントを開放
 void FreeFontKanji(void)
@@ -682,6 +728,7 @@ int SetFontMargin(int type, int Margin)
 
 	return 0;
 }
+
 //------------------------------------------------------------
 //フォントのマージンを取得
 int GetFontMargin(int type)

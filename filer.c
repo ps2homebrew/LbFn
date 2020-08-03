@@ -666,7 +666,6 @@ int getGameTitle(const char *path, const FILEINFO *file, char *out)
 		}
 	}
 	else{
-//	else if(file->attr & FIO_S_IFDIR){
 		//フォルダのときicon.sysからゲームタイトル取得
 		if(hddin){
 			if((dirfd=fileXioDopen(dir)) < 0)
@@ -684,7 +683,6 @@ int getGameTitle(const char *path, const FILEINFO *file, char *out)
 						out[16*4] = 0;
 						fileXioClose(fd); fd=-1;
 						ret=0;
-//						break;
 					}
 					else if(!strcmp(dirEnt.name, file->name)){	//PS1
 						char dirps1[MAX_PATH];
@@ -696,7 +694,6 @@ int getGameTitle(const char *path, const FILEINFO *file, char *out)
 							ret=1;
 						else
 							out[0]=0;
-//						break;
 					}
 				}
 			}
@@ -1680,26 +1677,28 @@ psberror:
 //ゲームタイトルをファイル名に変換
 void title2filename(const unsigned char *in, unsigned char *out)
 {
+	int len;
 	int i=0;
-	int code;
 
-	strcpy(out,in);
-	code=in[i];
-	while(in[i]){
-		code=in[i];
+	len = strlen(in);
+	memcpy(out, in, len);
+	for(i=0;i<len;i++){
 		//windowsでファイル名に使えない文字は「_」に変換
-		if(code==0x22) out[i]='_';	// '"'
-		if(code==0x2A) out[i]='_';	// '*'
-		if(code==0x2C) out[i]='_';	// ','
-		if(code==0x2F) out[i]='_';	// '/'
-		if(code==0x3A) out[i]='_';	// ':'
-		if(code==0x3B) out[i]='_';	// ';'
-		if(code==0x3C) out[i]='_';	// '<'
-		if(code==0x3E) out[i]='_';	// '>'
-		if(code==0x3F) out[i]='_';	// '?'
-		if(code==0x5c) out[i]='_';	// '\'
-		if(code==0x7C) out[i]='_';	// '|'
-		i++;
+		if(out[i]==0x22) out[i]='_';	// '"'
+		if(out[i]==0x2A) out[i]='_';	// '*'
+		if(out[i]==0x2C) out[i]='_';	// ','
+		if(out[i]==0x2F) out[i]='_';	// '/'
+		if(out[i]==0x3A) out[i]='_';	// ':'
+		if(out[i]==0x3B) out[i]='_';	// ';'
+		if(out[i]==0x3C) out[i]='_';	// '<'
+		if(out[i]==0x3E) out[i]='_';	// '>'
+		if(out[i]==0x3F) out[i]='_';	// '?'
+		if(out[i]==0x5c){	// '\'
+			if(i>0){
+				if((out[i-1]&0x80)==0) out[i]='_';
+			}
+		}
+		if(out[i]==0x7C) out[i]='_';	// '|'
 	}
 }
 
@@ -2340,7 +2339,7 @@ int psuExport(const char *path, const FILEINFO *file)
 			strcpy(outpath, path);
 
 		//出力するpsuファイル名
-		strcpy(tmp,file->name);
+		strcpy(tmp, file->name);
 		if(sjisout){
 			if(file->title[0]){
 				//ファイル名に使えない文字を変換
@@ -2359,7 +2358,6 @@ int psuExport(const char *path, const FILEINFO *file)
 				if( (code>=0xE0)&&(code<=0xFF) ) tmp[27] = 0;
 			}
 		}
-
 		//出力するpsuファイルのフルパス
 		strcat(outpath, tmp);
 		strcat(outpath, ".psu");
@@ -2395,6 +2393,8 @@ int psuExport(const char *path, const FILEINFO *file)
 			ret=-5;
 			goto error;
 		}
+		else if(!strncmp(outpath, "mass", 4))
+			loadUsbModules();
 
 		//psuファイルオープン 新規作成
 		if(hddout){
@@ -2693,8 +2693,9 @@ int keyboard(char *out, int max)
 			x = KEY_X+FONT_WIDTH*2 + (sel%WFONTS)*FONT_WIDTH*3;
 			y = KEY_Y+FONT_HEIGHT*2 + (sel/WFONTS)*FONT_HEIGHT;
 			itoSprite(setting->color[2]|0x10000000,
-				x, y,
-				x+FONT_WIDTH*3, y+FONT_HEIGHT, 0);
+				x, y-2,
+				x+FONT_WIDTH*3, y+GetFontSize(ASCII_FONT_HEIGHT)+2, 0);
+			drawFrame(x, y-2, x+FONT_WIDTH*3, y+GetFontSize(ASCII_FONT_HEIGHT)+2, setting->color[2]);
 		}
 		else{
 			if(sel==WFONTS*HFONTS)
@@ -2703,8 +2704,9 @@ int keyboard(char *out, int max)
 				x = KEY_X+KEY_W/2;	//CANCEL
 			y = KEY_Y+FONT_HEIGHT*10;
 			itoSprite(setting->color[2]|0x10000000,
-				x, y,
-				x+KEY_W/4, y+FONT_HEIGHT, 0);
+				x, y-2,
+				x+KEY_W/4, y+GetFontSize(ASCII_FONT_HEIGHT)+2, 0);
+			drawFrame(x, y-2, x+KEY_W/4, y+GetFontSize(ASCII_FONT_HEIGHT)+2, setting->color[2]);
 		}
 		//アルファブレンド無効
 		itoPrimAlphaBlending(FALSE);
@@ -3023,13 +3025,17 @@ void getFilePath(char *out, int cnfmode)
 				}
 				else if(new_pad & PAD_L1) {	// タイトル表示切り替え
 					title = !title;
-					//cd=TRUE;
 					//ソート
-					if(path[0]==0 || !strcmp(path,"MISC/")){
+					if(path[0]==0 || !strcmp(path,"hdd0:/") || !strcmp(path,"MISC/")){
 					}
 					else{
-						if(nfiles>1)
+						if(nfiles>1){
 							sort(&files[1], 0, nfiles-2);
+							sel=0;
+							top=0;
+							nmarks = 0;
+							memset(marks, 0, MAX_ENTRY);
+						}
 					}
 				}
 				else if(new_pad & PAD_R2){	//GETSIZE
@@ -3070,18 +3076,6 @@ void getFilePath(char *out, int cnfmode)
 						pushed = FALSE;
 					}
 				}
-/*
-				else if(new_pad & PAD_R3){	//FILEICON
-					setting->fileicon = !setting->fileicon;
-				}
-				else if(new_pad & PAD_L3){	//FLICKERCONTROL
-					setting->flickerControl = !setting->flickerControl;
-				}
-				else if(new_pad & PAD_L2) {	//詳細表示
-					detail++;
-					if(detail==3) detail=0;
-				}
-*/
 				//ELF_FILE ELF選択時
 				if(cnfmode==ELF_FILE){
 					if(new_pad & PAD_CIRCLE) {	//ファイルを決定
@@ -3547,12 +3541,12 @@ void getFilePath(char *out, int cnfmode)
 				strcat(tmp,"/");
 
 			//ファイル名が長いときは、短くする
-			if(strlen(tmp)>52){
-				tmp[53]=0;
-				code=tmp[52];
-				if( (code>=0x81)&&(code<=0x9F) ) tmp[52] = 0;
-				if( (code>=0xE0)&&(code<=0xFF) ) tmp[52] = 0;
-				strcat(tmp,"...");
+			if(strlen(tmp)>MAX_ROWS_X&&MAX_ROWS_X>3){
+				tmp[MAX_ROWS_X-3]=0;
+				code=tmp[MAX_ROWS_X-4];
+				if( (code>=0x81)&&(code<=0x9F) ) tmp[MAX_ROWS_X-4] = 0;
+				if( (code>=0xE0)&&(code<=0xFF) ) tmp[MAX_ROWS_X-4] = 0;
+				strcat(tmp, "...");
 			}
 
 			//ファイル名を表示
@@ -3613,11 +3607,11 @@ void getFilePath(char *out, int cnfmode)
 					len=strlen(tmp);
 					if(strcmp(files[top+i].name,"..")){
 						itoSprite(setting->color[0],
-							SCREEN_WIDTH-FONT_WIDTH*14, y,
-							SCREEN_WIDTH-FONT_WIDTH*4, y+FONT_HEIGHT, 0);
-						itoLine(setting->color[1], SCREEN_WIDTH-FONT_WIDTH*13.5, y, 0,
-							setting->color[1], SCREEN_WIDTH-FONT_WIDTH*13.5, y+FONT_HEIGHT, 0);	
-						printXY(tmp, SCREEN_WIDTH-FONT_WIDTH*(4+len), y, color, TRUE);
+							(MAX_ROWS_X-3)*FONT_WIDTH, y,
+							(MAX_ROWS_X+8)*FONT_WIDTH, y+FONT_HEIGHT, 0);
+						itoLine(setting->color[1], (MAX_ROWS_X-2.5)*FONT_WIDTH, y, 0,
+							setting->color[1], (MAX_ROWS_X-2.5)*FONT_WIDTH, y+FONT_HEIGHT, 0);	
+						printXY(tmp, FONT_WIDTH*(MAX_ROWS_X+7-len), y, color, TRUE);
 					}
 				}
 				else if(detail==2){	//更新日時表示
@@ -3638,11 +3632,11 @@ void getFilePath(char *out, int cnfmode)
 					len=strlen(tmp);
 					if(strcmp(files[top+i].name,"..")){
 						itoSprite(setting->color[0],
-							SCREEN_WIDTH-FONT_WIDTH*24, y,
-							SCREEN_WIDTH-FONT_WIDTH*4, y+FONT_HEIGHT, 0);
-						itoLine(setting->color[1], SCREEN_WIDTH-FONT_WIDTH*23.5, y, 0,
-							setting->color[1], SCREEN_WIDTH-FONT_WIDTH*23.5, y+FONT_HEIGHT, 0);	
-						printXY(tmp, SCREEN_WIDTH-FONT_WIDTH*(4+len), y, color, TRUE);
+							(MAX_ROWS_X-13)*FONT_WIDTH, y,
+							(MAX_ROWS_X+8)*FONT_WIDTH, y+FONT_HEIGHT, 0);
+						itoLine(setting->color[1], (MAX_ROWS_X-12.5)*FONT_WIDTH, y, 0,
+							setting->color[1], (MAX_ROWS_X-12.5)*FONT_WIDTH, y+FONT_HEIGHT, 0);	
+						printXY(tmp, FONT_WIDTH*(MAX_ROWS_X+7-len), y, color, TRUE);
 					}
 				}
 			}
@@ -3650,14 +3644,14 @@ void getFilePath(char *out, int cnfmode)
 		}
 		// スクロールバー
 		if(nfiles > MAX_ROWS){
-			drawFrame(SCREEN_WIDTH-FONT_WIDTH*3, SCREEN_MARGIN+FONT_HEIGHT*3,
-				SCREEN_WIDTH-FONT_WIDTH*2, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[1]);
+			drawFrame((MAX_ROWS_X+8)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*3,
+				(MAX_ROWS_X+9)*FONT_WIDTH, SCREEN_MARGIN+FONT_HEIGHT*(MAX_ROWS+3),setting->color[1]);
 			y0=FONT_HEIGHT*MAX_ROWS*((double)top/nfiles);
 			y1=FONT_HEIGHT*MAX_ROWS*((double)(top+MAX_ROWS)/nfiles);
 			itoSprite(setting->color[1],
-				SCREEN_WIDTH-FONT_WIDTH*3,
+				(MAX_ROWS_X+8)*FONT_WIDTH,
 				SCREEN_MARGIN+FONT_HEIGHT*3+y0,
-				SCREEN_WIDTH-FONT_WIDTH*2,
+				(MAX_ROWS_X+9)*FONT_WIDTH,
 				SCREEN_MARGIN+FONT_HEIGHT*3+y1,
 				0);
 		}
@@ -3731,15 +3725,15 @@ void getFilePath(char *out, int cnfmode)
 		// フリースペース表示
 		if(vfreeSpace){
 			if(freeSpace >= 1024*1024)
-				sprintf(tmp, "[%.1fMB free]", (double)freeSpace/1024/1024);
+				sprintf(tmp, "%.1fMB free", (double)freeSpace/1024/1024);
 			else if(freeSpace >= 1024)
-				sprintf(tmp, "[%.1fKB free]", (double)freeSpace/1024);
+				sprintf(tmp, "%.1fKB free", (double)freeSpace/1024);
 			else
-				sprintf(tmp, "[%dB free]", freeSpace);
+				sprintf(tmp, "%dB free", freeSpace);
 			ret=strlen(tmp);
 			//
 			printXY(tmp,
-				SCREEN_WIDTH-FONT_WIDTH*(ret+2), SCREEN_MARGIN,
+				(MAX_ROWS_X+10-ret)*FONT_WIDTH, SCREEN_MARGIN,
 				setting->color[3], TRUE);
 		}
 		drawScr();

@@ -30,7 +30,7 @@
 #include "cnf.h"
 
 // バージョン
-#define LBF_VER "LbF v0.65"
+#define LBF_VER "LbF v0.66"
 
 // 垂直スキャンレート
 #define SCANRATE (ITO_VMODE_AUTO==ITO_VMODE_NTSC ? 60:50)
@@ -125,6 +125,7 @@ extern int SCREEN_MARGIN;
 extern int FONT_WIDTH;
 extern int FONT_HEIGHT;
 extern int MAX_ROWS;
+extern int MAX_ROWS_X;
 void drawDark(void);
 void drawDialogTmp(int x1, int y1, int x2, int y2, uint64 color1, uint64 color2);
 void setScrTmp(const char *msg0, const char *msg1);
