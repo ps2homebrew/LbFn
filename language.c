@@ -183,6 +183,8 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_defaultdetail_modifytime, "MODIFYTIME");
 		strcpy(lang->conf_usbmass_use, "USE EXTEND USB_MASS");
 		strcpy(lang->conf_usbmass_path, "USB_MASS.IRX");
+		strcpy(lang->conf_usbd_use, "USE EXTEND USB_driver");
+		strcpy(lang->conf_usbd_path, "USBD.IRX");
 		strcpy(lang->conf_miscsettinginit, "MISC SETTING INIT");
 
 		strcpy(lang->conf_on, "ON");
@@ -355,6 +357,8 @@ void SetLanguage(const int langID)
 		strcpy(lang->conf_defaultdetail_modifytime, "更新日時");
 		strcpy(lang->conf_usbmass_use, "外部USB_MASSドライバを使用する");
 		strcpy(lang->conf_usbmass_path, "USB_MASS.IRX");
+		strcpy(lang->conf_usbd_use, "外部USBドライバを使用する");
+		strcpy(lang->conf_usbd_path, "USBD.IRX");
 		strcpy(lang->conf_miscsettinginit, "「その他設定」を初期化する");
 
 		strcpy(lang->conf_on, "ON");

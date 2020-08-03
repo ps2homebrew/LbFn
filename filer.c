@@ -618,7 +618,7 @@ int readMASS(const char *path, FILEINFO *info, int max)
 	fio_dirent_t record;
 	int n=0, dd=-1;
 
-	loadUsbModules();
+	loadUsbMassModules();
 	
 
 	if ((dd = fioDopen(path)) < 0) goto exit;
@@ -1535,7 +1535,7 @@ int psbCommand(void)
 		}
 	}
 	else if(!strncmp(path[0], "mass", 4)||!strncmp(path[1], "mass", 4))
-		loadUsbModules();
+		loadUsbMassModules();
 
 	//path[0]の最後がスラッシュのとき削除
 	len = strlen(path[0]);
@@ -1827,7 +1827,7 @@ int psb(const char *psbpath)
 	if(!strncmp(psbpath, "cdfs", 4))
 		loadCdModules();
 	else if(!strncmp(psbpath, "mass", 4))
-		loadUsbModules();
+		loadUsbMassModules();
 
 	//
 	fd=fioOpen(psbpath, O_RDONLY);
@@ -2383,7 +2383,7 @@ int psuExport(const char *path, const FILEINFO *file, int sjisout)
 			goto error;
 		}
 		else if(!strncmp(outpath, "mass", 4)){
-			loadUsbModules();
+			loadUsbMassModules();
 		}
 
 		//psuファイルオープン 新規作成

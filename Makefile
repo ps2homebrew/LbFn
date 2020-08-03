@@ -52,7 +52,7 @@ reset: clean
 
 #------------------------------------
 usbd.s:
-	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:$(PS2SDK)/iop/irx/usbd.irx out:usbd.ir5
+	bim2bin -osacmp -tek5 clv:5 eopt:@ eprm:@ in:$(PS2SDK)/iop/usb/usbd/bin/usbd.irx out:usbd.ir5
 	bin2s usbd.ir5 usbd.s usbd_irx
 
 usbhdfsd.s:

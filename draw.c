@@ -659,6 +659,9 @@ void SetHeight(void)
 		FONT_HEIGHT*= -font_vhalf+1;
 	FONT_HEIGHT+= line_Margin;
 	
+	if (FONT_HEIGHT < 1) FONT_HEIGHT = 1;
+	//if (FONT_WIDTH < 1) FONT_WIDTH = 1;
+	
 	//MAX_ROWS
 	MAX_ROWS = SCREEN_HEIGHT/FONT_HEIGHT-6;
 	MAX_ROWS_X = SCREEN_WIDTH/FONT_WIDTH-11;

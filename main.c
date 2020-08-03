@@ -54,6 +54,8 @@ int boot;
 
 int reset=FALSE;
 int usbmass=0;
+int usbd=0;
+int usbkbd=0;
 
 //--------------------------------------------------------------
 #define IPCONF_MAX_LEN  (3*16)
@@ -423,9 +425,33 @@ mc:
 int load_irxdriver(char *path, int arg_len, char *args)
 {
 	int fd, size;
-	//char path[MAX_PATH];
+	char fullpath[MAX_PATH];
 	int ret=-1;
 
+	if (!strncmp(path, "mc:", 3)) {
+		strcpy(fullpath, "mc0:");
+		strcat(fullpath, path+3);
+		fd = fioOpen(fullpath, O_RDONLY);
+		if (fd>=0) {
+			size = fioLseek(fd, 0, SEEK_END);
+			fioClose(fd);
+			if (size >= 0) {
+				ret = X_SifLoadModule(fullpath, arg_len, args);
+				if (ret>=0) return 2;
+			}
+		}
+		fullpath[2] = 0x31;
+		fd = fioOpen(fullpath, O_RDONLY);
+		if (fd>=0) {
+			size = fioLseek(fd, 0, SEEK_END);
+			fioClose(fd);
+			if (size >= 0) {
+				ret = X_SifLoadModule(fullpath, arg_len, args);
+				if (ret>=0) return 3;
+			}
+		}
+		return -1;
+	}
 	fd = fioOpen(path, O_RDONLY);
 	if(fd>=0){
 		size = fioLseek(fd, 0, SEEK_END);
@@ -640,7 +666,7 @@ void loadFtpdModules(void)
 
 	if(!loaded){
 		loadHddModules();
-		loadUsbModules();
+		loadUsbMassModules();
 		drawMsg(lang->main_loadftpmod);
 //		load_iomanx();
 //		load_ps2dev9();
@@ -653,26 +679,54 @@ void loadFtpdModules(void)
 }
 
 //--------------------------------------------------------------
-//loadUsbModules
+//loadUsbModule
 void loadUsbModules(void)
 {
 	static int loaded=FALSE;
+	smod_mod_info_t	mod_t;
 	int ret;
 
 	if(!loaded){
 		//usbd.irx
-		X_SifExecModuleBuffer(&usbd_irx, size_usbd_irx, 0, NULL, &ret);
-		//usbhdfsd.irx
-		if (setting->usbmass_flag && (strlen(setting->usbmass_path) > 5))
-			ret = load_irxdriver(setting->usbmass_path, 0, NULL);
-		else
-			ret = -1;
-		//ret = load_irxfile("USB_MASS.IRX", 0, NULL);
-		usbmass=ret;
-		if(ret<0)
-			X_SifExecModuleBuffer(&usbhdfsd_irx, size_usbhdfsd_irx, 0, NULL, &ret);
-		delay(3);
+		if(smod_get_mod_by_name( "USB", &mod_t )==0) {
+			if (setting->usbd_flag && (strlen(setting->usbd_path) > 5))
+				ret = load_irxdriver(setting->usbd_path, 0, NULL);
+			else
+				ret = -1;
+			usbd = ret;
+			if (ret < 0) 
+				X_SifExecModuleBuffer(&usbd_irx, size_usbd_irx, 0, NULL, &ret);
+		} else
+			usbd=4;
 		loaded=TRUE;
+	}
+	//return usbd;
+}
+
+//--------------------------------------------------------------
+//loadUsbMassModules
+void loadUsbMassModules(void)
+{
+	static int loaded=FALSE;
+	smod_mod_info_t	mod_t;
+	int ret;
+
+	if(!loaded){
+		//usbd.irx
+		loadUsbModules();
+		//usbhdfsd.irx
+		if ((usbd != 0) && (smod_get_mod_by_name( "usbhdfsd", &mod_t )+smod_get_mod_by_name( "usb_mass", &mod_t )+smod_get_mod_by_name( "usbmass", &mod_t )+smod_get_mod_by_name( "usb_stor", &mod_t )==0)) {
+			if (setting->usbmass_flag && (strlen(setting->usbmass_path) > 5))
+				ret = load_irxdriver(setting->usbmass_path, 0, NULL);
+			else
+				ret = -1;
+			//ret = load_irxfile("USB_MASS.IRX", 0, NULL);
+			usbmass=ret;
+			if(ret<0)
+				X_SifExecModuleBuffer(&usbhdfsd_irx, size_usbhdfsd_irx, 0, NULL, &ret);
+			delay(3);
+			loaded=TRUE;
+		}
 	}
 }
 
@@ -776,18 +830,42 @@ void showinfo(void)
 	nList++;
 
 	//
+	strcpy(info[nList], "USB Driver  : ");
+	if(usbd==0)
+		strcat(info[nList], "not loaded");
+	else if(usbd==-1)
+		strcat(info[nList], "loaded inside USBD.IRX");
+	else if(usbd==1) {
+		strcat(info[nList], "loaded ");
+		strcat(info[nList], setting->usbd_path);
+	}
+	else if(usbd==2) {
+		strcat(info[nList], "loaded mc0:");
+		strcat(info[nList], setting->usbd_path+3);
+	}
+	else if(usbd==3) {
+		strcat(info[nList], "loaded mc1:");
+		strcat(info[nList], setting->usbd_path+3);
+	}
+	else if(usbd==4)
+		strcat(info[nList], "already loaded");
+	nList++;
+	
+	strcpy(info[nList], "USB_MASS.IRX: ");
 	if(usbmass){
-		strcpy(info[nList], "USB_MASS.IRX: loaded ");
-		if(usbmass==-1) strcat(info[nList], "inside USBHDFSD.IRX");
+		if(usbmass==-1) strcat(info[nList], "loaded inside USBHDFSD.IRX");
+		if((usbmass>0)&&(usbmass<4)) strcat(info[nList], "loaded ");
 		if(usbmass==1){
 			//strcat(info[nList], LaunchElfDir);
 			//strcat(info[nList], "USB_MASS.IRX");
 			strcat(info[nList], setting->usbmass_path);
 		}
-		if(usbmass==2) strcat(info[nList], "mc0:/SYS-CONF/USB_MASS.IRX");
-		if(usbmass==3) strcat(info[nList], "mc1:/SYS-CONF/USB_MASS.IRX");
+		if(usbmass==2) strcat(info[nList], "mc0:");
+		if(usbmass==3) strcat(info[nList], "mc1:");
+		if((usbmass==2)||(usbmass==3)) strcat(info[nList], setting->usbmass_path+3);
+		if(usbmass==4) strcat(info[nList], "already loaded");
 		nList++;
-	}
+	} else strcat(info[nList++], "not loaded");
 
 	while(1){
 		waitPadReady(0, 0);
@@ -893,6 +971,7 @@ int ReadCNF(char *direlf)
 		while(systemcnf[n]!=0 && systemcnf[n]==' ') n++;
 		if(systemcnf[n]==0){
 			free(systemcnf);
+			fioClose(fd);
 			return 0;
 		}
 		
@@ -983,7 +1062,7 @@ void RunElf(const char *path)
 		CDVD_DiskReady(0);
 	}
 	else if(!strncmp(path, "mass", 4)){
-		loadUsbModules();
+		loadUsbMassModules();
 		party[0] = 0;
 		strcpy(fullpath, "mass:");
 		strcat(fullpath, path+6);
@@ -1021,9 +1100,31 @@ void RunElf(const char *path)
 			return;
 		}
 		else if(!stricmp(path, "MISC/DiscStop")){
+			CdvdDiscType_t cdmode;
 			loadCdModules();
 			CDVD_Stop();
-			strcpy(mainMsg, lang->main_stopdisc);
+			cdmode = cdGetDiscType();
+			if(cdmode==CDVD_TYPE_NODISK){
+				trayopen = TRUE;
+				strcpy(mainMsg, lang->main_nodisc);
+			}
+			else if(cdmode>=CDVD_TYPE_DETECT && cdmode<=CDVD_TYPE_DETECT_DVDDUAL){
+				strcpy(mainMsg, lang->main_detectingdisc);
+			}
+			else if(cdmode>=CDVD_TYPE_UNKNOWN){
+				if(trayopen==TRUE){
+					char Message[MAX_PATH];
+					trayopen=FALSE;
+					strcpy(Message, lang->main_stopdisc);
+					if(cdmode==CDVD_TYPE_PS1CD||cdmode==CDVD_TYPE_PS1CDDA)
+						strcat(Message,"(PS1CD)");
+					else if(cdmode==CDVD_TYPE_PS2CD||cdmode==CDVD_TYPE_PS2CDDA)
+						strcat(Message,"(PS2CD)");
+					else if(cdmode==CDVD_TYPE_PS2DVD)
+						strcat(Message,"(PS2DVD)");
+					strcpy(mainMsg, Message);
+				}
+			}
 			return;
 		}
 		else if(!stricmp(path, "MISC/McFormat")){
@@ -1072,6 +1173,7 @@ void RunElf(const char *path)
 void Reset()
 {
 	reset=TRUE;
+	//return;
 
 	SifIopReset("rom0:UDNL rom0:EELOADCNF",0);
 	while(SifIopSync());
@@ -1463,19 +1565,19 @@ int main(int argc, char *argv[])
 	mcInit(MC_TYPE_MC);
 	setupPad();
 
-	//cd
-	if(boot==CD_BOOT)
-		loadCdModules();
-	//mass
-	if(boot==MASS_BOOT)
-		loadUsbModules();
-
 	//CNFファイルを読み込む前に初期化
 	InitLanguage();
 
 	//設定をロード
 	loadConfig(mainMsg);
 	SetScreenPosVM();
+
+	//cd
+	if(boot==CD_BOOT)
+		loadCdModules();
+	//mass
+	if(boot==MASS_BOOT)
+		loadUsbMassModules();
 
 	//discControl
 	if(setting->discControl)
@@ -1485,7 +1587,7 @@ int main(int argc, char *argv[])
 	if(!strncmp(setting->AsciiFont, "cdfs", 4))
 		loadCdModules();
 	if(!strncmp(setting->AsciiFont, "mass", 4))
-		loadUsbModules();
+		loadUsbMassModules();
 	if(InitFontAscii(setting->AsciiFont)<0){
 		strcpy(setting->AsciiFont, "systemfont");
 		InitFontAscii(setting->AsciiFont);
@@ -1494,7 +1596,7 @@ int main(int argc, char *argv[])
 	if(!strncmp(setting->KanjiFont, "cdfs", 4))
 		loadCdModules();
 	if(!strncmp(setting->KanjiFont, "mass", 4))
-		loadUsbModules();
+		loadUsbMassModules();
 	if(InitFontKnaji(setting->KanjiFont)<0){
 		strcpy(setting->KanjiFont, "systemfont");
 		InitFontKnaji(setting->KanjiFont);

@@ -169,6 +169,8 @@ typedef struct
 	char conf_defaultdetail_none[MAX_LANGUAGE_STR];
 	char conf_defaultdetail_size[MAX_LANGUAGE_STR];
 	char conf_defaultdetail_modifytime[MAX_LANGUAGE_STR];
+	char conf_usbd_use[MAX_LANGUAGE_STR];
+	char conf_usbd_path[MAX_LANGUAGE_STR];
 	char conf_usbmass_use[MAX_LANGUAGE_STR];
 	char conf_usbmass_path[MAX_LANGUAGE_STR];
 	char conf_auto_decompression[MAX_LANGUAGE_STR];

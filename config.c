@@ -16,7 +16,7 @@ enum
 	DEF_COLOR9 = ITO_RGBA(0,128,255,0),		//PS1saveƒtƒHƒ‹ƒ_
 	DEF_COLOR10 = ITO_RGBA(64,64,80,0),		//–³Œø‚Ì•¶ŽšF
 	DEF_COLOR11 = ITO_RGBA(192,96,0,0),		//psuƒtƒ@ƒCƒ‹
-	DEF_FLICKER_ALPHA = 0x10,
+	DEF_FLICKER_ALPHA = 0x4C,
 	DEF_SCREEN_X_D1 = 639,
 	DEF_SCREEN_Y_D1 = 50,
 	DEF_SCREEN_X_D2 = 310,
@@ -58,6 +58,7 @@ enum
 	DEF_FILEELFCHECK = TRUE,
 	DEF_LANGUAGE = LANG_ENGLISH,
 	DEF_USBMASS_FLAG = FALSE,	// 0:Inside Only
+	DEF_USBD_FLAG = FALSE,
 };
 
 //CONFIG
@@ -166,6 +167,8 @@ enum
 	EXPORTDIR,
 	DEFAULTTITLE,
 	DEFAULTDETAIL,
+	USBD_FLAG,
+	USBD_PATH,
 	USBMASS_FLAG,
 	USBMASS_PATH,
 	MISCINIT,
@@ -193,7 +196,6 @@ void SetScreenPosVM()
 			break;
 		}
 		case 3:	//480p
-		case 7:
 		{
 			SCREEN_LEFT = setting->screen_x_480p;
 			SCREEN_TOP = setting->screen_y_480p;
@@ -205,7 +207,6 @@ void SetScreenPosVM()
 			break;
 		}
 		case 4:	//720p
-		case 8:
 		{
 			SCREEN_LEFT = setting->screen_x_720p;
 			SCREEN_TOP = setting->screen_y_720p;
@@ -217,7 +218,6 @@ void SetScreenPosVM()
 			break;
 		}
 		case 5:	//1080i
-		case 9:
 		{
 			SCREEN_LEFT = setting->screen_x_1080i;
 			SCREEN_TOP = setting->screen_y_1080i;
@@ -229,7 +229,6 @@ void SetScreenPosVM()
 			break;
 		}
 		case 6:	//1080p(1080/30p)
-		case 10:
 		{
 			SCREEN_LEFT = setting->screen_x_1080i;
 			SCREEN_TOP = setting->screen_y_1080i >> 1;
@@ -412,8 +411,10 @@ void InitMiscSetting(void)
 	setting->language = DEF_LANGUAGE;
 	setting->defaulttitle = DEF_DEFAULTTITLE;
 	setting->defaultdetail = DEF_DEFAULTDETAIL;
+	setting->usbd_flag = DEF_USBD_FLAG;
+	strcpy(setting->usbd_path, "mc:/SYS-CONF/USBD.IRX");
 	setting->usbmass_flag = DEF_USBMASS_FLAG;
-	setting->usbmass_path[0] = 0;
+	strcpy(setting->usbmass_path, "mc:/SYS-CONF/USB_MASS.IRX");
 }
 
 //-------------------------------------------------
@@ -626,6 +627,10 @@ void saveConfig(char *mainMsg)
 	if(cnf_setstr("default_title", tmp)<0) goto error;
 	sprintf(tmp, "%d", setting->defaultdetail);
 	if(cnf_setstr("default_detail", tmp)<0) goto error;
+	sprintf(tmp, "%d", setting->usbd_flag);
+	if(cnf_setstr("usbd_use_ext", tmp)<0) goto error;
+	strcpy(tmp, setting->usbd_path);
+	if(cnf_setstr("usbd_path", tmp)<0) goto error;
 	sprintf(tmp, "%d", setting->usbmass_flag);
 	if(cnf_setstr("usbmass_use_ext", tmp)<0) goto error;
 	strcpy(tmp, setting->usbmass_path);
@@ -985,6 +990,13 @@ void loadConfig(char *mainMsg)
 				if(setting->defaultdetail<0 || setting->defaultdetail>2)
 					setting->defaultdetail = DEF_DEFAULTDETAIL;
 			}
+			if(cnf_getstr("usbd_use_ext", tmp, "")>=0){
+				setting->usbd_flag = atoi(tmp);
+				if(setting->usbd_flag<0 || setting->usbd_flag>1)
+					setting->usbd_flag = DEF_USBD_FLAG;
+			}
+			if(cnf_getstr("usbd_path", tmp, "")>=0)
+				strcpy(setting->usbd_path, tmp);
 			if(cnf_getstr("usbmass_use_ext", tmp, "")>=0){
 				setting->usbmass_flag = atoi(tmp);
 				if(setting->usbmass_flag<0 || setting->usbmass_flag>1)
@@ -1258,11 +1270,11 @@ void config_color(SETTING *setting)
 					setting->color[colorid] = ITO_RGBA(r, g, b, 0);
 				} else if (sel == FLICKER_ALPHA) {
 					if (paddata & PAD_SQUARE)
-						setting->flicker_alpha+=8;
+						setting->flicker_alpha+=16;
 					else
 						setting->flicker_alpha++;
-					if (setting->flicker_alpha>255)
-						setting->flicker_alpha=255;
+					if (setting->flicker_alpha>128)
+						setting->flicker_alpha=128;
 				}
 			}
 			else if(new_pad & PAD_CROSS){	//~
@@ -1289,7 +1301,7 @@ void config_color(SETTING *setting)
 					setting->color[colorid] = ITO_RGBA(r, g, b, 0);
 				} else if (sel == FLICKER_ALPHA) {
 					if (paddata & PAD_SQUARE)
-						setting->flicker_alpha-=8;
+						setting->flicker_alpha-=16;
 					else
 						setting->flicker_alpha--;
 					if (setting->flicker_alpha<0)
@@ -2317,6 +2329,13 @@ void config_misc(SETTING *setting)
 					setting->defaultdetail++;
 					if(setting->defaultdetail>2) setting->defaultdetail = 0;
 				}
+				else if(sel==USBD_FLAG)
+					setting->usbd_flag = !setting->usbd_flag;
+				else if(sel==USBD_PATH){
+					getFilePath(setting->usbd_path, IRX_FILE);
+					if(!strncmp(setting->usbd_path, "mass", 4))
+						setting->usbd_path[0]='\0';
+				}
 				else if(sel==USBMASS_FLAG)
 					setting->usbmass_flag = !setting->usbmass_flag;
 				else if(sel==USBMASS_PATH){
@@ -2332,11 +2351,19 @@ void config_misc(SETTING *setting)
 					//pushed = FALSE;
 				}
 			}
+			else if(new_pad & PAD_SQUARE){	// 
+				if((sel==USBD_PATH)&&(!strncmp(setting->usbd_path, "mc", 2))&&(setting->usbd_path[3] == ':'))
+					strcpy(setting->usbd_path+2, setting->usbd_path+3);
+				if((sel==USBMASS_PATH)&&(!strncmp(setting->usbmass_path, "mc", 2))&&(setting->usbmass_path[3] == ':'))
+					strcpy(setting->usbmass_path+2, setting->usbmass_path+3);
+			}
 			else if(new_pad & PAD_CROSS){	//~
 				if(sel==TIMEOUT)
 					setting->timeout--;
 				if(sel==EXPORTDIR)
 					setting->Exportdir[0]='\0';
+				if(sel==USBD_PATH)
+					setting->usbd_path[0]='\0';
 				if(sel==USBMASS_PATH)
 					setting->usbmass_path[0]='\0';
 			}
@@ -2425,6 +2452,15 @@ void config_misc(SETTING *setting)
 				else if(setting->defaultdetail==2)
 					strcat(config[i], lang->conf_defaultdetail_modifytime);
 			}
+			else if(i==USBD_FLAG){	//USBD_USE
+				sprintf(config[i], "%s: ", lang->conf_usbd_use);
+				if(setting->usbd_flag)
+					strcat(config[i], lang->conf_on);
+				else
+					strcat(config[i], lang->conf_off);
+			}
+			else if(i==USBD_PATH)	//USBD_PATH
+				sprintf(config[i], "%s: %s", lang->conf_usbd_path, setting->usbd_path);
 			else if(i==USBMASS_FLAG){	//USBMASS_USE
 				sprintf(config[i], "%s: ", lang->conf_usbmass_use);
 				if(setting->usbmass_flag)
@@ -2438,7 +2474,7 @@ void config_misc(SETTING *setting)
 				strcpy(config[i], lang->conf_miscsettinginit);
 			}
 		}
-		nList=16;
+		nList=18;
 
 		// ƒŠƒXƒg•\Ž¦—p•Ï”‚Ì³‹K‰»
 		if(top > nList-MAX_ROWS)	top=nList-MAX_ROWS;
@@ -2511,10 +2547,20 @@ void config_misc(SETTING *setting)
 			sprintf(msg1, "›:%s ¢:%s", lang->conf_change, lang->conf_up);
 		else if(sel==DEFAULTDETAIL)
 			sprintf(msg1, "›:%s ¢:%s", lang->conf_change, lang->conf_up);
+		else if(sel==USBD_FLAG)
+			sprintf(msg1, "›:%s ¢:%s", lang->conf_change, lang->conf_up);
+		else if(sel==USBD_PATH)
+			if ((!strncmp(setting->usbd_path, "mc", 2)) && (setting->usbd_path[3] == ':'))
+				sprintf(msg1, "›:%s ~:%s  :mcx->mc ¢:%s", lang->conf_edit, lang->conf_clear, lang->conf_up);
+			else
+				sprintf(msg1, "›:%s ~:%s ¢:%s", lang->conf_edit, lang->conf_clear, lang->conf_up);
 		else if(sel==USBMASS_FLAG)
 			sprintf(msg1, "›:%s ¢:%s", lang->conf_change, lang->conf_up);
 		else if(sel==USBMASS_PATH)
-			sprintf(msg1, "›:%s ~:%s ¢:%s", lang->conf_edit, lang->conf_clear, lang->conf_up);
+			if ((!strncmp(setting->usbmass_path, "mc", 2)) && (setting->usbmass_path[3] == ':'))
+				sprintf(msg1, "›:%s ~:%s  :mcx->mc ¢:%s", lang->conf_edit, lang->conf_clear, lang->conf_up);
+			else
+				sprintf(msg1, "›:%s ~:%s ¢:%s", lang->conf_edit, lang->conf_clear, lang->conf_up);
 		else if(sel==MISCINIT)
 			sprintf(msg1, "›:%s ¢:%s", lang->gen_ok, lang->conf_up);
 		setScrTmp(msg0, msg1);

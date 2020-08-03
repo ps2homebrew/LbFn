@@ -30,7 +30,7 @@
 #include "cnf.h"
 
 // バージョン
-#define LBF_VER "LbFn v0.70.6"
+#define LBF_VER "LbFn v0.70.7"
 
 // 垂直スキャンレート
 #define SCANRATE (ITO_VMODE_AUTO==ITO_VMODE_NTSC ? 60:50)
@@ -120,8 +120,14 @@ typedef struct
 	int AsciiMarginLeft;
 	int KanjiMarginTop;
 	int KanjiMarginLeft;
+	int usbd_flag;
+	char usbd_path[MAX_PATH];
 	int usbmass_flag;
 	char usbmass_path[MAX_PATH];
+	int usbkbd_flag;
+	char usbkbd_path[MAX_PATH];
+	int usbmouse_flag;
+	char usbmouse_path[MAX_PATH];
 } SETTING;
 
 /* main.c */
@@ -129,6 +135,8 @@ extern char LaunchElfDir[MAX_PATH], LastDir[MAX_NAME];
 extern int boot;
 void loadCdModules(void);
 void loadUsbModules(void);
+void loadUsbMassModules(void);
+void loadUsbKbdModules(void);
 void loadHddModules(void);
 
 /* elf.c */
